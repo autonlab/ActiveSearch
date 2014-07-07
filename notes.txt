@@ -1,0 +1,14 @@
+ * Occasionally, starting Cytoscape hangs. The startup splash window will say "Initializing OSGi Container" and no red bar will move across the screen. If 
+       this condition persists for more than, say, 10 seconds, it is hung. Just kill it and re-open. This happens maybe 1/10 times.
+
+ * Closing the statistics window is permanent for that sequence of ratings. User will have start a new search to get a new statistics window.
+
+ * Right clicking on an edge can sometimes miss the edge and show the menu for the background instead. Correctly right-clicking on an edge will
+       result in the menu option "Active Search Edge Options". Missing the edge will result in the menu option "ActiveSearch"
+
+ * If, after making some selections, the main Cytoscape window shows no edges or nodes, try zooming out; perhaps it was zoomed in to an old email's node cluster
+
+ * The first time the big email window is displayed, it has to load in the matrix files which takes ~45 seconds. This appears to look like a hang but it is working.
+       Time permitting, we'll add a popup window to indicate this.
+
+ * The first recommendation incurs some extra math and the program will appear to hang for ~15 seconds while it works.

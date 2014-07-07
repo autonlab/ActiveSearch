@@ -1,0 +1,5 @@
+* Separate functions <done>
+* history, numbers of checked e-mails and positives found <done>
+* Allow users to go back and change previous decisions <implemented, not working correctly>
+* keyword search <done>
+* High-light the current e-mail on the graph and allow users to  select neary e-mails to look at. <done, specifics may need to change>

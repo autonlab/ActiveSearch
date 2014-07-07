@@ -1,0 +1,23 @@
+There are two components: The Daemon which exports its API via REST
+and the CytoscapeApp which is an optional GUI. 
+
+To get started, see the howtorun.txt file in the Daemon directory.
+
+
+
+
+This step is not required, but the default jblas library is not
+multithreaded. The multithreaded library will only run correctly on
+the machine that it is built on, and the machine must be idle when the
+package is built. This will take about an hour to complete all of the
+steps.
+ 1. Download the latest release of the jblas source: http://mikiobraun.github.io/jblas/
+ 2. Unzip the source file and follow the steps in the BUILDING_ATLAS file 
+Notes for 64 bit linux:
+ - When building lapack, do make -k lib in addition to blaslib and lapacklib
+ - After building atlas:
+    cd into lib
+    run "make ptshared" 
+ - Add --ptatlas when building jblas
+ - Add your new jar to the maven repository, overwriting the existing jar with 
+    mvn install:install-file -Dfile=jblas-1.2.3.jar -DgroupId=org.jblas -DartifactId=jblas -Dversion=1.2.3 -Dpackaging=jar
