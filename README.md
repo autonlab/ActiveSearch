@@ -19,3 +19,10 @@ Optional:
  * Cytoscape (an optional UI we provide that speaks the tool's REST API)
  * Perl (if importing different data into the database)
  * Java (for changing the similarity comparison algorithm)
+
+# Running the Code
+This code repository contains two parts.
+
+The [Daemon](https://github.com/AutonlabCMU/ActiveSearch/blob/master/Daemon/howtorun.md) handles all of the computation and exports a REST interface. 
+
+The [Cytoscape App](https://github.com/AutonlabCMU/ActiveSearch/blob/master/CytoscapeApp/howtorun.md) is an optional plugin for Cytoscape that implements a graphical front end to the Daemon.
