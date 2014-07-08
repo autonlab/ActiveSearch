@@ -19,3 +19,5 @@ Optional:
  * Cytoscape (an optional UI we provide that speaks the tool's REST API)
  * Perl (if importing different data into the database)
  * Java (for changing the similarity comparison algorithm)
+
+For instructions on how to configure the database and start the ActiveSearch daemon, click [here](https://github.com/AutonlabCMU/ActiveSearch/blob/master/Daemon/howtorun.md)
