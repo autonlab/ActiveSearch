@@ -30,4 +30,4 @@
       (http://localhost:8080/ActiveSearchDaemon/rest/emailboring). Each of these calls will return the next email ID that it recommends
 
 
-For an optional GUI that can talk to this REST daemon, see the howtorun.txt file in the CytoscapeApp directory
+For an optional GUI that can talk to this REST daemon, see the [Cytoscape App](https://github.com/AutonlabCMU/ActiveSearch/blob/master/CytoscapeApp/howtorun.md)
