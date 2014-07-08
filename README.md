@@ -20,4 +20,9 @@ Optional:
  * Perl (if importing different data into the database)
  * Java (for changing the similarity comparison algorithm)
 
-For instructions on how to configure the database and start the ActiveSearch daemon, click [here](https://github.com/AutonlabCMU/ActiveSearch/blob/master/Daemon/howtorun.md)
+# Running the Code
+This code repository contains two parts.
+
+The [Daemon](https://github.com/AutonlabCMU/ActiveSearch/blob/master/Daemon/howtorun.md) handles all of the computation and exports a REST interface. 
+
+The [Cytoscape App](https://github.com/AutonlabCMU/ActiveSearch/blob/master/CytoscapeApp/howtorun.md) is an optional plugin for Cytoscape that implements a graphical front end to the Daemon.
