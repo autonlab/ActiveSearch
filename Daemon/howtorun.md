@@ -5,7 +5,7 @@
  * Oracle Java 7 and jdk
  * Perl
  * Apache Maven
- * libgfortran (Without this the java jblas library will fail in a not-obvious manner, so make sure not to skip this step! This is probably available via yum or apt repository.)
+ * libgfortran (Without this the java jblas library will fail in a not-obvious manner, so make sure not to skip this step! This is probably available via yum or apt repository.) On Ubuntu 14.04 the package is called "libgfortran3"
 
 ## Set Up the Database and Perform the One-Time Precomputation
  1. Set up a mysql database. Create a database called "scottwalker". For simplicity we use a username of "root" and a blank password.
