@@ -66,10 +66,10 @@ public class DataConnectionRest {
 
     public void setLabel(int value)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "setLabel/" + value);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "setLabelCurrent/" + value);
 	String ret = webResource.accept("text/plain").get(String.class);
 	if (!ret.equals("ok")) {
-	    throw new RuntimeException("setLabel returned " + ret);
+	    throw new RuntimeException("setLabelCurrent returned " + ret);
 	}
     }
 
