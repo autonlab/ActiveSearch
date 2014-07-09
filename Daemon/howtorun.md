@@ -23,7 +23,7 @@
 
 ## Start the REST daemon for general use
  1. mvn clean; mvn tomcat:run
- 2. Initialize the Active Search system with an initial seed email:  http://localhost:8080/ActiveSearchDaemon/rest/firstemail/<email ID>
+ 2. Initialize the Active Search system with an initial seed email:  http://localhost:8080/ActiveSearchDaemon/rest/firstemail/< email ID >
      - the email ID is in the database as messages.messageid (which is also the zero-indexed row number of the original tsv file)
      - Then call http://localhost:8080/ActiveSearchDaemon/rest/getNextEmail to get the first email recommendation
  3. For the email returned in step 2., tell the system if it is interesting (http://localhost:8080/ActiveSearchDaemon/rest/emailinteresting) or not
