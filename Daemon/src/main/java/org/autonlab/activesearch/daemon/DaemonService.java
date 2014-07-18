@@ -138,10 +138,20 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/setLabel/{value}")
-    public Response setLabel(@PathParam("value") int value) {
+    @Path("/setLabelCurrent/{value}")
+    public Response setLabelCurrent(@PathParam("value") int value) {
 	aSearch.setLabel(currentEmail, value);
 	System.out.println("Label for " + currentEmail + " set to " + value);
+	String output = "ok";
+	return Response.status(200).entity(output).build();
+    }
+
+    @GET
+    @Path("/setLabel/{index}/{value}")
+    public Response setLabel(@PathParam("index") int index,
+			     @PathParam("value") int value) {
+	aSearch.setLabel(index, value);
+	System.out.println("Label for " + index + " set to " + value);
 	String output = "ok";
 	return Response.status(200).entity(output).build();
     }
