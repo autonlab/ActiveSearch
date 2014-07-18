@@ -51,6 +51,9 @@ public class DaemonService {
 	System.out.println("Matrices loaded");
     }
  
+    /*
+     * Calling this resets the labels
+     */
     @GET
     @Path("/firstemail/{email}/{mode}")
     public Response firstEmail(@PathParam("email") int email,
@@ -153,6 +156,31 @@ public class DaemonService {
 	aSearch.setLabel(index, value);
 	System.out.println("Label for " + index + " set to " + value);
 	String output = "ok";
+	return Response.status(200).entity(output).build();
+    }
+
+    /*
+     * Input is [index, value [,index, value etc]]
+     */
+    @GET
+    @Path("/setLabelBulk/{csv}")
+    public Response setLabelBulk(@PathParam("csv") String csv) {
+	String output = "ok";
+	String[] sParts;
+	int i;
+	sParts = csv.split(",");
+	if (sParts.length % 2 != 0) {
+	    output = "Error: odd number of inputs";
+	}
+	else {
+	    for (i = 0; i < sParts.length; i+=2) {
+		int index = Integer.parseInt(sParts[i]);
+		double value = Double.parseDouble(sParts[i+1]);
+		aSearch.setLabel(index, value);
+		System.out.println("Label for " + index + " set to " + value);
+	    }
+	}
+
 	return Response.status(200).entity(output).build();
     }
 
