@@ -75,7 +75,7 @@ public class SearchMain {
      * @param myLabels The labels vector, stored as a DoubleMatrix to simplify the code
      * @param myMode The internal processing mode. See ActiveSearchConstants.java
      */
-    public SearchMain(DoubleMatrix eigenMap, DoubleMatrix similarityDeg, int dim, int myAlpha, double omega, int startp, int myOffsetFlag, DoubleMatrix myLabels, int myMode) { 
+    public SearchMain(DoubleMatrix eigenMap, DoubleMatrix similarityDeg, int dim, int myAlpha, double omega, int startp, int myOffsetFlag, DoubleMatrix myLabels, int myMode, int nConnComp) { 
 	/*
 	 * Here are some notes that will be useful for understanding the code:
 	 *
@@ -205,75 +205,32 @@ public class SearchMain {
 	    yp.put(i, labels.get(i) * sqd.get(i));
 	}
 
-	if (omega0 > 0) {
-	    if (eigenMapXpTranspose == null) {
-		eigenMapXpTranspose = eigenMapXp.transpose();
-	    }
-
-	    // C = inv(r*Xp'*Xp + (1-r)*Xp(best_ind,:)'*Xp(best_ind,:)+lamb*[ eye(d-1) zeros(d-1,1); zeros(1,d-1) (offset_flag == 0)]);
-	    //         ^temp1 ^   ^------------- temp2 --------------^ ^------------- temp3 ----------------------------------------^
-	    DoubleMatrix temp1 = eigenMapXpTranspose.mul(rVal).mmul(eigenMapXp);
-	    DoubleMatrix temp2 = eigenMapXp.getRow(best_ind).transpose().mmul(eigenMapXp.getRow(best_ind)).mul(1-rVal);
-	    // instead of concatenating 4 matrices we'll make one big one and just toggle the bottom right corner
-	    DoubleMatrix temp3 = DoubleMatrix.eye(dimensions).put(dimensions-1, dimensions-1, offset_flag == 0 ? 1 : 0).muli(lamb);
-	    C = temp1.addi(temp2).addi(temp3);
-	    // calculate the inverse
-	    C = Solve.solve(C, DoubleMatrix.eye(dimensions));
-
-	    // h = sum((Xp*C).*Xp,2);
-	    h = eigenMapXp.mmul(C).mul(eigenMapXp).rowSums();
-
-	    // f = X * (C * (r*Xp'*sqd*pai + Xp(best_ind,:)'*(yp(best_ind)-r*sqd(best_ind)*pai)));
-	    //               ^-- temp1 --^   ^---------------- temp2 ---------------------------^
-	    temp1 = eigenMapXpTranspose.mmul(sqd).mul(pai*rVal);
-	    temp2 = eigenMapXp.getRow(best_ind).transpose().mul(yp.get(best_ind)-(sqd.get(best_ind)*rVal*pai));
-	    f = eigenMapX.mmul(C.mmul(temp1.add(temp2)));
-	}
-	else {
-	    if (offset_flag > 0) {
-		int d = eigenMapX.columns;
-		// C = [eye(d-1)/lamb -Xp(best_ind,1:(d-1))'/Xp(best_ind,d)/lamb; -Xp(best_ind,1:(d-1))/Xp(best_ind,d)/lamb (1+norm(Xp(best_ind,1:(d-1)))^2/lamb)/Xp(best_ind,d)^2];
-		//      ^-- temp1 --^ ^-------------- temp2 -------------------^  ^------------- temp3 -------------------^ ^------------------------------ temp4 ----------------^
-		DoubleMatrix temp1 = DoubleMatrix.eye(d-1).divi(lamb);
-                DoubleMatrix temp2 = eigenMapXp.getRange(best_ind, best_ind+1, 0, d-1).neg();
-                temp2.divi(eigenMapXp.get(best_ind, d-1)).divi(lamb);
-
-                DoubleMatrix temp3 = temp2.dup();
-                temp2 = temp2.transpose();
-
-                DoubleMatrix temp4 = new DoubleMatrix(1,1);
-                temp4.put(0, 0, (1 + (Math.pow(eigenMapXp.getRange(best_ind, best_ind+1, 0, d-1).norm2(), 2)/lamb)) / Math.pow(eigenMapXp.get(best_ind, d-1),2));
-                C = DoubleMatrix.concatVertically(DoubleMatrix.concatHorizontally(temp1, temp2), DoubleMatrix.concatHorizontally(temp3, temp4));
-
-		//h = sum(Xp(:,1:(d-1)).^2,2)/lamb - (2/lamb)*(Xp(:,1:(d-1))*Xp(best_ind,1:(d-1))').*(Xp(:,d)/Xp(best_ind,d)) + (1+norm(Xp(best_ind,1:(d-1)))^2/lamb)*(Xp(:,d)/Xp(best_ind,d)).^2;
-		//    ^---- temp1 ---------------^   ^------------------------ temp2 ---------------------------------------^   ^-- tempFactor ---------------------^ ^----- temp3 -------------^            
-
-		temp1 = MatrixFunctions.powi(eigenMapXp.getRange(0, emailCount, 0, d-1), 2).rowSums().divi(lamb);
-                temp2 = eigenMapXp.getRange(0, emailCount, 0, d-1).mmul(eigenMapXp.getRange(best_ind, best_ind+1, 0, d-1).transpose()).mul(2/lamb);
-                temp2.muli(eigenMapXp.getColumn(d-1)).divi(eigenMapXp.get(best_ind,d-1));
-                double tempFactor = 1 + (Math.pow(eigenMapXp.getRange(best_ind, best_ind+1, 0, d-1).norm2(), 2)/lamb);
-                temp3 = MatrixFunctions.powi(eigenMapXp.getColumn(d-1).divi(eigenMapXp.get(best_ind, d-1)), 2).muli(tempFactor);
-                h = temp1.subi(temp2).addi(temp3);
-	    }
-	    else {
-	
-		// C = (eye(d) - (Xp(best_ind,:)' * Xp(best_ind,:)) / (lamb + norm(Xp(best_ind,:))^2)) / lamb;
-		//               ^--------- temp1 ----------------^   ^--------------- temp2 -------^
-		DoubleMatrix temp1 = eigenMapXp.getRow(best_ind).transpose().mmul(eigenMapXp.getRow(best_ind));
-		double temp2 = (lamb + Math.pow(eigenMapXp.getRow(best_ind).norm2(),2));
-		C = DoubleMatrix.eye(dimensions).subi(temp1.divi(temp2)).divi(lamb);
-
-	
-		// h = (sum(Xp.^2,2) - (Xp * Xp(best_ind,:)').^2 / (lamb + norm(Xp(best_ind,:))^2)) / lamb;
-		//      ^- temp1 -^     ^----- temp3 ----------^   ^-- temp2 (reuse from above) --^
-		temp1 = MatrixFunctions.pow(eigenMapXp, 2).rowSums();
-		DoubleMatrix temp3 = MatrixFunctions.pow(eigenMapXp.mmul(eigenMapXp.getRow(best_ind).transpose()), 2).divi(temp2);
-		h = temp1.subi(temp3).divi(lamb);
-	    }
-	    // f = X * (C * Xp(best_ind,:)' * yp(best_ind));
-	    f = eigenMapX.mmul(C.mmul(eigenMapXp.getRow(best_ind).transpose().muli(yp.get(best_ind))));
+	if (eigenMapXpTranspose == null) {
+	    eigenMapXpTranspose = eigenMapXp.transpose();
 	}
 
+	// C = r*(Xp'*Xp) + (1-r)*(Xp(best_ind,:)'*Xp(best_ind,:)) + lamb*diag([zeros(b,1); ones(d-b,1)]);
+	//       ^temp1 ^   ^------------- temp2 ----------------^   ^------------- temp3 ---------------^
+	DoubleMatrix temp1 = eigenMapXpTranspose.mul(rVal).mmul(eigenMapXp);
+	DoubleMatrix temp2 = eigenMapXp.getRow(best_ind).transpose().mmul(eigenMapXp.getRow(best_ind)).mul(1-rVal);
+	DoubleMatrix temp3 = DoubleMatrix.eye(dimensions);
+	for (i = 0; i < nConnComp; i++) {
+	    temp3.put(i, i, 0.0);
+	}
+	temp3.muli(lamb);
+
+	C = temp1.addi(temp2).addi(temp3);
+	// calculate the inverse
+	C = Solve.solve(C, DoubleMatrix.eye(dimensions));
+
+	// h = sum((Xp*C).*Xp,2);
+	h = eigenMapXp.mmul(C).mul(eigenMapXp).rowSums();
+
+	// f = X * (C * (r*Xp'*sqd*pai + Xp(best_ind,:)'*(yp(best_ind)-r*sqd(best_ind)*pai)));
+	//               ^-- temp1 --^   ^---------------- temp2 ---------------------------^
+	temp1 = eigenMapXpTranspose.mmul(sqd).mul(pai*rVal);
+	temp2 = eigenMapXp.getRow(best_ind).transpose().mul(yp.get(best_ind)-(sqd.get(best_ind)*rVal*pai));
+	f = eigenMapX.mmul(C.mmul(temp1.add(temp2)));
     }
 
 
@@ -435,13 +392,19 @@ public class SearchMain {
 	// get(test_ind) returns all values f[i] where test_ind[i] is nonzero 
 	DoubleMatrix f_bnd = f.get(test_ind).max(DoubleMatrix.zeros(test_ind.rows, test_ind.columns)).min(DoubleMatrix.ones(test_ind.rows, test_ind.columns));
 
-	// score = f_bnd + alpha*f_bnd.*change(test_ind);
+	// score = f_bnd + alpha*f_bnd.*max(change(test_ind),0);
 	/* 
 	 * Here we only consider rows where test_ind=1.  As a result
 	 * the score vector is smaller than the total number of emails
 	 * by the number of labeled emails
 	 */
-	DoubleMatrix score = f_bnd.add(f_bnd.mul(change.get(test_ind)).mul(alpha));
+	DoubleMatrix tempScore = change.get(test_ind);
+	for (i = 0; i < tempScore.length; i++) {
+	    if (tempScore.get(i) < 0.0) {
+		tempScore.put(i, 0.0);
+	    }
+	}
+	DoubleMatrix score = f_bnd.add(f_bnd.mul(tempScore).mul(alpha));
 
 	// [best_score best_ind] = max(score);
 	int best_ind = score.argmax();

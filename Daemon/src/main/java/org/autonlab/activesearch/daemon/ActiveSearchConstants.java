@@ -9,6 +9,7 @@ public class ActiveSearchConstants {
 
     public static final String SIMILARITY_MATRIX_FILE = "similarity_rowsum.out";
     public static final String X_MATRIX = "X_matrix.out";
+    public static final String b_MATRIX = "b_matrix.out";
 
     // by default, this is generated automatically so we don't set it
     public static final String LABELS_FILE = "";

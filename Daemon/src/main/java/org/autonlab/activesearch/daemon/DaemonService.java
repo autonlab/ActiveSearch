@@ -18,6 +18,7 @@ import org.autonlab.activesearch.GlapEigenmap;
 public class DaemonService {
  
     static DoubleMatrix xmappedMatrix = null;
+    static int nConnComp = 0;
     static DoubleMatrix similarityMatrix = null;
     static DoubleMatrix labelsMatrixOrig = null;
     static DoubleMatrix labelsMatrix = null;
@@ -37,7 +38,8 @@ public class DaemonService {
 	if (similarityMatrix == null) {
 	    similarityMatrix = GenerateCompabilityMatrix.readFile(ActiveSearchConstants.SIMILARITY_MATRIX_FILE, emailCount, 1);
 	    xmappedMatrix = GenerateCompabilityMatrix.readFile(ActiveSearchConstants.X_MATRIX, emailCount, 0);
-
+	    nConnComp = (int)(GenerateCompabilityMatrix.readFile(ActiveSearchConstants.b_MATRIX, 1, 0).get(0));
+	    System.out.println("nConnComp is " + nConnComp);
 	    if ((ActiveSearchConstants.LABELS_FILE).equals("")) {
 		System.out.println("No labels file defined. Using default vector");
 		labelsMatrixOrig = DoubleMatrix.zeros(emailCount);
@@ -65,7 +67,8 @@ public class DaemonService {
 				 email,
 				 ActiveSearchConstants.SEARCH_MAIN_OFFSET_FLAG,
 				 labelsMatrix,
-				 mode);
+				 mode,
+				 nConnComp);
 	System.out.println("First email is " + email + " in mode " + mode);
 	String output = "ok";
 	return Response.status(200).entity(output).build();

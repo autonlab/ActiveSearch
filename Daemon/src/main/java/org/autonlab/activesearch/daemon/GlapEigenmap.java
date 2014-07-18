@@ -5,7 +5,8 @@ import org.jblas.*;
 
 import java.io.*;
 
-import java.util.Date;
+import java.util.*;
+
 
 //Eigen.symmetricEigenvectors(DoubleMatrix A) 
 // an array of DoubleMatrix objects containing the eigenvectors stored as the columns of the first matrix, and the eigenvalues as diagonal elements of the second matrix.
@@ -92,6 +93,10 @@ public class GlapEigenmap {
 	// L = diag(sum(A,2)) - A;
 	myLMatrix = (DoubleMatrix.diag(similarityMatrix.rowSums())).subi(similarityMatrix);
 
+	if (dimensions > similarityMatrix.columns) {
+	    throw new RuntimeException("Error: required dimension larger than size of similarity matrix!");
+	}
+
 	// [X lambda] = eig(full(L));
 	System.out.println("Calculate eigen decomposition on " + myLMatrix.rows + "x" + myLMatrix.columns);
 	tempMatrix = Eigen.symmetricEigenvectors(myLMatrix);
@@ -115,75 +120,47 @@ public class GlapEigenmap {
 	DoubleMatrix foo2 = myLambda.rowSums().columnSums();
 	System.out.println("lambda:" + foo2.get(0));
 
-
-
-	/*	for(i=0;i<8919;i++) {
-	    System.out.println(i + ":" + myXMatrix.get(0,i) + "  " + myLambda.get(i));
-	    }*/
-	/*
-	for (i=0;i<myLambda.rows;i++) {
-	    for (j=0;j<myLambda.columns;j++) {
-		if (myLambda.get(i,j) < 0) {
-		    // the number of zeros should be the same as the number of connected components
-		    // if we get a tiny negative number it is ok to reset the value to 0 so we don't get
-		    // NaN later when we do the square root
-		    System.out.println("Resetting this value to zero: " + i+" " + j + " " + myLambda.get(i,j));
-		    myLambda.put(i,j,0.0);
-		}
-	    }
-	}
-	*/
-
 	/*
 	 * [lambda, perm] = sort(lambda, 'ascend');
 	 * Create a basic ArrayList where ArrayList[index] -> index. Then we'll sort 
 	 * this ArrayList based on the values in myLambda[index]. This will give us
 	 * ArrayList[new sorted index] -> old index, a permutation that we can use to 
 	 */
-	/*
-	System.out.println("Make sorted permutation");
-	ArrayList<Integer> myLambdaIndexes = new ArrayList<Integer>(emailCount);
-	for (i = 0; i < emailCount; i++) {
-	    myLambdaIndexes.add(i);
-	}
-	Comparator<Integer> myLambdaComparator = new Comparator<Integer>() {
-	    public int compare(Integer compI, Integer compJ) {
-		return Double.compare(myLambda[compI], myLambda[compJ]);
-	    }
-	};
-	Collections.sort(myLambdaIndexes, myLambdaComparator);
-	*/
 	int[] myLambdaTempIndexes = myLambda.sortingPermutation();
 	myLambdaSorted = myLambda.sort();
 
 	/*
+	 * th_zero = 1/size(A,1)/1e3
+	 * b = sum(lambda < th_zero)
+	 */
+	double th_zero = 1/similarityMatrix.columns/1000;
+	int b = 0;
+	for (i = 0; i < myLambdaSorted.length; i++) {
+	    if (myLambdaSorted.get(i) < th_zero) {
+		b++;
+	    }
+	}
+
+	/*
 	 * w = 1./sqrt(lambda(2:(d+1)));
-	 * Note: Our index starts at 0 so we'll go from myLambda[1 -> d] not 2:d+1
+	 *
+	 * w = 1./sqrt(lambda((b+1):d))
+	 * Note: Java array indexes start at 0 so we'll go from myLambda[b -> d-1] not b+1:d
 	 * getRange returns [a,b) so to get 1->d we pass 1->d+1
 	 */
 	myXMatrixSorted =  new DoubleMatrix(emailCount, emailCount);
 	myW = new DoubleMatrix(dimensions);
 	int currentIndex = 0;
-	for (i = 1; i < dimensions+1; i++) {
+
+	for (i = b; i < dimensions; i++) {
 	    Double temp = Math.pow(Math.sqrt(myLambdaSorted.get(i)), -1);
-	    if (temp.isNaN()) {
-		temp = 0.0;
-	    }
 	    myW.put(currentIndex, temp);
 	    currentIndex++;
-
-	    myXMatrixSorted.putColumn(i, myXMatrix.getColumn(myLambdaTempIndexes[i]));
 	}
 
-	/*
-	for (i = 1; i < myLambdaTempIndexes.length; i++) {
-	    int oldIndex = myLambdaTempIndexes[i];
-	    int newIndex = i;
-
-	    myW.put(i, Math.pow(Math.sqrt(myW.get(i)), -1));
-	    myXMatrixSorted.putColumn(newIndex, myXMatrix.getColumn(oldIndex));
-	    }*/
-
+	for (i = 0; i < dimensions; i++) {
+	    myXMatrixSorted.putColumn(i, myXMatrix.getColumn(myLambdaTempIndexes[i]));
+	}
 
 	myXMatrixSorted = myXMatrixSorted.getRange(0, myXMatrixSorted.rows, 1, dimensions+1);
 
@@ -193,10 +170,17 @@ public class GlapEigenmap {
 	System.out.println("X is now " + myXMatrix.rows + "x" + myXMatrix.columns);
 	System.out.println("W is " + myW.length);
 
-	// X = bsxfun(@times, X(:,perm(2:(d+1))), reshape(w,1,length(w)));	
-	myXMatrix.muliRowVector(myW);
+	// X = [X(:perm(1:b)) bsxfun(@times, X(:,perm(b+1:d)), reshape(w,1,length(w)))];
+	for (i = 0; i < myXMatrix.rows; i++) {
+	    for (j = b; j < dimensions; j++) {
+		myXMatrix.put(i, j, myXMatrix.get(i, j) * myW.get(j));
+	    }
+	}
 
 	GlapEigenmap.write(myXMatrix, ActiveSearchConstants.X_MATRIX, emailCount, dimensions);
+	DoubleMatrix bMatrix = new DoubleMatrix(1,1);
+	bMatrix.put(0,0,b);
+	GlapEigenmap.write(bMatrix, ActiveSearchConstants.b_MATRIX, 1, 1);
 	//GlapEigenmap.write(myW, "w_matrix_tw.out", dimensions, 1);
 
     }
