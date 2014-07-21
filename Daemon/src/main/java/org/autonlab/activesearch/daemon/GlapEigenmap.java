@@ -133,7 +133,7 @@ public class GlapEigenmap {
 	 * th_zero = 1/size(A,1)/1e3
 	 * b = sum(lambda < th_zero)
 	 */
-	double th_zero = 1/similarityMatrix.columns/1000;
+	double th_zero = (1/similarityMatrix.columns)/1000;
 	int b = 0;
 	for (i = 0; i < myLambdaSorted.length; i++) {
 	    if (myLambdaSorted.get(i) < th_zero) {
@@ -148,21 +148,20 @@ public class GlapEigenmap {
 	 * Note: Java array indexes start at 0 so we'll go from myLambda[b -> d-1] not b+1:d
 	 * getRange returns [a,b) so to get 1->d we pass 1->d+1
 	 */
-	myXMatrixSorted =  new DoubleMatrix(emailCount, emailCount);
-	myW = new DoubleMatrix(dimensions);
-	int currentIndex = 0;
 
+	/* myW is a vector of length dimensions-b but later we use these values with columns [d,dimensions)
+	   so we'll make myW of length dimensions and only fill in values [d,dimensions) */
+	myW = new DoubleMatrix(dimensions);
 	for (i = b; i < dimensions; i++) {
 	    Double temp = Math.pow(Math.sqrt(myLambdaSorted.get(i)), -1);
-	    myW.put(currentIndex, temp);
-	    currentIndex++;
+	    myW.put(i, temp);
 	}
 
+	myXMatrixSorted =  new DoubleMatrix(emailCount, emailCount);
 	for (i = 0; i < dimensions; i++) {
 	    myXMatrixSorted.putColumn(i, myXMatrix.getColumn(myLambdaTempIndexes[i]));
 	}
-
-	myXMatrixSorted = myXMatrixSorted.getRange(0, myXMatrixSorted.rows, 1, dimensions+1);
+	//myXMatrixSorted = myXMatrixSorted.getRange(0, myXMatrixSorted.rows, 1, dimensions+1);
 
 	myXMatrix = myXMatrixSorted;
 	myXMatrixSorted = null;

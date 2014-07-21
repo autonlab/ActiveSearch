@@ -28,7 +28,6 @@ public class ActiveSearchConstants {
     public static int SEARCH_MAIN_ALPHA_MAX = 10;
 
     public static double SEARCH_MAIN_OMEGA = -1;
-    public static int SEARCH_MAIN_OFFSET_FLAG = 1;
 
     public static int HIDE_SEED_FIELD = -1;
 
@@ -101,9 +100,6 @@ public class ActiveSearchConstants {
 		    }
 		    else if (key.equalsIgnoreCase("SEARCH_MAIN_OMEGA")) {
 			SEARCH_MAIN_OMEGA = Double.parseDouble(val);
-		    }
-		    else if (key.equalsIgnoreCase("SEARCH_MAIN_OFFSET_FLAG")) {
-			SEARCH_MAIN_OFFSET_FLAG = Integer.parseInt(val);
 		    }
 		    else if (key.equalsIgnoreCase("HIDE_SEED_FIELD")) {
 			HIDE_SEED_FIELD = Integer.parseInt(val);

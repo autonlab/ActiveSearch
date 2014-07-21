@@ -64,7 +64,6 @@ public class DaemonService {
 				 (int)(alpha * 1000),
 				 ActiveSearchConstants.SEARCH_MAIN_OMEGA,
 				 email,
-				 ActiveSearchConstants.SEARCH_MAIN_OFFSET_FLAG,
 				 labelsMatrix,
 				 mode,
 				 nConnComp);

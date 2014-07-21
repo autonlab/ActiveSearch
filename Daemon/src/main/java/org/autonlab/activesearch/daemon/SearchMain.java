@@ -39,7 +39,6 @@ public class SearchMain {
 
     int best_ind;
 
-    static int offset_flag = -1;
     double omega0;
     double pai = 0.05;
     double eta = 0.5;
@@ -71,11 +70,10 @@ public class SearchMain {
      * @param myAlpha This value is divided by 1000 befure it is used
      * @param omega omega0 value. A negative number will result in a default value (1/emailCount)
      * @param startp Which email to start from. Negative number = random. Set a value for a repeatable test case or to compare to Matlab's output
-     * @param myOffsetFlag 1 or 0, whether or not to use an offset
      * @param myLabels The labels vector, stored as a DoubleMatrix to simplify the code
      * @param myMode The internal processing mode. See ActiveSearchConstants.java
      */
-    public SearchMain(DoubleMatrix eigenMap, DoubleMatrix similarityDeg, int dim, int myAlpha, double omega, int startp, int myOffsetFlag, DoubleMatrix myLabels, int myMode, int nConnComp) { 
+    public SearchMain(DoubleMatrix eigenMap, DoubleMatrix similarityDeg, int dim, int myAlpha, double omega, int startp, DoubleMatrix myLabels, int myMode, int nConnComp) { 
 	/*
 	 * Here are some notes that will be useful for understanding the code:
 	 *
@@ -139,27 +137,12 @@ public class SearchMain {
 	    omega0 = 1.0/((double)emailCount);
 	}
 
-	if (eigenMapX == null || ((dim + (myOffsetFlag==0 ? 0 : 1)) != dimensions)) {
+	if (eigenMapX == null) {
 	    eigenMapX = eigenMap;
 	    dimensions = dim;
 
 	    // Drop the extra dimensions from the Eigenmap
 	    eigenMapX = eigenMapX.getRange(0, emailCount, 0, dimensions);
-
-	    // Append 1 to feature vector if linear regression includes an offset
-	    if (myOffsetFlag > 0) {
-		dimensions++;
-		DoubleMatrix tempX = new DoubleMatrix(emailCount, dimensions);
-		for (i = 0; i < eigenMapX.rows; i++) {
-		    for (j = 0; j < eigenMapX.columns; j++) {
-			tempX.put(i, j, eigenMapX.get(i,j));
-		    }
-		}
-		for (i = 0; i < emailCount; i++) {
-		    tempX.put(i, dimensions-1, 1.0);
-	    }
-		eigenMapX = tempX;
-	    }
 	}
 
 	if (sqd == null) {
@@ -170,7 +153,7 @@ public class SearchMain {
 	rVal = lamb * omega0;
 	cVal = 1/(1-rVal);
 
-	if (eigenMapXp == null || offset_flag != myOffsetFlag) {
+	if (eigenMapXp == null) {
 	    eigenMapXp = eigenMapX.dup();
 	    System.out.println(emailCount + " and " + dimensions);
 	    for (i = 0; i < emailCount; i++) {
@@ -179,7 +162,6 @@ public class SearchMain {
 		}
 	    }
 	}
-	offset_flag = myOffsetFlag;
 
 	if (eigenMapX.rows != labels.length) {
 	    throw new RuntimeException("Eigenmap number of rows " + eigenMapX.rows + " didn't match labels array length " + labels.length);
@@ -278,7 +260,7 @@ public class SearchMain {
 
 	if (numEvaluations > 1) {
 	    int random_seed = 0;
-	    String filename = (Long.toString(System.currentTimeMillis() / 1000l)) + "_seed" + Integer.toString(random_seed) + "_alpha" + Double.toString(alpha) + "_offset" + Integer.toString(offset_flag) + "_omega0-" + Double.toString(omega0) + "_d" + dimensions + ".txt";
+	    String filename = (Long.toString(System.currentTimeMillis() / 1000l)) + "_seed" + Integer.toString(random_seed) + "_alpha" + Double.toString(alpha) + "_omega0-" + Double.toString(omega0) + "_d" + dimensions + ".txt";
 	    file = new File(filename);
 	    try {
 		if (!file.exists()) {
