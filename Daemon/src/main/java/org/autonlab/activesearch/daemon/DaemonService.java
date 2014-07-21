@@ -1,11 +1,7 @@
 package org.autonlab.activesearch.daemon;
  
-import javax.ws.rs.GET;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.MediaType;
+import javax.ws.rs.*;
+import javax.ws.rs.core.*;
 import org.jblas.*;
 import org.autonlab.activesearch.ActiveSearchConstants;
 import org.autonlab.activesearch.DataConnectionMySQL;
@@ -415,4 +411,17 @@ public class DaemonService {
 	String output = dataConnection.getEmailRecipientsByEmail(email);
 	return Response.status(200).entity(output).build();
     }
+
+    @GET
+    @Path("/readConfigFile")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response readConfigFile(@QueryParam("configfile") String configFile) {
+	ActiveSearchConstants.readConfig(configFile);
+
+	String output = "ok";
+	return Response.status(200).entity(output).build();
+    }
+
+
+
 }

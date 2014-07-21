@@ -13,20 +13,24 @@
       - edit $DATABASE_USERNAME or $DATABASE_PASSWORD in import_database.pl as necessary
       - this dataset will require 30GB of ram to do the precomputation. Optionally, use scottwalker_5000.tsv which only contains the first 5000 emails and
              only requires about 6GB of RAM
- 3. Switch to the ActiveSearch/Daemon directory. Modify the database info if necessary in src/main/java/org/autonlab/activesearch/daemon/ActiveSearchConstants.java
+ 3. Switch to the ActiveSearch/Daemon directory. Modify the database info if necessary in src/main/java/org/autonlab/activesearch/daemon/ActiveSearchConstants.java. These values can also be changed at runtime if editing this file is undesirable (see step 6).
  4. Set your shell's environment so that Maven will have enough memory to do the precomputation: `export MAVEN_OPTS=-Xmx30g` (or 6g depending on step 3)
  5. Start the REST daemon:
       `> mvn clean; mvn tomcat:run`
- 6. Begin the prcomputation by pointing your browser to `http://localhost:8080/ActiveSearchDaemon/rest/eigenmap/<#> (replace <#> with the number of threads to use)`
+ 6. Make any changes to the configuration by making a configuration file and pointing your browser to it: `http://localhost:8080/ActiveSearchDaemon/rest/readConfigFile?configfile=/path/to/configfile`
+      The config file contains lines of `variablename = variablevalue`
+      Blank lines and lines beginning with # are ignored
+ 7. Begin the prcomputation by pointing your browser to `http://localhost:8080/ActiveSearchDaemon/rest/eigenmap/<#> (replace <#> with the number of threads to use)`
      - On an Intel i7 4770K CPU, this takes a little over half an hour. Your browser might timeout waiting for it. Either lengthen the timeout or just wait until the daemon process stops taking up CPU cycles. This will create two files in the directory from which you ran your daemon: similarity_rowsum.out and X_matrix.out
- 7. Kill the REST daemon (the precomputation doesn't free up its memory but I haven't figured out why)
+ 8. Kill the REST daemon (the precomputation doesn't free up its memory but I haven't figured out why)
 
 ## Start the REST daemon for general use
  1. mvn clean; mvn tomcat:run
- 2. Initialize the Active Search system with an initial seed email:  `http://localhost:8080/ActiveSearchDaemon/rest/firstemail/< email ID >`
+ 2. Make any changes to the configuration here (see step 6 in the previous section). The configuration cannot be changed once the next step has been executed
+ 3. Initialize the Active Search system with an initial seed email:  `http://localhost:8080/ActiveSearchDaemon/rest/firstemail/< email ID >`
      - the email ID is in the database as messages.messageid (which is also the zero-indexed row number of the original tsv file)
      - Then call `http://localhost:8080/ActiveSearchDaemon/rest/getNextEmail` to get the first email recommendation
- 3. For the email returned in step 2., tell the system if it is interesting `http://localhost:8080/ActiveSearchDaemon/rest/emailinteresting` or not
+ 4. For the email returned in step 2., tell the system if it is interesting `http://localhost:8080/ActiveSearchDaemon/rest/emailinteresting` or not
       `http://localhost:8080/ActiveSearchDaemon/rest/emailboring`. Each of these calls will return the next email ID that it recommends
 
 
