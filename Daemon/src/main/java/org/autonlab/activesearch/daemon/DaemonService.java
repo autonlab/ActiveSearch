@@ -51,7 +51,7 @@ public class DaemonService {
      * Calling this resets the labels
      */
     @GET
-    @Path("/firstemail/{email}/{mode}")
+    @Path("firstemail/{email}/{mode}")
     public Response firstEmail(@PathParam("email") int email,
 			       @PathParam("mode") int mode) {
 	if (similarityMatrix == null) {
@@ -73,14 +73,14 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/firstemail/{email}")
+    @Path("firstemail/{email}")
     public Response firstEmail(@PathParam("email") int email) {
 	return firstEmail(email, ActiveSearchConstants.MODE_DO_NOTHING_USER_WILL_PICK_SEED);
     }
 
 
     @GET
-    @Path("/emailinteresting")
+    @Path("emailinteresting")
     public Response interestingEmail() {
 	aSearch.setLabel(currentEmail, 1);
 	currentEmail = aSearch.getNextEmail();
@@ -89,7 +89,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/emailboring")
+    @Path("emailboring")
     public Response boringEmail() {
 	aSearch.setLabel(currentEmail, 0);
 	currentEmail = aSearch.getNextEmail();
@@ -98,7 +98,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/setalpha/{alpha}")
+    @Path("setalpha/{alpha}")
     public Response setAlpha(@PathParam("alpha") double newAlpha) {
 	if (similarityMatrix == null) {
 	    initState();
@@ -117,7 +117,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getStartPoint")
+    @Path("getStartPoint")
     public Response getStartPoint() {
 	int startPoint = aSearch.getStartPoint();
 	String output = "" + startPoint;
@@ -126,7 +126,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/resetLabel/{index}/{value}")
+    @Path("resetLabel/{index}/{value}")
     public Response resetLabel(@PathParam("index") int index,
 			       @PathParam("value") int value) {
 	double oldVal = aSearch.resetLabel(index, value);
@@ -136,7 +136,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/setLabelCurrent/{value}")
+    @Path("setLabelCurrent/{value}")
     public Response setLabelCurrent(@PathParam("value") int value) {
 	aSearch.setLabel(currentEmail, value);
 	System.out.println("Label for " + currentEmail + " set to " + value);
@@ -145,7 +145,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/setLabel/{index}/{value}")
+    @Path("setLabel/{index}/{value}")
     public Response setLabel(@PathParam("index") int index,
 			     @PathParam("value") int value) {
 	aSearch.setLabel(index, value);
@@ -158,7 +158,7 @@ public class DaemonService {
      * Input is [index, value [,index, value etc]]
      */
     @GET
-    @Path("/setLabelBulk/{csv}")
+    @Path("setLabelBulk/{csv}")
     public Response setLabelBulk(@PathParam("csv") String csv) {
 	String output = "ok";
 	String[] sParts;
@@ -180,7 +180,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getNextEmail")
+    @Path("getNextEmail")
     public Response getNextEmail() {
 	currentEmail = aSearch.getNextEmail();
 	String output = "" + currentEmail;
@@ -188,7 +188,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/pickRandomLabeledEmail")
+    @Path("pickRandomLabeledEmail")
     public Response pickRandomLabeledEmail() {
 	int email = aSearch.pickRandomLabeledEmail();
 	String output = "" + email;
@@ -196,7 +196,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getLabel/{email}")
+    @Path("getLabel/{email}")
     public Response getLabel(@PathParam("email") int email) {
 	/* The label is read in when the active search starts processing but we display emails before that so we have to hide the field, hence the -1.0*/
 	double label = -1.0;
@@ -208,7 +208,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/eigenmap/{count}")
+    @Path("eigenmap/{count}")
     public Response generateEigenmap(@PathParam("count") int threadCount) {
 	int i;   
 	EmailSimilarity[] emailData;
@@ -247,7 +247,7 @@ public class DaemonService {
      */
 
     @GET
-    @Path("/getUserNameFromID/{id}")
+    @Path("getUserNameFromID/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getUserNameFromID(@PathParam("id") int id) {
 	if (dataConnection == null) {
@@ -259,7 +259,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getMessagesFromUserToUser/{fromID}/{toID}")
+    @Path("getMessagesFromUserToUser/{fromID}/{toID}")
     @Produces(MediaType.TEXT_PLAIN)
 	public Response getMessagesFromUserToUser(@PathParam("fromID") int userIDFrom, 
 						  @PathParam("toID") int userIDTo) {
@@ -272,7 +272,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getEmailSubjectFromMessageID/{id}")
+    @Path("getEmailSubjectFromMessageID/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getEmailSubjectFromMessageID(@PathParam("id") int id) {
 	if (dataConnection == null) {
@@ -284,7 +284,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getEmailBodyFromMessageID/{id}")
+    @Path("getEmailBodyFromMessageID/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getEmailBodyFromMessageID(@PathParam("id") int id) {
 	if (dataConnection == null) {
@@ -296,7 +296,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getTotalEmailCount")
+    @Path("getTotalEmailCount")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getEmailBodyFromMessageID() {
 	if (dataConnection == null) {
@@ -308,7 +308,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getEmailTimesAndSenders")
+    @Path("getEmailTimesAndSenders")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getEmailTimesAndSenders() {
 	if (dataConnection == null) {
@@ -320,7 +320,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getUsersByEmail/{id}")
+    @Path("getUsersByEmail/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getUsersByEmail(@PathParam("id") int id) {
 	if (dataConnection == null) {
@@ -332,7 +332,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getSenderByEmail/{id}")
+    @Path("getSenderByEmail/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getSenderByEmail(@PathParam("id") int id) {
 	if (dataConnection == null) {
@@ -344,7 +344,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getTimeByEmail/{id}")
+    @Path("getTimeByEmail/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getTimeByEmail(@PathParam("id") int id) {
 	if (dataConnection == null) {
@@ -356,7 +356,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getSubjectByEmail/{id}")
+    @Path("getSubjectByEmail/{id}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getSubjectByEmail(@PathParam("id") int id) {
 	if (dataConnection == null) {
@@ -368,7 +368,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getEmailsByKeyword/{word}")
+    @Path("getEmailsByKeyword/{word}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getEmailsByKeyword(@PathParam("word") String word) {
 	if (dataConnection == null) {
@@ -380,7 +380,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/getEmailsByKeywordSubject/{word}")
+    @Path("getEmailsByKeywordSubject/{word}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getEmailsByKeywordSubject(@PathParam("word") String word) {
 	if (dataConnection == null) {
@@ -400,7 +400,7 @@ public class DaemonService {
 
 
     @GET
-    @Path("/getEmailRecipientsByEmail/{email}")
+    @Path("getEmailRecipientsByEmail/{email}")
     @Produces(MediaType.TEXT_PLAIN)
     public Response getEmailRecipientsByEmail(@PathParam("email") int email) {
 	if (dataConnection == null) {
@@ -412,7 +412,7 @@ public class DaemonService {
     }
 
     @GET
-    @Path("/readConfigFile")
+    @Path("readConfigFile")
     @Produces(MediaType.TEXT_PLAIN)
     public Response readConfigFile(@QueryParam("configfile") String configFile) {
 	ActiveSearchConstants.readConfig(configFile);

@@ -33,5 +33,11 @@
  4. For the email returned in step 2., tell the system if it is interesting `http://localhost:8080/ActiveSearchDaemon/rest/emailinteresting` or not
       `http://localhost:8080/ActiveSearchDaemon/rest/emailboring`. Each of these calls will return the next email ID that it recommends
 
+## Generating a war file
+ Users may want to generate a war file rather than start a tomcat server through Maven. A war file can be uploaded to an existing server or one on a remote machine
+ 1. First, make sure to start your server with JAVA_OPTS="-Xmx30g" so there is enough memory to do the precomputation
+ 2. Instead of doing `> mvn clean; mvn tomcat:run` to start the REST daemon, do `> mvn compile; mvn war:war`
+ The .war file will be placed in the target/ directory
+
 
 For an optional GUI that can talk to this REST daemon, see the [Cytoscape App](https://github.com/AutonlabCMU/ActiveSearch/blob/master/CytoscapeApp/howtorun.md)
