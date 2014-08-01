@@ -20,19 +20,37 @@ my $BCC_LIST_INDEX = 9; #comma separated list
 my $SUBJECT_INDEX = 14;
 my $BODY_INDEX = 15;
 
-
+sub printOpts() {
+  print "  -file=<file>  The path to the tsv file containing the email information\n";
+  print "  -database=<db> The database to use\n";
+  print "  -COL_DATETIME=<#> The zero-indexed column in the tsv containing the message datetime stamp\n";
+  print "  -COL_SENDER=<#> The zero-indexed column in the tsv containing the sender\n";
+  print "  -COL_TO=<#> The zero-indexed column in the tsv containing the csv of 'to' recipients\n";
+  print "  -COL_CC=<#> The zero-indexed column in the tsv containing the csv of 'cc' recipients\n";
+  print "  -COL_BCC=<#> The zero-indexed column in the tsv containing the csv of 'bcc' recipients\n";
+  print "  -COL_SUBJECT=<#> The zero-indexed column in the tsv containing the subject\n";
+  print "  -COL_BODY=<#> The zero-indexed column in the tsv containing the body\n";
+}
 
 
 my $TSV_FILE_NAME = "scottwalker.tsv";
 my $DATABASE_NAME = "";
-GetOptions ("file=s" => \$TSV_FILE_NAME,
-            "database=s" => \$DATABASE_NAME)
-  or die ("Error in command line arguments\n");
+if (!GetOptions ("file=s" => \$TSV_FILE_NAME,
+		"database=s" => \$DATABASE_NAME,
+		"COL_DATETIME=i" => \$DATETIME_INDEX,
+		"COL_SENDER=i" => \$SENDER_INDEX,
+		"COL_TO=i" => \$TO_LIST_INDEX,
+		"COL_CC=i" => \$CC_LIST_INDEX,
+		"COL_BCC=i" => \$BCC_LIST_INDEX,
+		"COL_SUBJECT=i" => \$SUBJECT_INDEX,
+		"COL_BODY=i" => \$BODY_INDEX)) {
+    printOpts();
+    die ("Error in command line arguments\n");
+}
 
 if ($DATABASE_NAME eq "" || $TSV_FILE_NAME eq "") {
-  print "  -file=<file>  The path to the tsv file containing the email information\n";
-  print "  -database=<db> The database to use\n";
-  die ("All arguments must be set");
+    printOpts();
+    die ("database name and file name must be set");
 }
 
 my $DATABASE_USERNAME = "root";
