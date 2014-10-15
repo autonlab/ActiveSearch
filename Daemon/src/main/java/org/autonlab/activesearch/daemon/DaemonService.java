@@ -415,9 +415,15 @@ public class DaemonService {
     @Path("readConfigFile")
     @Produces(MediaType.TEXT_PLAIN)
     public Response readConfigFile(@QueryParam("configfile") String configFile) {
-	ActiveSearchConstants.readConfig(configFile);
 
-	String output = "ok";
+	String output = "ok\n";
+
+	if (configFile == null) {
+	    output = "Error: param 'configfile' was not set\n";
+	}
+	else {
+	    ActiveSearchConstants.readConfig(configFile);
+	}
 	return Response.status(200).entity(output).build();
     }
 

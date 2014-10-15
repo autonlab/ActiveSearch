@@ -19,10 +19,14 @@ my $CC_LIST_INDEX = 8; #comma separated list
 my $BCC_LIST_INDEX = 9; #comma separated list
 my $SUBJECT_INDEX = 14;
 my $BODY_INDEX = 15;
+my $DATABASE_USERNAME = "";
+my $DATABASE_PASSWORD = "";
 
 sub printOpts() {
   print "  -file=<file>  The path to the tsv file containing the email information\n";
   print "  -database=<db> The database to use\n";
+  print "  -database_username=<username> User name used to log into the database\n";
+  print "  -database_password=<password> Password used to log into the database\n";
   print "  -COL_DATETIME=<#> The zero-indexed column in the tsv containing the message datetime stamp\n";
   print "  -COL_SENDER=<#> The zero-indexed column in the tsv containing the sender\n";
   print "  -COL_TO=<#> The zero-indexed column in the tsv containing the csv of 'to' recipients\n";
@@ -37,6 +41,8 @@ my $TSV_FILE_NAME = "scottwalker.tsv";
 my $DATABASE_NAME = "";
 if (!GetOptions ("file=s" => \$TSV_FILE_NAME,
 		"database=s" => \$DATABASE_NAME,
+		"database_username=s" => \$DATABASE_USERNAME,
+		"database_password=s" => \$DATABASE_PASSWORD,
 		"COL_DATETIME=i" => \$DATETIME_INDEX,
 		"COL_SENDER=i" => \$SENDER_INDEX,
 		"COL_TO=i" => \$TO_LIST_INDEX,
@@ -52,9 +58,10 @@ if ($DATABASE_NAME eq "" || $TSV_FILE_NAME eq "") {
     printOpts();
     die ("database name and file name must be set");
 }
-
-my $DATABASE_USERNAME = "root";
-my $DATABASE_PASSWORD = "";
+if ($DATABASE_USERNAME eq "") {
+    printOpts();
+    die ("database username must be set");
+}
 
 my %skip_words = ();
 $skip_words{'the'} = 1;
