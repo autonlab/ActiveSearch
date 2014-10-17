@@ -12,7 +12,7 @@ import org.autonlab.activesearch.GlapEigenmap;
 
 @Path("/")
 public class DaemonService {
- 
+
     static DoubleMatrix xmappedMatrix = null;
     static int nConnComp = 0;
     static DoubleMatrix similarityMatrix = null;
@@ -26,6 +26,7 @@ public class DaemonService {
     static double alpha = ActiveSearchConstants.SEARCH_MAIN_ALPHA_INIT / 1000.0;
 
     public void initState() {
+
 	System.out.println("Initializing state. This will take a minute and only needs to be done once.");
 	if (dataConnection == null) {
 	    dataConnection = new DataConnectionMySQL();
@@ -415,7 +416,6 @@ public class DaemonService {
     @Path("readConfigFile")
     @Produces(MediaType.TEXT_PLAIN)
     public Response readConfigFile(@QueryParam("configfile") String configFile) {
-
 	String output = "ok\n";
 
 	if (configFile == null) {
@@ -423,6 +423,8 @@ public class DaemonService {
 	}
 	else {
 	    ActiveSearchConstants.readConfig(configFile);
+	    similarityMatrix = null;
+	    dataConnection = null;
 	}
 	return Response.status(200).entity(output).build();
     }

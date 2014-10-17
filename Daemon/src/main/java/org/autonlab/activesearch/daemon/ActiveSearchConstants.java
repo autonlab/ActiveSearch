@@ -55,7 +55,7 @@ public class ActiveSearchConstants {
 		    System.out.println("skipping this line: " + sCurrentLine);
 		    continue;
 		}
-		Pattern pattern = Pattern.compile("^\\s*(\\w+)\\s*=\\s*(\\w+)");
+		Pattern pattern = Pattern.compile("^\\s*(\\w+)\\s*=\\s*([\\w\\/]+)");
 		Matcher matcher = pattern.matcher(sCurrentLine);
 		if (matcher.find()) {
 		    String key = matcher.group(1);
