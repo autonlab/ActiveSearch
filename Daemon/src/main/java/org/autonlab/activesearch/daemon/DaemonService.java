@@ -35,7 +35,7 @@ public class DaemonService implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent arg0) {
-	readConfigFile("/tmp/activesearch.cfg");
+	readConfigFile("/etc/activesearch.cfg");
     }
 
     public void initState() {
