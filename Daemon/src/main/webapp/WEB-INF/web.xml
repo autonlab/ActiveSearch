@@ -20,11 +20,19 @@
 		     <param-value>org.autonlab.activesearch.daemon</param-value>
 		</init-param>
 		<load-on-startup>1</load-on-startup>
+
+
 	</servlet>
  
 	<servlet-mapping>
 		<servlet-name>jersey-serlvet</servlet-name>
 		<url-pattern>/rest/*</url-pattern>
 	</servlet-mapping>
+
+	<listener>
+	  <listener-class>
+	    org.autonlab.activesearch.daemon.DaemonService
+	  </listener-class>
+	</listener>
 
 </web-app>

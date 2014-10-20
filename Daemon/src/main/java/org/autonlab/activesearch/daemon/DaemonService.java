@@ -10,8 +10,12 @@ import org.autonlab.activesearch.SearchMain;
 import org.autonlab.activesearch.EmailSimilarity;
 import org.autonlab.activesearch.GlapEigenmap;
 
+import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
+import javax.servlet.ServletContextListener;
+
 @Path("/")
-public class DaemonService {
+public class DaemonService implements ServletContextListener {
 
     static DoubleMatrix xmappedMatrix = null;
     static int nConnComp = 0;
@@ -24,6 +28,15 @@ public class DaemonService {
 
     /* dividing by 1000 is an artifact of the CytoscapeApp where the slider class could only operate on ints */
     static double alpha = ActiveSearchConstants.SEARCH_MAIN_ALPHA_INIT / 1000.0;
+
+    @Override
+    public void contextDestroyed(ServletContextEvent arg0) {
+    }
+
+    @Override
+    public void contextInitialized(ServletContextEvent arg0) {
+	readConfigFile("/tmp/activesearch.cfg");
+    }
 
     public void initState() {
 
