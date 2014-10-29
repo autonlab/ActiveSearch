@@ -219,6 +219,9 @@ sub setTFIDF() {
 	    if (defined $skip_words{$word}) {
 		next;
 	    }
+	    if (length($word) > 255) {
+		next;
+	    }
 	    if (defined $words{$word}) {
 		$words{$word}++;
 	    }
