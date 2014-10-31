@@ -39,6 +39,26 @@ public class ActiveSearchConstants {
     public static final int MODE_SHOW_LAST_SEED = 2;
     public static final int MODE_SHOW_EDGE_EMAILS = 3;
 
+    public static String returnConfig() {
+	String retString = new String();
+
+	retString += "database_name=" + DATABASE_NAME + "\n";
+	retString += "database_port=" + DATABASE_PORT + "\n";
+	retString += "database_username=" + DATABASE_USERNAME + "\n";
+	retString += "database_password=  [intentionally not displayed]\n";
+	retString += "similarity_matrix_file=" + SIMILARITY_MATRIX_FILE + "\n";
+	retString += "x_matrix=" + X_MATRIX + "\n";
+	retString += "b_matrix=" + b_MATRIX + "\n";
+	retString += "labels_file=" + LABELS_FILE + "\n";
+	retString += "search_main_dimensions=" + SEARCH_MAIN_DIMENSIONS + "\n";
+	retString += "search_main_alpha_init=" + SEARCH_MAIN_ALPHA_INIT + "\n";
+	retString += "search_main_alpha_min=" + SEARCH_MAIN_ALPHA_MIN + "\n";
+	retString += "search_main_alpha_max=" + SEARCH_MAIN_ALPHA_MAX + "\n";
+	retString += "search_main_omega=" + SEARCH_MAIN_OMEGA + "\n";
+	retString += "hide_seed_field=" + HIDE_SEED_FIELD + "\n";
+	return retString;
+    }
+	
     public static void readConfig(String configFile) {
 	BufferedReader br = null;
 	String sCurrentLine;

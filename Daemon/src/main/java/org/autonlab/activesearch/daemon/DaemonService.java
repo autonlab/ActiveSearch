@@ -447,6 +447,11 @@ public class DaemonService implements ServletContextListener {
 	return Response.status(200).entity(output).build();
     }
 
-
-
+    @GET
+    @Path("printConfigFile")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response printConfigFile() {
+	String output = ActiveSearchConstants.returnConfig();
+	return Response.status(200).entity(output).build();
+    }
 }
