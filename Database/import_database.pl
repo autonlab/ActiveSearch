@@ -14,9 +14,9 @@ sub setTFIDF();
 # num	dir	category	datetime	importance	from	ip	to	cc	bcc	attachments	messageid	inreplyto	references	subject	body
 my $DATETIME_INDEX = 3;
 my $SENDER_INDEX = 5;
-my $TO_LIST_INDEX = 7; #comma separated list
-my $CC_LIST_INDEX = 8; #comma separated list
-my $BCC_LIST_INDEX = 9; #comma separated list
+my $TO_LIST_INDEX = 7; #comma or semicolon separated list
+my $CC_LIST_INDEX = 8; #comma or semicolon separated list
+my $BCC_LIST_INDEX = 9; #comma or semicolon separated list
 my $SUBJECT_INDEX = 14;
 my $BODY_INDEX = 15;
 my $DATABASE_USERNAME = "";
@@ -137,9 +137,9 @@ foreach my $row (@data) {
     my @row_fields = split(/\t/, $row);
     my $datetime = $row_fields[$DATETIME_INDEX];
     my $from = $row_fields[$SENDER_INDEX];
-    my @to = split(/,/,$row_fields[$TO_LIST_INDEX]);
-    my @cc = split(/,/,$row_fields[$CC_LIST_INDEX]);
-    my @bcc = split(/,/,$row_fields[$BCC_LIST_INDEX]);
+    my @to = split(/[,;]/,$row_fields[$TO_LIST_INDEX]);
+    my @cc = split(/[,;]/,$row_fields[$CC_LIST_INDEX]);
+    my @bcc = split(/[,;]/,$row_fields[$BCC_LIST_INDEX]);
     my $subject = $row_fields[$SUBJECT_INDEX];
     my $body = $row_fields[$BODY_INDEX];
     $body =~ s/\[:newline:\]/\n/g;
