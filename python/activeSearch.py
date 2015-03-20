@@ -3,9 +3,7 @@ import time
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
 import scipy.sparse as ss, scipy.linalg as slg
 
-from eigenmap import eigenmap
-
-np.set_printoptions(suppress=True, precision=3, linewidth=100)
+np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 """
 This is an alternate implementation of active search on graphs
@@ -18,7 +16,7 @@ Update f after this inverse is computed.
 """
 
 
-def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None):
+def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -31,6 +29,27 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None):
 	r,n = X.shape
 	labels = np.array(labels)
 
+	if init_pt is not None:
+		if not isinstance(init_pt, list):
+			init_pt = [init_pt]
+
+		num_initial = len(init_pt)
+		idxs = init_pt
+		if not (labels[idxs]).all():
+			if verbose:
+				print "Warning: start points provided not targets. Converting to targets."
+			labels[idxs] = 1
+			true_targets = (np.array(labels)==1).nonzero()[0]
+			
+		unlabeled_idxs = [i for i in range(n) if i not in idxs]
+	else:
+		# Random start node
+		true_targets = (np.array(labels)==1).nonzero()[0]
+		# %%% Randomly pick 1 target point as the first point
+		idxs = [true_targets[i] for i in nr.permutation(range(len(true_targets)))[:num_initial]]
+		unlabeled_idxs = [i for i in range(n) if i not in idxs]
+		# %%% Randomly pick 1 target point as the first point
+
 	num_initial = min(n-1,num_initial)
 	num_eval = min(num_eval, n-num_initial)
 
@@ -41,18 +60,14 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None):
 	# omega0 as in TK's code
 	if w0 is None: w0 = 1/n
 
-	# Random start node
-	true_targets = (np.array(labels)==1).nonzero()[0]
-	idxs = [true_targets[i] for i in nr.permutation(range(len(true_targets)))[:num_initial]]
-	unlabeled_idxs = [i for i in range(n) if i not in idxs]
 	# Set up initial BD and C
 	B = 1/(1+w0)*np.ones(n) # Need to update B every iteration
 	B[idxs] *= (1+w0)*l/(1+l)
 	D = np.squeeze(X.T.dot(X.dot(np.ones((n,1))))) #TODO: if we don't need to keep this, we can remove it.
 	Dinv = 1./D
 	BDinv = np.squeeze(B*Dinv)
-	#BDinv = np.atleast_2d(B*Dinv).T
-	#BDinvMat = ss.diags([BDinv], [0]) 
+	if verbose:
+		print 'Start point: \n', idxs
 
 	y = pi*np.ones(n)
 	y[idxs] = 1
@@ -68,6 +83,8 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None):
 	hits[0] = 1
 	selected[:num_initial] = idxs
 
+	f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
+
 	# Number of true targets
 	true_n = sum(labels==1)
 	found_n = num_initial
@@ -78,7 +95,6 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None):
 		t1 = time.time()
 
 		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
-
 		# Find next index to investigate
 		uidx = np.argmax(f[unlabeled_idxs])
 		idx = unlabeled_idxs[uidx]
@@ -86,7 +102,8 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None):
 
 		found_n += labels[idx]
 		if found_n==true_n:
-			print "Found all", found_n, "targets. Breaking out."
+			if verbose:
+				print "Found all", found_n, "targets. Breaking out."
 			break
 
 		# Update relevant matrices
@@ -102,13 +119,14 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None):
 		selected[i+num_initial] = idx
 		hits[i+1] = found_n
 
-		if (i%1)==0 or i==1:
-			print 'Iter: %i, Selected: %i, Best f: %f, Hits: %f, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1]/(i+num_initial+1), elapsed)
-		print '%d %d %f %d\n'%(i, hits[i+1], elapsed, selected[i+num_initial])
+		if verbose:
+			if (i%1)==0 or i==1:
+				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %f, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1]/(i+num_initial+1), elapsed)
+			print '%d %d %f %d\n'%(i, hits[i+1], elapsed, selected[i+num_initial])
 
 	return f, hits, selected
 
-def lreg_AS (X, deg, dim, alpha, labels, options={}):
+def lreg_AS (X, deg, dim, alpha, labels, options={}, verbose=True):
 	# %%% [hits,selected] = lreg_AS_main(X,deg,dim,alpha,labels,options) 
 	# %%% Input: 
 	# %%% X: n-by-d matrix. Each row is the feature vector of a node computed by Eigenmap.
@@ -132,6 +150,7 @@ def lreg_AS (X, deg, dim, alpha, labels, options={}):
 	X = X[:,:dim]
 	n,d = X.shape
 	labels = np.array(labels)
+	true_targets = (np.array(labels)==1).nonzero()[0]
 
 	sqd = np.sqrt(deg)[:,None]
 	yp = labels[:,None] * sqd
@@ -157,28 +176,42 @@ def lreg_AS (X, deg, dim, alpha, labels, options={}):
 	if 'eta' in options:
 		eta = options['eta']
 	else: eta = 0.5
+	if 'init_pt' in options:
+		init_pt = options['init_pt']
+		if not isinstance(init_pt, list):
+			init_pt = [init_pt]
 
-	num_initial = 1 # For now we always initialize with 1 target point.
-	l = (1-eta)/eta
-	r = l*w0
-	c = 1/(1-r)
+		num_initial = len(init_pt)
+		start_point = init_pt
+		if not (labels[start_point]).all():
+			if verbose:
+				print "Warning: start points provided not targets. Converting to targets."
+			labels[start_point] = 1
+			true_targets = (np.array(labels)==1).nonzero()[0]
+			yp = labels[:,None] * sqd
+	else:
+		num_initial = 1 # For now we always initialize with 1 target point.
+		# %%% Randomly pick 1 target point as the first point
+		start_point = [true_targets[i] for i in nr.permutation(range(len(true_targets)))[:num_initial]]
 
-	# %%% Randomly pick 1 target point as the first point
-	Xp = X*sqd
-	true_targets = (np.array(labels)==1).nonzero()[0]
-	start_point = [true_targets[i] for i in nr.permutation(range(len(true_targets)))[:num_initial]]
 	in_train = np.zeros((n,1)).astype('bool')
 	in_train[start_point] = True
 	best_ind = start_point
 
-	print 'Start point: \n', best_ind
+	l = (1-eta)/eta
+	r = l*w0
+	c = 1/(1-r)
+	Xp = X*sqd
+
+	if verbose:
+		print 'Start point: \n', best_ind
 	hits = np.zeros((num_eval+1,1))
 	selected = np.zeros((num_eval+num_initial,1))
 	hits[0] = num_initial
 	selected[:num_initial] = best_ind
 
 
-	C = r*(Xp.T.dot(Xp)) + (1-r)*(Xp[best_ind,:].T.dot(Xp[best_ind,:]) + l*np.diag([0]*b+[1]*(d-b)))
+	C = r*(Xp.T.dot(Xp)) + (1-r)*Xp[best_ind,:].T.dot(Xp[best_ind,:]) + l*np.diag([0]*b+[1]*(d-b))
 	Cinv = nlg.inv(C)
 
 	h = (Xp.dot(Cinv)*Xp).sum(axis=1)[:,None]
@@ -189,75 +222,55 @@ def lreg_AS (X, deg, dim, alpha, labels, options={}):
 	found_n = num_initial
 
 	# %%% Main loop
+	if verbose:
+		print "Entering main loop"
 	for i in range(num_eval):
 
 		t1 = time.time()
 		# %%% Calculating change
-		test_ind = (-in_train).astype('int') 
+		in_test = (-in_train)
+		test_ind = in_test.astype('int')
 		change = ((test_ind.T.dot(X).dot(Cinv).dot(Xp.T).T - (h/sqd))* sqd *((1-r*pi)*c-f))/ (c+h)
 
-		# import IPython
-		# IPython.embed()
-
-		f_bnd = np.squeeze(np.minimum(np.maximum(f[test_ind],0),1))[:,None]
+		f_bnd = np.squeeze(np.minimum(np.maximum(f[in_test],0),1))[:,None]
 		 
 		# %%% Calculating selection criteria
-		score = f_bnd + alpha*f_bnd*np.squeeze(np.maximum(change[test_ind],0))[:,None]
-
-		# import IPython
-		# IPython.embed()
+		score = f_bnd + alpha*f_bnd*np.squeeze(np.maximum(change[in_test],0))[:,None]
 
 		# %%% select best index
 		best_ind = np.argmax(score)
 		best_score = score[best_ind]
 		best_f = f_bnd[best_ind]
-		test_ind = test_ind.nonzero()[0]
+		test_ind = in_test.nonzero()[0]
 		best_ind = test_ind[best_ind]
 		best_change = max(np.max(change[best_ind]),0)
 		in_train[best_ind] = True
 		
 		found_n += labels[best_ind]
 		if found_n==true_n:
-			print "Found all", found_n, "targets. Breaking out."
+			if verbose:
+				print "Found all", found_n, "targets. Breaking out."
 			break
-
 		# %%% Updating parameters
 		# %keyboard;
 		# %yp(best_ind) = sqd(best_ind) * input(['Requesting label for e-mail '  num2str(best_ind)  ':']);
 		CXp = Cinv.dot(Xp[[best_ind],:].T)
+		f2 = f
 		f = f + X.dot(  CXp*((yp[best_ind]-r*sqd[best_ind]*pi)*c - sqd[best_ind]*f[best_ind]) / (c+h[best_ind])  )
+
+
 		# %f = f + X * CXp * (yp_new(i) - yp(i));
 		Cinv = Cinv - (CXp.dot(CXp.T))/(c+h[best_ind])
 		h = h - (Xp.dot(CXp)**2)/(c+h[best_ind])
-		
+
 		elapsed = time.time() - t1
 
-		selected[i+num_initial] = best_ind
+		selected[i+num_initial] = best_ind + 1
 		hits[i+1] = found_n
-		if (i%1)==0 or i==1:
-			print 'Iter: %i, Selected: %i, E[u]: %f, Best f: %f, Best change: %f, Hits: %f, Time: %f'%(i,selected[i+num_initial], best_score, best_f, best_change, hits[i+1]/(i+num_initial+1), elapsed)
-		print '%d %d %f %d\n'%(i, hits[i+1], elapsed, selected[i+num_initial])
+		if verbose:
+			if (i%1)==0 or i==1:
+				print 'Iter: %i, Selected: %i, E[u]: %f, Best f: %f, Best change: %f, Hits: %i/%i, Time: %f'%(i+1,selected[i+num_initial], best_score, best_f, best_change, hits[i+1], (i+num_initial+1), elapsed)
+			print '%d %d %f %d\n'%(i+1, hits[i+1], elapsed, selected[i+num_initial])
 
-	return f, hits, selected
+	return np.squeeze(f), hits, selected
 
-
-def test1 (n, cc=2, nt=1, d=5):
-	# Created banded diagonal kernel matrix
-	X = np.eye(n)
-	X[range(n-1), range(1,n)] = 1
-	Xfull = slg.block_diag(*([X]*cc))
-	Yfull = [1]*(nt*n) + [0]*((cc-nt)*n)
-
-	Xe, b, w, deg = eigenmap(Xfull.T.dot(Xfull), d)
-
-	f1 = kernel_AS (Xfull, Yfull, pi=(nt*1.0)/cc, num_eval=10)
-
-	f2 = lreg_AS (Xe, deg, d, alpha=0.0, labels=Yfull, options={'num_eval':3,'pi':(nt*1.0)/cc})
-
-	import IPython
-	IPython.embed()
-
-
-if __name__ == '__main__':
-
-	test1(10, cc=2, nt=1)
