@@ -62,7 +62,7 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 
 	# Set up initial BD and C
 	B = 1/(1+w0)*np.ones(n) # Need to update B every iteration
-	B[idxs] *= (1+w0)*l/(1+l)
+	B[idxs] = l/(1+l)
 	D = np.squeeze(X.T.dot(X.dot(np.ones((n,1))))) #TODO: if we don't need to keep this, we can remove it.
 	Dinv = 1./D
 	BDinv = np.squeeze(B*Dinv)
@@ -79,9 +79,8 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	Cinv = nlg.inv(C) # Need to update Cinv every iteration
 
 	hits = np.zeros((num_eval+num_initial,1))
-	selected = np.zeros((num_eval+num_initial,1))
 	hits[0] = 1
-	selected[:num_initial] = idxs
+	selected = [ix for ix in idxs]
 
 	f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
@@ -89,16 +88,34 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	true_n = sum(labels==1)
 	found_n = num_initial
 
+	#temp
+	# dinvA = (np.diag(Dinv)).dot(X.T.dot(X))
+	# B2 = np.ones(n)*1/(1+w0)
+	# B2[idxs] = l/(1+l)
+	# yp = np.ones(n)*pi
+	# yp[idxs] = labels[idxs]
+	
+
 	# Modifying the element 
 	for i in range(num_eval):
 
 		t1 = time.time()
 
-		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
+		# assert len(unlabeled_idxs) == n - num_initial - i
+		# if len(unlabeled_idxs) != len(np.unique(unlabeled_idxs)):
+		# 	print "ERROR: NOT ALL UNLABELED IDXS ARE UNIQUE"
+
 		# Find next index to investigate
 		uidx = np.argmax(f[unlabeled_idxs])
 		idx = unlabeled_idxs[uidx]
+		# if idx == n:
+		# 	print "ERROR: SELECTING SELECTED PT", idx
+		# 	import IPython
+		# 	IPython.embed()
+
 		del unlabeled_idxs[uidx]
+
+		# assert idx not in unlabeled_idxs
 
 		found_n += labels[idx]
 		if found_n==true_n:
@@ -114,15 +131,31 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		Xi = X[:,[idx]] # ith feature vector
 		Cif = Cinv.dot(Xi)
 		Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
+		
+		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
 		elapsed = time.time() - t1
-		selected[i+num_initial] = idx
+		selected.append(idx)
 		hits[i+1] = found_n
+
+		## temp ##
+		# B2[idx] = l/(l+1)
+		# yp[idx] = float(labels[idx])
+		# Ap = np.diag(B2).dot(dinvA)
+		# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
+		# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
+		# print nlg.norm(f-f2)
+		## temp ##
 
 		if verbose:
 			if (i%1)==0 or i==1:
 				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %f, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1]/(i+num_initial+1), elapsed)
 			print '%d %d %f %d\n'%(i, hits[i+1], elapsed, selected[i+num_initial])
+
+
+	# Ap = np.diag(B2).dot(dinvA)
+	# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
+	# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
 
 	return f, hits, selected
 
@@ -206,10 +239,8 @@ def lreg_AS (X, deg, dim, alpha, labels, options={}, verbose=True):
 	if verbose:
 		print 'Start point: \n', best_ind
 	hits = np.zeros((num_eval+1,1))
-	selected = np.zeros((num_eval+num_initial,1))
+	selected = [ix for ix in best_ind]
 	hits[0] = num_initial
-	selected[:num_initial] = best_ind
-
 
 	C = r*(Xp.T.dot(Xp)) + (1-r)*Xp[best_ind,:].T.dot(Xp[best_ind,:]) + l*np.diag([0]*b+[1]*(d-b))
 	Cinv = nlg.inv(C)
@@ -265,7 +296,7 @@ def lreg_AS (X, deg, dim, alpha, labels, options={}, verbose=True):
 
 		elapsed = time.time() - t1
 
-		selected[i+num_initial] = best_ind + 1
+		selected.append(best_ind)
 		hits[i+1] = found_n
 		if verbose:
 			if (i%1)==0 or i==1:

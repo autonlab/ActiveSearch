@@ -7,6 +7,7 @@ import time
 
 import activeSearch as AS
 from eigenmap import eigenmap
+import visualize as vis
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -141,42 +142,120 @@ def createFakeData (n, r, nt, rcross=10):
 
 	return X, Y
 
+
+def createFakeData2 (n, r, nt, hubs):
+	"""
+	Builds data set
+	"""
+
+	low, high = 0, 5/n
+
+	X = nr.uniform(low=low, high=high, size=(r,n))
+	hub_vecs = nr.uniform(low=low, high=high, size=(r,hubs))
+
+	hubX = X.T.dot(hub_vecs)
+
+	sortedX = np.sort(hubX, axis=0)
+	if hubs == 3:
+		dist = sum(sortedX[int(nt/2.7), :])/3
+	elif hubs == 1:
+		dist = sum(sortedX[int(nt), :])
+
+	Y = (np.sum(hubX < dist, axis=1) > 0).astype(int)
+
+	# import IPython
+	# IPython.embed()
+
+	return X, Y
+
+def compute_f (A, labels, selected, l, w0, pi):
+	"""
+	Immediately compute f given selected points.
+	"""
+	n = A.shape[0]
+
+	B = np.ones(n)/(1+w0)
+	B[selected] = l/(l+1)
+	D = np.squeeze(A.dot(np.ones((n,1))))
+	BDinv = B*(1./D)
+
+	Ap = np.diag(BDinv).dot(A)
+
+	y = np.ones(n)*pi
+	y[selected] = labels[selected]
+	q = np.diag(1-B).dot(y)
+
+	f = nlg.inv(np.eye(n)-Ap).dot(q)
+
+	return f
+
+
 def test4():
 
-	n = 10000
-	r = 300
-	nt = 6000
-	rcross = 50
-
-	d = 2*r - rcross
+	n = 1000
+	r = 100
+	nt = 400
+	#rcross = 50
+	d = 10
+	hubs = 1
 
 	verbose = False
 
-	num_eval = 200
+	num_eval = 300
 	#init_pt = 1
 
-	X, Y = createFakeData(n, r, nt, rcross)
+	#X, Y = createFakeData(n, r, nt, rcross)
+	X, Y = createFakeData2(n, r, nt, hubs)
 
 	pi = sum(Y)/len(Y)
 	print "Constructing the similarity matrix:"
 	A = X.T.dot(X)
 	t1 = time.time()
 	print "Performing Kernel AS"
-	f1,_,_ = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=None, verbose=verbose)
+
+	f1,h1,s1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=None, verbose=verbose)
 	t2 = time.time()
-	print "Performing Eigen decomp"
+	print "Performing Eigen decmop"
 	Xe, b, w, deg = eigenmap(A, d)
 	t3 = time.time()
 	print "Performing LREG AS"
-	f2,_,_ = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b}, verbose=verbose)
+	f2,h2,s2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b}, verbose=verbose)
 	t4 = time.time()
 
 	print "Time taken for kernel:", t2-t1
 	print "Time taken for eigenmap + computing X.T*X:", t3-t2
 	print "Time taken for lreg:", t4-t3
+	print "h_kernel: %i/%i"%(h1[-1],num_eval)
+	print "h_lreg: %i/%i"%(h2[-1],num_eval)
 
 	import IPython
 	IPython.embed()
+
+def testfake():
+
+	n = 400
+	r = 60
+	nt = 150
+	#rcross = 50
+	d = n
+	hubs = 1
+
+	verbose = False
+
+	num_eval = 390
+	#init_pt = 1
+
+	for i in range(100):
+		#X, Y = createFakeData(n, r, nt, rcross)
+		X, Y = createFakeData2(n, r, nt, hubs)
+
+		pi = sum(Y)/len(Y)
+		print i
+
+		# print "Constructing the similarity matrix:"
+		# print "Performing Kernel AS"
+		f1,h1,s1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=None, verbose=verbose)
+
 
 def test5():
 
@@ -219,17 +298,18 @@ def test5():
 
 def test6():
 	n = 10
-	start = 100
-	end = 1000
+	start = 1000
+	end = 5000
 	nt_ratio = 0.6
 	r_ratio = 0.1
 	ne_ratio = 0.2
 
-	nrange = [int(nr) for nr in np.logspace(np.log10(start),np.log10(end), n).tolist()]
-	ntrange = [int(nt_ratio*nr) for nr in nrange]
-	rrange = [int(r_ratio*nr) for nr in nrange]
-	drange = rrange
-	nerange = [int(ne_ratio*nr) for nr in nrange]
+	nrange = np.logspace(np.log10(start),np.log10(end), n).tolist()
+	nrange = [int(nv) for nv in nrange]
+	ntrange = [int(nt_ratio*nv) for nv in nrange]
+	rrange = [int(r_ratio*nv) for nv in nrange]
+	drange = [r*2 for r in rrange]
+	nerange = [int(ne_ratio*nv) for nv in nrange]
 
 	t_kernel = []
 	t_eigendecomp = []
@@ -253,7 +333,7 @@ def test6():
 		f2,h2,s2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':ne,'pi':pi,'n_conncomp':b}, verbose=verbose)
 		t4 = time.time()
 
-		print "Parameters: n=%i, nt=%i, r=%i, d=%i, ne=%i"%(n,nt,r,d,ne)
+		print "Parameters: n=%i, nt=%i, r=%i, d=%i, ne=%i"%(n,nt,2*r,d,ne)
 		print "Time taken for kernel:", t2-t1
 		print "Time taken for eigenmap + computing X.T*X:", t3-t2
 		print "Time taken for lreg:", t4-t3
@@ -283,6 +363,12 @@ if __name__ == '__main__':
 
 	#test1(n=10, cc=2, nt=1, d=4)
 	#test3()
-	#test4()
+	#testfake()
+	test4()
 	#test5()
-	test6()
+	#test6()
+	# X, Y = createFakeData2(1000, 100, 300, 1)
+	# Yb = Y.astype('bool')
+	# Xt = X[:,Yb]
+	# Xn = X[:,-Yb]
+	# vis.visualize2d(Xt.T, Xn.T)
