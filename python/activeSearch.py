@@ -289,7 +289,6 @@ def lreg_AS (X, deg, dim, alpha, labels, options={}, verbose=True):
 		f2 = f
 		f = f + X.dot(  CXp*((yp[best_ind]-r*sqd[best_ind]*pi)*c - sqd[best_ind]*f[best_ind]) / (c+h[best_ind])  )
 
-
 		# %f = f + X * CXp * (yp_new(i) - yp(i));
 		Cinv = Cinv - (CXp.dot(CXp.T))/(c+h[best_ind])
 		h = h - (Xp.dot(CXp)**2)/(c+h[best_ind])
