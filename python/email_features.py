@@ -5,6 +5,8 @@ import scipy as sc, scipy.sparse as ss
 import csv
 import datetime
 
+import gaussianRandomFeatures as grf
+
 def load_timestamps (tsfile):
 	
 	ts_data = []
@@ -123,11 +125,19 @@ def load_sender_data (senderfile, as_coo=True):
 	return sender_rows, sender_cols, sender_data, nsender, nume
 
 
-# def generate_features (tf_F, ts_F=None, s_F=None):
-# 	"""
-# 	Create feature matrix from tfidf data and other data.
-# 	"""
+ts_magic_number = 13168189440000.0
 
-	
-# 	print ('Progress:   Done.')
-# 	return TFmat
+def generate_features (tf_F, ts_F=None, ts_rf=100, s_F=None):
+	"""
+	Create feature matrix from tfidf data and other data.
+	"""
+
+	ts_D = None
+	if ts_F is not None:
+		t0 = datetime.datetime(1970,1,1)
+		for ts in ts_F:
+			ts_D.append((ts-t0).total_seconds())
+
+		
+	print ('Progress:   Done.')
+	return TFmat

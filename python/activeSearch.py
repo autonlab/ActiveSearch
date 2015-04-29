@@ -16,7 +16,7 @@ Update f after this inverse is computed.
 """
 
 
-def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True, all_fs=False, sparse=True, tinv=True):
+def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True, all_fs=False, sparse=True, tinv=False):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -78,16 +78,23 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 
 	# import IPython
 	# IPython.embed()
-
+	if verbose: 
+		print "Constructing C"
+		t1 = time.time()
 	C = (Ir - X.dot(BDinv[:,None]*X.T)) 
+	if verbose:
+		print time.time() - t1
 
 	# import IPython
 	# IPython.embed()
 
+	if verbose:
+		print "Inverting"
 	t1 = time.time()
 	Cinv = nlg.inv(C) # Need to update Cinv every iteration
 	dtinv = time.time() - t1
-	print "Time for inverse:", dtinv
+	if verbose:
+		print "Time for inverse:", dtinv
 
 
 	hits = np.zeros((num_eval+num_initial,1))
@@ -181,8 +188,8 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 
 		if verbose:
 			if (i%1)==0 or i==1:
-				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %f, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1]/(i+num_initial+1), elapsed)
-			print '%d %d %f %d\n'%(i, hits[i+1], elapsed, selected[i+num_initial])
+				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1], (i+num_initial+1), elapsed)
+			print '%d %d %f %d\n'%(i, hits[i+1]/true_n, elapsed, selected[i+num_initial])
 
 
 	# Ap = np.diag(B2).dot(dinvA)
@@ -216,6 +223,7 @@ def lreg_AS (X, deg, dim, alpha, labels, options={}, verbose=True):
 	# %%% selected: a vector of indices of points selected by the algorithm 
 
 	X = X[:,:dim]
+	print X.shape
 	n,d = X.shape
 	labels = np.array(labels)
 	true_targets = (np.array(labels)==1).nonzero()[0]

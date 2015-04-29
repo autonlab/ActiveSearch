@@ -431,7 +431,7 @@ def test9():
 	tffile = osp.join(datadir, 'tfidf_pretranspose.txt')
 	contactsfile = osp.join(datadir, 'email_person_bitarray.txt')
 
-	ts_data = ef.load_timestamps (tsfile)
+	#ts_data = ef.load_timestamps (tsfile)
 	Xfull = load_sparse_csr('Xfull1.npz')
 
 	n = 5000
@@ -451,7 +451,7 @@ def test9():
 	# IPython.embed()
 
 	r,n = X.shape
-	d = r
+	d = 20
 	nt = int(0.1*n)
 	num_eval = nt*2
 	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
@@ -460,12 +460,17 @@ def test9():
 	init_pt = 100
 
 	A = X.T.dot(X)
+	import IPython
+	IPython.embed()
+
 	t1 = time.time()
 	print "Kernel method"
-	f1,h1,s1,fs1,dt = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True)
+	#f1,h1,s1,fs1,dt = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True)
 	t2 = time.time()
 	print "Eigen map"
-	Xe, b, w, deg = eigenmap(A, d)
+	#Xe, b, w, deg = eigenmap(A, d)
+	#np.save('eigenstuff',[Xe, b, w, deg])
+	Xe, b, w, deg  = np.load('eigenstuff.npy')
 	# import IPython 
 	# IPython.embed()
 	t3 = time.time()
@@ -475,15 +480,203 @@ def test9():
 	#f3,h3,s3,fs3 = AS.shari_activesearch_probs_naive(A, labels=Y, pi=pi, w0=None, eta=None, num_eval=num_eval, init_pt=init_pt, verbose=verbose, all_fs=True)
 
 	print "Time taken for kernel:", t2-t1
-	print "Time taken for inverse:", dt
+	#print "Time taken for inverse:", dt
 	print "Time taken for eigen decomp:", t3 - t2
 	print "Time taken for lreg:", t4-t3
 
 
-	f1 = np.squeeze(f1)
+	#f1 = np.squeeze(f1)
 
 	import IPython
 	IPython.embed()
+
+
+def test10():
+	verbose = False
+	Xe, b, w, deg  = np.load('eigenstuff.npy')
+	n = Xe.shape[0]
+
+	nt = int(0.1*n)
+	num_eval = nt*2
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+
+	drange = range(10) + [10*i for i in range(2,11)] + [100*i for i in range(2,11,2)] + [1500, 2000, 2500]
+
+	pi = sum(Y)/len(Y)
+	init_pt = 100
+
+	hits = []
+	rtime = []
+
+	for d in drange:
+		t1 = time.time()
+		f2,h2,s2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b,'init_pt':init_pt}, verbose=verbose)
+		t2 = time.time()
+
+		hits.append(h2[-1][0])
+		rtime.append(t2-t1)
+
+		print "d =", d
+		print "hits =", h2[-1][0]
+		print "time =", t2-t1
+		print
+		print
+	#f3,h3,s3,fs3 = AS.shari_activesearch_probs_naive(A, labels=Y, pi=pi, w0=None, eta=None, num_eval=num_eval, init_pt=init_pt, verbose=verbose, all_fs=True)
+
+	# print "Time taken for kernel:", t2-t1
+	# #print "Time taken for inverse:", dt
+	# print "Time taken for eigen decomp:", t3 - t2
+	# print "Time taken for lreg:", t4-t3
+
+	#f1 = np.squeeze(f1)
+	# plt.figure()
+	# plt.plot(drange, hits)
+	# plt.figure()
+	# plt.plot(drange, rtime)
+	# plt.show()
+
+	# import IPython
+	# IPython.embed()
+
+	return drange, hits, rtime
+
+def test11():
+
+	verbose = False
+	#ts_data = ef.load_timestamps (tsfile)
+	Xfull = load_sparse_csr('Xfull1.npz')
+
+	n = 5000
+	nt = int(0.1*n)
+	num_eval = nt*2
+	# getting rid of features which are zero for all these elements
+	# X = np.array((Xfull[:,:n]).todense())
+	# X = X[np.nonzero(X.sum(axis=1))[0],:]
+	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	# import IPython 
+	# IPython.embed()
+	# X = X[:r,:]
+	# X = X[np.nonzero(X.sum(axis=1))[0],:]
+	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	X = np.load('X11.npy')
+
+	# import IPython
+	# IPython.embed()
+
+	nt = int(0.1*n)
+	num_eval = nt*2
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+
+	rrange =  [10*i for i in range(2,11)] + [100*i for i in range(2,11,2)] + [1500, 2000, 2500]
+
+	pi = sum(Y)/len(Y)
+	init_pt = 100
+
+	hits = []
+	rtime = []
+
+	for r in rrange:
+		Xr = X[:r,:]
+		Xr = Xr[np.nonzero(Xr.sum(axis=1))[0],:]
+		Xr = Xr[:,np.nonzero(Xr.sum(axis=0))[0]]
+
+		t1 = time.time()
+		f1,h1,s1,fs1 = AS.kernel_AS (Xr, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
+		t2 = time.time()
+
+		hits.append(h1[-1][0])
+		rtime.append(t2-t1)
+
+		print "r =", r
+		print "hits =", h1[-1][0]
+		print "time =", t2-t1
+		print
+		print
+
+	# plt.figure()
+	# plt.plot(rrange, hits)
+	# plt.xlabel('d')
+	# plt.ylabel('hits')
+	# plt.figure()
+	# plt.plot(rrange, rtime)
+	# plt.xlabel('d')
+	# plt.ylabel('time in s')
+	# plt.show()
+
+	# import IPython
+	# IPython.embed()
+	return rrange, hits, rtime
+
+
+def test12():
+
+	verbose = True
+	#ts_data = ef.load_timestamps (tsfile)
+	Xfull = load_sparse_csr('Xfull1.npz')
+
+	r,n = Xfull.shape
+	import IPython
+	IPython.embed()
+		
+	nt = int(0.1*n)
+	num_eval = nt*2
+	X = np.array(Xfull.todense())
+	# getting rid of features which are zero for all these elements
+	X = X[np.nonzero(X.sum(axis=1))[0],:]
+	X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	# import IPython 
+	# IPython.embed()
+	X = X[:r,:]
+	X = X[np.nonzero(X.sum(axis=1))[0],:]
+	X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	X = np.load('X11.npy')
+
+	# import IPython
+	# IPython.embed()
+
+	nt = int(0.1*n)
+	num_eval = nt*2
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+
+	#rrange =  [10*i for i in range(2,11)] + [100*i for i in range(2,11,2)] + [1500, 2000, 2500, 3000]
+
+	pi = sum(Y)/len(Y)
+	init_pt = 100
+
+	#hits = []
+	#rtime = []
+
+	#for r in rrange:
+	
+	t1 = time.time()
+	print "Performing the kernel AS"
+	f1,h1,s1,fs1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
+	t2 = time.time()
+
+	# hits.append(h1[-1][0])
+	# rtime.append(t2-t1)
+
+	# print "r =", r
+	# print "hits =", h1[-1][0]
+	print "time =", t2-t1
+	# print
+	# print
+
+	# plt.figure()
+	# plt.plot(rrange, hits)
+	# plt.xlabel('d')
+	# plt.ylabel('hits')
+	# plt.figure()
+	# plt.plot(rrange, rtime)
+	# plt.xlabel('d')
+	# plt.ylabel('time in s')
+	# plt.show()
+
+	# Timing
+	# Constructing C: 71s
+	# Inverse of C: 202s
+	# Total time: 3446s
+
 
 
 if __name__ == '__main__':
@@ -500,4 +693,24 @@ if __name__ == '__main__':
 	# vis.visualize2d(Xt.T, Xn.T)
 	#test7()
 	#test8()
-	test9()
+	#test9()
+	# dr,h1,t1 = test10()
+	# rr,h2,t2 = test11()
+	test12()
+
+	# import IPython
+	# IPython.embed()
+
+	# plt.figure()
+	# plt.plot(dr, h1,c='b',label='TK')
+	# plt.plot(rr, h2,c='r',label='Kernel')
+	# plt.xlabel('d/r')
+	# plt.ylabel('hits')
+	# plt.legend()
+	# plt.figure()
+	# plt.plot(dr, t1,c='b',label='TK')
+	# plt.plot(rr, t2,c='r',label='Kernel')
+	# plt.xlabel('d/r')
+	# plt.ylabel('time in s')
+	# plt.legend()
+	# plt.show()
