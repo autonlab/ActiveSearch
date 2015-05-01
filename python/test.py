@@ -678,6 +678,48 @@ def test12():
 	# Total time: 3446s
 
 
+def test13(): # testing sparse AS
+
+	verbose = True
+	#ts_data = ef.load_timestamps (tsfile)
+	Xfull = load_sparse_csr('Xfull1.npz')
+	print Xfull.shape
+	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[0]))]
+	r,n = Xfull.shape
+
+	#n = 5000
+	nt = int(0.1*n)
+	num_eval = 150
+	# getting rid of features which are zero for all these elements
+	# X = np.array((Xfull[:,:n]).todense())
+	# X = X[np.nonzero(X.sum(axis=1))[0],:]
+	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	# import IPython 
+	# IPython.embed()
+	# X = X[:r,:]
+	# X = X[np.nonzero(X.sum(axis=1))[0],:]
+	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	#X = np.load('X11.npy')
+
+	# import IPython
+	# IPython.embed()
+
+	num_eval = nt*2
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+
+
+	pi = sum(Y)/len(Y)
+	init_pt = 100
+
+	t1 = time.time()
+	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True)
+	t2 = time.time()
+	f2,h2,s2,fs2,dtinv2 = AS.kernel_AS (np.array(Xfull.todense()), Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=False)
+	t3 = time.time()
+
+	import IPython
+	IPython.embed()
 
 if __name__ == '__main__':
 	#test1(n=10, cc=2, nt=1, d=4)
@@ -696,7 +738,8 @@ if __name__ == '__main__':
 	#test9()
 	# dr,h1,t1 = test10()
 	# rr,h2,t2 = test11()
-	test12()
+	#test12()
+	test13()
 
 	# import IPython
 	# IPython.embed()

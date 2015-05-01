@@ -1,7 +1,7 @@
 from __future__ import division
 import time
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
-import scipy.sparse as ss, scipy.linalg as slg
+import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -53,7 +53,10 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	num_initial = min(n-1,num_initial)
 	num_eval = min(num_eval, n-num_initial)
 
-	Ir = np.eye(r)
+	if sparse:
+		Ir = ss.eye(r)
+	else:
+		Ir = np.eye(r)
 
 	# Lambda from TK's notes can be written using eta as follows
 	l = (1-eta)/eta
@@ -66,6 +69,10 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	D = np.squeeze(X.T.dot(X.dot(np.ones((n,1))))) #TODO: if we don't need to keep this, we can remove it.
 	Dinv = 1./D
 	BDinv = np.squeeze(B*Dinv)
+
+	if sparse:
+		BDinv_ss = ss.diags([BDinv],[0]).tocsr()
+
 	if verbose:
 		print 'Start point: \n', idxs
 
@@ -81,7 +88,12 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	if verbose: 
 		print "Constructing C"
 		t1 = time.time()
-	C = (Ir - X.dot(BDinv[:,None]*X.T)) 
+
+	if sparse:
+		C = (Ir - X.dot(BDinv_ss.dot(X.T)))	
+	else:
+		C = (Ir - X.dot(BDinv[:,None]*X.T))
+
 	if verbose:
 		print time.time() - t1
 
@@ -91,7 +103,11 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	if verbose:
 		print "Inverting"
 	t1 = time.time()
-	Cinv = nlg.inv(C) # Need to update Cinv every iteration
+	if sparse:
+		Cinv = ssl.inv(C.tocsc()) # Need to update Cinv every iteration
+	else:
+		Cinv = nlg.inv(C)
+
 	dtinv = time.time() - t1
 	if verbose:
 		print "Time for inverse:", dtinv
@@ -101,7 +117,10 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	hits[0] = num_initial
 	selected = [ix for ix in idxs]
 
-	f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
+	if sparse:
+		f = q + BDinv_ss.dot(((X.T.dot(Cinv.dot(X.dot(q))))))
+	else:
+		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
 	# Number of true targets
 	true_n = sum(labels==1)
@@ -146,7 +165,12 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 			break
 
 		# Update relevant matrices
-		BDinv[idx] *= (1+w0)*l/(1+l) 
+
+		if sparse:
+			BDinv_ss[idx,idx] *= (1+w0)*l/(1+l) 
+		else:
+			BDinv[idx] *= (1+w0)*l/(1+l) 
+
 		q[idx] = labels[idx]*l/(1+l)
 		gamma = -(l/(1+l)-1/(1+w0))*Dinv[idx]
 
@@ -156,13 +180,20 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		Cif = Cinv.dot(Xi)
 		# t8 = time.time()
 		# d7 = t8 - t7
-
-		Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
+		# import IPython
+		# IPython.embed()
+		if sparse:
+			Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + (gamma*Xi.T.dot(Cif))[0,0])
+		else:
+			Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
 		
 		# t9 = time.time()
 		# d8 = t9 - t8
 
-		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
+		if sparse:
+			f = q + BDinv_ss.dot(((X.T.dot(Cinv.dot(X.dot(q))))))
+		else:
+			f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
 		# t0 = time.time()
 		# d9 = t0 - t9
