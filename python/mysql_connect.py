@@ -180,10 +180,9 @@ def getUserNameFromID(user_id, db):
 
     return name
 
-#this doesn't work yet
+
 def getMatrix(db):
-    #matrix-wise square, but element-wise square-root?
     similarity_data = getTFIDFSimilarity(db)
-    s = (np.matrix_power(similarity_data, 2).sum(1)).sqrt()
+    s = ((similaritydata**2).sum(1))**0.5
     similarity_data = np.divide(similarity_data, s[:,np.newaxis])
     return similarity_data

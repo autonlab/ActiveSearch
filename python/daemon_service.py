@@ -3,9 +3,20 @@ from flask import Flask
 from flask import Response
 import mysql_connect as mysql_conn
 
+##
+# To run this, make sure the permissions are right:
+# chmod a+x daemon_service.py 
+#
+# Then run it:
+# ./daemon_service.py
+##
+
 app = Flask(__name__)
 
 db = mysql_conn.mysql_connect("scottwalker")
+
+# track the email ID that we're currently presenting the user for evaluation
+currentEmail = -1
 
 #@app.route(...)
 #def login():
@@ -13,19 +24,71 @@ db = mysql_conn.mysql_connect("scottwalker")
 #    password = request.args.get('password')
 
 ## functions that we had implemented in the Java version for TK's version of active search
-#@app.route('/firstemail/<email>/<mode>')
-#@app.route('/firstemail/<email>')
-#@app.route('/emailinteresting')
-#@app.route('/emailboring')
-#@app.route('/setalpha/<alpha>')
-#@app.route('/getStartPoint')
-#@app.route('/resetLabel/<index>/<value>')
-#@app.route('/setLabelCurrent/<value>')
-#@app.route('/setLabel/<index>/<value>')
-#@app.route('/setLabelBulk/<csv>') # input is [index, value [,index, value etc]]
-#@app.route('/getNextEmail')
-#@app.route('/pickRandomLabeledEmail')
-#@app.route('/getLabel/<email>')
+@app.route('/firstemail/<email>')
+def firstEmail(email):
+    #Initialize any datastructures (throw out old ones if they exist) and seed the algorithm with this email ID
+    return Response("hello",  mimetype='text/plain')
+
+@app.route('/emailinteresting')
+def interestingEmail():
+    # setLabel(currentEmail, 1)
+    # res = getNextEmail()
+    return Response("next email id",  mimetype='text/plain')
+
+@app.route('/emailboring')
+def boringEmail():
+    # setLabel(currentEmail, 0)
+    # res = getNextEmail()
+    return Response("next email id",  mimetype='text/plain')
+
+@app.route('/setalpha/<alpha>')
+def setalpha(alpha):
+    #set the tuning parameter alpha. I think we won't need this call anymore
+    return Response("hello",  mimetype='text/plain')
+
+@app.route('/getStartPoint')
+def getStartPoint():
+    # I think this just returned the first email that was used to seed this run
+    return Response("hello",  mimetype='text/plain')
+
+@app.route('/resetLabel/<index>/<value>')
+def resetLabel(index, value):
+    # set label of email <index> with <value>
+    return Response("hello",  mimetype='text/plain')
+
+@app.route('/setLabelCurrent/<value>')
+def setLabelCurrent(value):
+    # simply call setLabel(currentEmail, value)
+    return Response("hello",  mimetype='text/plain')
+
+@app.route('/setLabel/<index>/<value>')
+def setLabel(index, value):
+    # set the label for email <index> with value <value>
+    return Response("hello",  mimetype='text/plain')
+
+# input is [index, value [,index, value etc]]
+@app.route('/setLabelBulk/<csv>')
+def setLabeLBulk(csv):
+    # loop over each pair in the csv and call setLabel on it
+    # requested by Sotera
+    return Response("hello",  mimetype='text/plain')
+
+@app.route('/getNextEmail')
+def getNextEmail():
+    # call into active search and have it calculate the next email to show to the user
+    # (this is usally called from boringEmail() or interestingEmail()
+    return Response("<new email id>",  mimetype='text/plain')
+
+@app.route('/pickRandomLabeledEmail')
+def pickRandomLabeledEmail():
+    #of the labeled emails, randomly return one
+    # this is in case the user wants to pre-label many emails and we have to start from one of them
+    return Response("<email id>",  mimetype='text/plain')
+
+@app.route('/getLabel/<email>')
+def getLabel(email):
+    # return the label for a given email ID
+    return Response("0/1",  mimetype='text/plain')
 
 #####
 # For documentation on these functions, see their analogs in mysql_connect.py
