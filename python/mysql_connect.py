@@ -117,7 +117,7 @@ def getUsersByMessage(message_id):
     return ret_array
 
 # returns an array where each value is a string of the form "<message_id> <seconds from epoch timestamp> <sender_id>"
-def getEmailTimesAndSenders(db):
+def getMessageTimesAndSenders(db):
     cur = db.cursor()
     cur.execute("SELECT messageid, UNIX_TIMESTAMP(messagedt), senderid FROM messages")
     data = []
