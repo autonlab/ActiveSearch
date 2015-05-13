@@ -22,7 +22,7 @@ class Parameters:
 
 		alpha = 0  #not being used
 
-
+## For more on how these functions operate, see their analogs in daemon_service.py
 class genericAS:
 
 	def __init__ (self, params=Parameters()):
@@ -58,8 +58,10 @@ class genericAS:
 	def boringEmail(self):
 		raise NotImplementedError()
 
+	# may implement later
 	def setalpha(self, alpha):
 		self.params.alpha = alpha
+		raise NotImplementedError()
 
 	def setLabel (self, idx, lbl):
 		raise NotImplementedError()
@@ -73,7 +75,7 @@ class genericAS:
 	def setLabelCurrent(self, value):
 		raise NotImplementedError()
 
-	def setLabelBulk (self, idxs, lbls):
+	def setLabelBulk (self, csv):
 		raise NotImplementedError()
 
 	def getNextEmail (self):
