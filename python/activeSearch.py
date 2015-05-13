@@ -16,7 +16,7 @@ Update f after this inverse is computed.
 """
 
 
-def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True, all_fs=False, sparse=True, tinv=False):
+def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -133,7 +133,7 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	# yp = np.ones(n)*pi
 	# yp[idxs] = labels[idxs]
 	if all_fs:
-		fs = []
+		fs = [f]
 
 	# Modifying the element 
 	for i in range(num_eval):
@@ -449,7 +449,7 @@ def shari_activesearch_probs_naive(A, labels, pi, num_eval, w0=None, eta=None, i
 	found_n = num_initial
 
 	if all_fs:
-		fs = []
+		fs = [f]
 	
 	for i in range(num_eval):
 		
@@ -479,7 +479,7 @@ def shari_activesearch_probs_naive(A, labels, pi, num_eval, w0=None, eta=None, i
 
 		if verbose:
 			if (i%1)==0 or i==1:
-				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %f, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1]/(i+num_initial+1), elapsed)
+				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1],(i+num_initial+1), elapsed)
 			print '%d %d %f %d\n'%(i, hits[i+1], elapsed, selected[i+num_initial])
 
 	if all_fs:

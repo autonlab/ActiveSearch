@@ -7,6 +7,7 @@ import time
 import os, os.path as osp
 
 import activeSearch as AS
+import activeSearchInterface as ASI
 from eigenmap import eigenmap
 import visualize as vis
 import email_features as ef
@@ -436,7 +437,7 @@ def test9():
 
 	n = 5000
 	r = 2000
-	nt = int(0.1*n)
+	nt = 15#int(0.1*n)
 	num_eval = nt*2
 	# getting rid of features which are zero for all these elements
 	X = np.array((Xfull[:,:n]).todense())
@@ -452,8 +453,8 @@ def test9():
 
 	r,n = X.shape
 	d = 20
-	nt = int(0.1*n)
-	num_eval = nt*2
+	nt = 10#int(0.1*n)
+	num_eval = 15#nt*2
 	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
 
 	pi = nt*1.0/n
@@ -475,9 +476,9 @@ def test9():
 	# IPython.embed()
 	t3 = time.time()
 	print "Shari method"
-	f2,h2,s2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b,'init_pt':init_pt}, verbose=verbose)
+	#f2,h2,s2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b,'init_pt':init_pt}, verbose=verbose)
 	t4 = time.time()
-	#f3,h3,s3,fs3 = AS.shari_activesearch_probs_naive(A, labels=Y, pi=pi, w0=None, eta=None, num_eval=num_eval, init_pt=init_pt, verbose=verbose, all_fs=True)
+	f3,h3,s3,fs3 = AS.shari_activesearch_probs_naive(A, labels=Y, pi=pi, w0=None, eta=None, num_eval=num_eval, init_pt=init_pt, verbose=verbose, all_fs=True)
 
 	print "Time taken for kernel:", t2-t1
 	#print "Time taken for inverse:", dt
@@ -615,8 +616,6 @@ def test12():
 	Xfull = load_sparse_csr('Xfull1.npz')
 
 	r,n = Xfull.shape
-	import IPython
-	IPython.embed()
 		
 	nt = int(0.1*n)
 	num_eval = nt*2
@@ -629,7 +628,7 @@ def test12():
 	X = X[:r,:]
 	X = X[np.nonzero(X.sum(axis=1))[0],:]
 	X = X[:,np.nonzero(X.sum(axis=0))[0]]
-	X = np.load('X11.npy')
+	#X2 = np.load('X11.npy')
 
 	# import IPython
 	# IPython.embed()
@@ -650,7 +649,7 @@ def test12():
 	
 	t1 = time.time()
 	print "Performing the kernel AS"
-	f1,h1,s1,fs1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
+	f1,h1,s1,fs1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,sparse=False)
 	t2 = time.time()
 
 	# hits.append(h1[-1][0])
@@ -676,7 +675,8 @@ def test12():
 	# Constructing C: 71s
 	# Inverse of C: 202s
 	# Total time: 3446s
-
+	import IPython
+	IPython.embed()
 
 def test13(): # testing sparse AS
 
@@ -688,9 +688,8 @@ def test13(): # testing sparse AS
 	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[0]))]
 	r,n = Xfull.shape
 
-	#n = 5000
 	nt = int(0.1*n)
-	num_eval = 150
+	num_eval = 20
 	# getting rid of features which are zero for all these elements
 	# X = np.array((Xfull[:,:n]).todense())
 	# X = X[np.nonzero(X.sum(axis=1))[0],:]
@@ -704,8 +703,8 @@ def test13(): # testing sparse AS
 
 	# import IPython
 	# IPython.embed()
-
-	num_eval = nt*2
+	num_eval = 20
+	# num_eval = nt*2
 	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
 
 
@@ -713,10 +712,51 @@ def test13(): # testing sparse AS
 	init_pt = 100
 
 	t1 = time.time()
-	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True)
+	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
 	t2 = time.time()
 	f2,h2,s2,fs2,dtinv2 = AS.kernel_AS (np.array(Xfull.todense()), Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=False)
 	t3 = time.time()
+
+	import IPython
+	IPython.embed()
+
+def test_interface ():
+	verbose = False
+	#ts_data = ef.load_timestamps (tsfile)
+	Xfull = load_sparse_csr('Xfull1.npz')
+	print Xfull.shape
+	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[0]))]
+	r,n = Xfull.shape
+
+	nt = int(0.05*n)
+	num_eval = 1000
+	# num_eval = nt*2
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+
+	pi = sum(Y)/len(Y)
+	init_pt = 100
+
+	t1 = time.time()
+
+	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
+	kAS = ASI.kernelAS(prms)
+	kAS.initialize(Xfull)
+	kAS.firstMessage(init_pt)
+	fs2 = [kAS.f]	
+
+	for i in range(num_eval):
+		idx = kAS.getNextMessage()
+		kAS.setLabelCurrent(Y[idx])
+		fs2.append(kAS.f)
+
+	t2 = time.time()
+
+	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+
+	t3 = time.time()
+
+	checks = [np.allclose(fs1[i],fs2[i]) for i in range(len(fs1))]
 
 	import IPython
 	IPython.embed()
@@ -739,8 +779,8 @@ if __name__ == '__main__':
 	# dr,h1,t1 = test10()
 	# rr,h2,t2 = test11()
 	#test12()
-	test13()
-
+	#test13()
+	test_interface()
 	# import IPython
 	# IPython.embed()
 
