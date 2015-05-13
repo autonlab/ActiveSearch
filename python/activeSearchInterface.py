@@ -36,7 +36,7 @@ class genericAS:
 		self.start_point = None
 		self.unlabeled_idxs = []
 		self.labeled_idxs = []
-		self.next_email = None
+		self.next_message = None
 
 		self.seen_next = False
 
@@ -49,13 +49,13 @@ class genericAS:
 		# save the state of the parameters and the data so that we can restart.
 		raise NotImplementedError()
 
-	def firstEmail(self, email):
+	def firstMessage(self, message):
 		raise NotImplementedError()
 
-	def interestingEmail(self):
+	def interestingMessage(self):
 		raise NotImplementedError()
 
-	def boringEmail(self):
+	def boringMessage(self):
 		raise NotImplementedError()
 
 	# may implement later
@@ -78,10 +78,10 @@ class genericAS:
 	def setLabelBulk (self, csv):
 		raise NotImplementedError()
 
-	def getNextEmail (self):
+	def getNextMessage (self):
 		raise NotImplementedError()
 
-	def pickRandomLabeledEmail (self):
+	def pickRandomLabeledMessage (self):
 		return self.labeled_idxs[nr.randint(len(self.labeled_idxs))]
 
 	def getLabel (self, idx):
@@ -101,8 +101,8 @@ class kernelAS (genericAS):
 		self.Xf = Xf
 		self.r, self.n = Xf.shape
 
-		self.unlabeled_idxs = range(n)
-		self.labels = [-1]*n
+		self.unlabeled_idxs = range(self.n)
+		self.labels = [-1]*self.n
 
 		# Initialize some parameters and constants which are needed and not yet initialized
 		if self.params.sparse:
@@ -120,7 +120,7 @@ class kernelAS (genericAS):
 		D = np.squeeze(Xf.T.dot(Xf.dot(np.ones((self.n,1))))) 
 		self.Dinv = 1./D
 
-		if sparse:
+		if self.params.sparse:
 			self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
 		else:
 			self.BDinv = np.squeeze(B*self.Dinv)
@@ -148,47 +148,47 @@ class kernelAS (genericAS):
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
 
-	def firstEmail(self, idx):
+	def firstMessage(self, idx):
 		# Assuming this is always +ve. Can be changed otherwise
 		# Need to check whether this does the right thing.
 		if self.iter >= 0:
-			print("First email has already been set. Treating this as a positive.")
+			print("First message has already been set. Treating this as a positive.")
 		else:
 			self.start_point = idx
 		self.setLabel(idx, 1)
 
-	def interestingEmail(self):
-		if self.next_email is None:
-			if self.iter < 0
-				raise Exception("The algortithm has not been initialized. There is no current email.")
+	def interestingMessage(self):
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
 			else:
 				raise Exception("I don't know how you got here.")
 		if not self.seen_next:
-			raise Exception ("This email has not been requested/seen yet.")
-		self.setLabel(self.next_email, 1)
+			raise Exception ("This message has not been requested/seen yet.")
+		self.setLabel(self.next_message, 1)
 
-	def boringEmail(self):
-		if self.next_email is None:
-			if self.iter < 0
-				raise Exception("The algortithm has not been initialized. There is no current email.")
+	def boringMessage(self):
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
 			else:
 				raise Exception("I don't know how you got here.")
 		if not self.seen_next:
-			raise Exception ("This email has not been requested/seen yet.")
-		self.setLabel(self.next_email, 0)
+			raise Exception ("This message has not been requested/seen yet.")
+		self.setLabel(self.next_message, 0)
 
 	def setLabelCurrent(self, value):
-		if self.next_email is None:
-			if self.iter < 0
-				raise Exception("The algortithm has not been initialized. There is no current email.")
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
 			else:
 				raise Exception("I don't know how you got here.")
 		if not self.seen_next:
-			raise Exception ("This email has not been requested/seen yet.")
-		self.setLabel(self.next_email, value)
+			raise Exception ("This message has not been requested/seen yet.")
+		self.setLabel(self.next_message, value)
 
 	def setLabel (self, idx, lbl):
-		# Set label for given email id
+		# Set label for given message id
 
 		if self.params.verbose:
 			t1 = time.time()
@@ -197,7 +197,7 @@ class kernelAS (genericAS):
 		lbl = 0 if lbl <= 0 else 1
 	
 		# First, some book-keeping
-		# If setLabel is called without "firstEmail," then set start_point
+		# If setLabel is called without "firstMessage," then set start_point
 		if self.start_point is None:
 			self.start_point = idx
 		self.iter += 1
@@ -233,41 +233,41 @@ class kernelAS (genericAS):
 		else:
 			self.hits.append(self.hits[-1] + lbl)
 
-		# Finding the next email to show -- get the current max element
-		uidx = np.argmax(f[self.unlabeled_idxs])
-		self.next_email = self.unlabeled_idxs[uidx]
-		# Now that a new email has been selected, mark it as unseen
+		# Finding the next message to show -- get the current max element
+		uidx = np.argmax(self.f[self.unlabeled_idxs])
+		self.next_message = self.unlabeled_idxs[uidx]
+		# Now that a new message has been selected, mark it as unseen
 		self.seen_next = False 
 
-		if verbose:
+		if self.params.verbose:
 			elapsed = time.time() - t1
-			print 'Iter: %i, Selected: %i, Hits: %i/%i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
+			print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
 			
 	def getStartPoint (self):
 		if self.start_point is None:
-			raise Exception("The algortithm has not been initialized. Please call \"firstEmail\".")
+			raise Exception("The algortithm has not been initialized. Please call \"firstMessage\".")
 		return self.start_point
 
 	# Need to think a bit about the math here
 	# def resetLabel (self, idx, lbl):
 	# 	raise NotImplementedError()
 
-	def getNextEmail (self):
-		if self.next_email is None:
-			if self.iter < 0
-				raise Exception("The algortithm has not been initialized. There is no current email.")
+	def getNextMessage (self):
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
 			else:
 				raise Exception("I don't know how you got here.")
 		self.seen_next = True
-		return self.next_email
+		return self.next_message
 
 	def setLabelBulk (self, idxs, lbls):
 		for idx,lbl in zip(idxs,lbls):
 			self.setLabel(idx,lbls)
 
-	def pickRandomLabeledEmail (self):
+	def pickRandomLabeledMessage (self):
 		if iter < 0:
-			raise Exception("The algortithm has not been initialized. Please call \"firstEmail\".")
+			raise Exception("The algortithm has not been initialized. Please call \"firstMessage\".")
 		return self.labeled_idxs[nr.randint(len(self.labeled_idxs))]
 
 	def getLabel (self, idx):
