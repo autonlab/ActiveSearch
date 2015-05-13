@@ -3,10 +3,15 @@ use DBI;
 use strict;
 use Getopt::Long;
 
+my $old_fh = select(STDOUT);
+$| = 1;
+select($old_fh);
+
 sub insertRecipientFromArray($$);
 sub getUserIDFromEmail($);
 sub getWordID($);
 sub setTFIDF();
+sub removeTFIDFThreshold($);
 
 # This script can be used to import a tab-separated value file where each row represents one email
 # Fill in these constants indicating the zero-based index where the necessary fields reside
@@ -133,8 +138,23 @@ my %user_map = ();
 my $next_user_id = 0;
 
 my $messageid = 0;
+my $file_line = 0;
 foreach my $row (@data) {
+	
     my @row_fields = split(/\t/, $row);
+    if (!(defined($row_fields[$DATETIME_INDEX])) ||
+	!(defined($row_fields[$SENDER_INDEX])) ||
+	!(defined($row_fields[$TO_LIST_INDEX])) ||
+	!(defined($row_fields[$CC_LIST_INDEX])) ||
+	!(defined($row_fields[$BCC_LIST_INDEX])) ||
+	!(defined($row_fields[$SUBJECT_INDEX])) ||
+	!(defined($row_fields[$BODY_INDEX]))) {
+	print "skipping malformed line $file_line\n";
+	$file_line++;
+	next;
+    }
+    $file_line++;
+
     my $datetime = $row_fields[$DATETIME_INDEX];
     my $from = $row_fields[$SENDER_INDEX];
     my @to = split(/[,;]/,$row_fields[$TO_LIST_INDEX]);
@@ -165,6 +185,7 @@ print "Users: " . (scalar keys %user_map). "\n";
 print "Messages: $messageid\n";
 print "Generating TFIDF data\n";
 setTFIDF();
+#removeTFIDFThreshold(26);
 
 sub insertRecipientFromArray($$) {
     (my $messageid, my $emailarrayref) = @_;
@@ -264,4 +285,56 @@ sub getWordID($) {
     $word_id_cache{$word} = $ret;
 
     return $ret;
+}
+
+sub removeTFIDFThreshold($) {
+    (my $count_threshold) = @_;
+
+    # total appearances, not just number of emails appearing in
+    print "\n\nDeleting words from tf_idf where the word appears fewer than $count_threshold times\n";
+
+    my $sql = "SELECT word, SUM(count) as cnt FROM tf_idf_dictionary GROUP BY word";
+    my $sth = $dbh->prepare($sql);
+    my $rows = $sth->execute
+	or die "SQL Error: $DBI::errstr\n";
+    while (my $row = $sth->fetchrow_hashref) {
+	my $word = $row->{'word'};
+	if ($row->{'cnt'} < $count_threshold) {
+	    $dbh->do("DELETE FROM tf_idf_dictionary WHERE word = $word");
+	    $dbh->do("DELETE FROM tf_idf_wordmap WHERE word_id = $word");
+	}
+	if ($word % 1000 == 0) {
+	    print ".";
+	}
+	if ($word % 10000 == 0) {
+	    print "$word / " . $rows . "\n";
+	}
+    }
+    $sth->finish();
+
+    #now compact the word_id so there are no gaps
+    print  "compacting wordID numbers so there are no gaps\n";
+
+    my $nextID = 0;
+    $sql = "SELECT word_id FROM tf_idf_wordmap ORDER BY word_id";
+    $sth = $dbh->prepare($sql);
+    $sth->execute
+	or die "SQL Error: $DBI::errstr\n";
+    while (my $row = $sth->fetchrow_hashref) {
+	my $word = $row->{'word_id'};
+	# this ID is appropriate where it is
+	if ($word == $nextID) {
+	    $nextID++;
+	}
+	# this ID needs to be remapped to nextID
+	else {
+	    $dbh->do("UPDATE tf_idf_wordmap SET word_id=$nextID WHERE word_id=$word");
+	    $dbh->do("UPDATE tf_idf_dictionary SET word=$nextID WHERE word=$word");
+	    $nextID++;
+	}
+	if ($nextID % 100 == 0) {
+	    print ".";
+	}
+    }
+    $sth->finish();
 }
