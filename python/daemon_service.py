@@ -14,7 +14,7 @@ import activeSearchInterface as asI
 app = Flask(__name__)
 
 db = mysql_conn.mysql_connect("scottwalker")
-activeSearch = asI.genericAS()
+activeSearch = asI.kernelAS()
 
 # track the message ID that we're currently presenting the user for evaluation
 currentMessage = -1
@@ -78,7 +78,7 @@ def pickRandomLabeledMessage():
 
 @app.route('/getLabel/<message>')
 def getLabel(message):
-    res = activeSearch.getLabel(message)
+    res = activeSearch.getLabel(int(message))
     return Response(res,  mimetype='text/plain')
 
 #####
@@ -115,7 +115,7 @@ def getUsersByMessage(id):
 
 @app.route('/getSenderByMessage/<id>')
 def getSenderByMessage(id):
-    return Response(mysql_conn.getSenderByMessage(id, db), mimetype='text/plain')
+    return Response(str(mysql_conn.getSenderByMessage(id, db)), mimetype='text/plain')
 
 @app.route('/getTimeByMessage/<id>')
 def getTimeByMessage(id):
@@ -129,32 +129,32 @@ def getSubjectByMessage(id):
 def getMessagesByKeyword(word):
     # this returns an array of entries so we have to concatenate them into a big string
     ret_arr = mysql_conn.getMessagesByKeyword(word, db)
-    str = ""
+    mystr = ""
     for row in ret_arr:
-        str += row + "\n"
+        mystr += str(row) + "\n"
 
-    return Response(str, mimetype='text/plain')
+    return Response(mystr, mimetype='text/plain')
 
 @app.route('/getMessagesByKeywordSubject/<word>')
 def getMessagesByKeywordSubject(word):
     # this returns an array of entries so we have to concatenate them into a big string
     ret_arr = mysql_conn.getMessagesByKeywordSubject(word, db)
-    str = ""
+    mystr = ""
     for row in ret_arr:
-        str += row + "\n"
+        mystr += str(row) + "\n"
 
-    return Response(str, mimetype='text/plain')
+    return Response(mystr, mimetype='text/plain')
 
 @app.route('/getMessageRecipientsByMessage/<message>')
 def getMessageRecipientsByMessage(message):
     # this returns an array of entries so we have to concatenate them into a big string
     ret_arr = mysql_conn.getRecipientsByMessage(message, db)
 
-    str = ""
+    mystr = ""
     for row in ret_arr:
-        str += row + "\n"
+        mystr += str(row) + "\n"
 
-    return Response(str, mimetype='text/plain')
+    return Response(mystr, mimetype='text/plain')
 
 if __name__ == '__main__':
     app.run(debug=True)

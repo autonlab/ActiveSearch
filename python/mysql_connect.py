@@ -40,7 +40,7 @@ def getTotalWordCount(db):
     cur.execute("SELECT COUNT(word_id) FROM tf_idf_wordmap")
 
     row=cur.fetchone()
-    return row[0]
+    return str(row[0])
 
 # return the number of messages
 def getTotalMessageCount(db):
@@ -48,9 +48,10 @@ def getTotalMessageCount(db):
     cur.execute("SELECT COUNT(messageID) FROM messages")
 
     row=cur.fetchone()
-    return row[0]
+    return str(row[0])
 
 # for a given message id, return an array of recipients of that message
+# each value is a long, not a string
 def getRecipientsByMessage(message_id, db):
     cur = db.cursor()
     cur.execute("SELECT DISTINCT personid FROM recipients WHERE messageid=" + str(message_id))
@@ -65,6 +66,7 @@ def getRecipientsByMessage(message_id, db):
 # for any message whose subject matches 
 # we do not scrub the inputs here and assume the user won't do anything malicious
 def getMessagesByKeywordSubject(word, db):
+
     cur = db.cursor()
     cur.execute("SELECT messages.messageid, messages.messagedt, messages.subject"
                 + " FROM messages WHERE subject LIKE '%" + word + "%' ORDER BY messagedt")
