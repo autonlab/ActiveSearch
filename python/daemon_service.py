@@ -27,7 +27,7 @@ currentMessage = -1
 ## functions that we had implemented in the Java version for TK's version of active search
 @app.route('/firstmessage/<message>')
 def firstMessage(message):
-    activeSearch.firstMessage(message)
+    activeSearch.firstMessage(int(message))
     return Response("hello",  mimetype='text/plain')
 
 @app.route('/messageinteresting')
@@ -42,7 +42,7 @@ def boringMessage():
 
 @app.route('/setalpha/<alpha>')
 def setalpha(alpha):
-    activeSearch.setalpha(alpha)
+    activeSearch.setalpha(double(alpha))
     return Response("hello",  mimetype='text/plain')
 
 @app.route('/getStartPoint')
@@ -52,18 +52,33 @@ def getStartPoint():
 
 @app.route('/resetLabel/<index>/<value>')
 def resetLabel(index, value):
-    activeSearch.resetLabel(index, value)
+    activeSearch.resetLabel(int(index), int(value))
     return Response("hello",  mimetype='text/plain')
 
 @app.route('/setLabelCurrent/<value>')
 def setLabelCurrent(value):
-    activeSearch.setLabelCurrent(value)
+    activeSearch.setLabelCurrent(int(value))
     return Response("hello",  mimetype='text/plain')
 
 # input is [index, value [,index, value etc]]
 @app.route('/setLabelBulk/<csv>')
 def setLabeLBulk(csv):
-    activeSearch.setLabelBulk(csv)
+    idxs = []
+    lbls = []
+    offset = 0
+    for row in csv:
+        if (offset == 0):
+            offset = 1
+            idxs.append(int(row))
+        else:
+            offset = 0
+            lbls.append(int(row))
+
+    if (offset == 1):
+        print "Error: odd number of inputs in CSV. Expected index, label pairs\n"
+        raise Exception()
+
+    activeSearch.setLabelBulk(idxs, lbls)
     return Response("hello",  mimetype='text/plain')
 
 @app.route('/getNextMessage')
@@ -87,19 +102,19 @@ def getLabel(message):
 
 @app.route('/getUserNameFromID/<id>')
 def getUserNameFromID(id):
-    return Response(mysql_conn.getUserNameFromID(id, db), mimetype='text/plain')
+    return Response(mysql_conn.getUserNameFromID(int(id), db), mimetype='text/plain')
 
 @app.route('/getMessagesFromUserToUser/<from_id>/<to_id>')
 def getMessagesFromUserToUser(from_id, to_id):
-    return Response(mysql_conn.getMessagesFromUserToUser(from_id, to_id, db), mimetype='text/plain')
+    return Response(mysql_conn.getMessagesFromUserToUser(int(from_id), int(to_id), db), mimetype='text/plain')
 
 @app.route('/getMessageSubjectFromMessageID/<id>')
 def getMessageSubjectFromMessageID(id):
-    return Response(mysql_conn.getMessageSubjectFromMessageID(id, db), mimetype='text/plain')
+    return Response(mysql_conn.getMessageSubjectFromMessageID(int(id), db), mimetype='text/plain')
 
 @app.route('/getMessageBodyFromMessageID/<id>')
 def getMessageBodyFromMessageID(id):
-    return Response(mysql_conn.getMessageBodyFromMessageID(id, db), mimetype='text/plain')
+    return Response(mysql_conn.getMessageBodyFromMessageID(int(id), db), mimetype='text/plain')
 
 @app.route('/getTotalMessageCount')
 def getTotalMessageCount():
@@ -111,19 +126,19 @@ def getMessageTimesAndSenders(id):
 
 @app.route('/getUsersByMessage/<id>')
 def getUsersByMessage(id):
-    return Response(mysql_conn.getUsersByMessage(id, db), mimetype='text/plain')
+    return Response(mysql_conn.getUsersByMessage(int(id), db), mimetype='text/plain')
 
 @app.route('/getSenderByMessage/<id>')
 def getSenderByMessage(id):
-    return Response(str(mysql_conn.getSenderByMessage(id, db)), mimetype='text/plain')
+    return Response(str(mysql_conn.getSenderByMessage(int(id), db)), mimetype='text/plain')
 
 @app.route('/getTimeByMessage/<id>')
 def getTimeByMessage(id):
-    return Response(mysql_conn.getTimeByMessage(id, db), mimetype='text/plain')
+    return Response(mysql_conn.getTimeByMessage(int(id), db), mimetype='text/plain')
 
 @app.route('/getSubjectByMessage/<id>')
 def getSubjectByMessage(id):
-    return Response(mysql_conn.getSubjectByMessage(id, db), mimetype='text/plain')
+    return Response(mysql_conn.getSubjectByMessage(int(id), db), mimetype='text/plain')
 
 @app.route('/getMessagesByKeyword/<word>')
 def getMessagesByKeyword(word):
