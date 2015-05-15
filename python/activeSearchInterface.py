@@ -20,7 +20,7 @@ class Parameters:
 
 		self.verbose = verbose
 
-		alpha = 0  #not being used
+		self.alpha = 0  #not being used
 
 ## For more on how these functions operate, see their analogs in daemon_service.py
 class genericAS:
