@@ -11,6 +11,7 @@ import activeSearchInterface as ASI
 from eigenmap import eigenmap
 import visualize as vis
 import email_features as ef
+import gaussianRandomFeatures as grf
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -760,6 +761,17 @@ def test_interface ():
 
 	import IPython
 	IPython.embed()
+
+
+def RBFkernel (x,y,bw):
+	x = np.array(x)
+	y = np.array(y)
+
+def test_grf ():
+	bw = 10
+	grf1 = 
+
+
 
 if __name__ == '__main__':
 	#test1(n=10, cc=2, nt=1, d=4)

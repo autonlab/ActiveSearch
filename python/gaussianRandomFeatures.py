@@ -39,7 +39,8 @@ class GaussianRandomFeatures:
 		"""
 		Projects onto fourier feature space.
 		"""
-		f = np.array(f)
+		# f = np.array(f)
+		f = np.atleast_2d(f)
 		ws = np.array(self.ws)
 		if self.sine:
 			rf_cos = (np.cos(ws.dot(f))*np.sqrt(1/self.rn)).tolist()
@@ -48,7 +49,7 @@ class GaussianRandomFeatures:
 			return rf_cos + rf_sin
 		else:
 			bs = np.array(self.bs)
-			rf = np.cos(ws.dot(f) + bs)*np.sqrt(2/self.rn)
+			rf = np.cos(ws.dot(f) + bs[:,None])*np.sqrt(2/self.rn)
 			return rf.tolist()
 
 	def RBFKernel(self, f1, f2, gammak=None):
@@ -68,6 +69,7 @@ class GaussianRandomFeatures:
 		"""
 
 		rf1 = np.array(self.computeRandomFeatures(f1))
+		print rf1.shape
 		rf2 = np.array(self.computeRandomFeatures(f2))
 
-		return rf1.dot(rf2)
+		return np.squeeze(rf1).dot(np.squeeze(rf2))

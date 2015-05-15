@@ -181,6 +181,10 @@ def getUserNameFromID(user_id, db):
     return name
 
 
+def getTimeSimMatrix (db):
+    pass
+
+
 def getMatrix(db):
     similarity_data = getTFIDFSimilarity(db)
     s = ((similaritydata**2).sum(1))**0.5
