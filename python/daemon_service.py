@@ -15,6 +15,8 @@ app = Flask(__name__)
 
 db = mysql_conn.mysql_connect("scottwalker")
 activeSearch = asI.kernelAS()
+wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
+activeSearch.initialize(wMat)
 
 # track the message ID that we're currently presenting the user for evaluation
 currentMessage = -1
