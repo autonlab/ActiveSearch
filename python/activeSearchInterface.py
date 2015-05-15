@@ -7,7 +7,7 @@ np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 class Parameters:
 
-	def __init__ (self, pi=0.05, eta=0.5, w0=None, sparse=True, verbose=False):
+	def __init__ (self, pi=0.05, eta=0.5, w0=None, sparse=True, verbose=True):
 		"""
 		pi 			--> prior target probability
 		eta 		--> jump probability
@@ -123,6 +123,8 @@ class kernelAS (genericAS):
 		self.Dinv = 1./D
 
 		if self.params.sparse:
+			# import IPython
+			# IPython.embed()
 			self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
 		else:
 			self.BDinv = np.squeeze(B*self.Dinv)
@@ -149,6 +151,7 @@ class kernelAS (genericAS):
 			self.Cinv = nlg.inv(C)
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
+			print("Done with the initialization.")
 
 		self.initialized = True
 
@@ -348,11 +351,6 @@ class shariAS (genericAS):
 		self.labels = [-1]*self.n
 
 		# Initialize some parameters and constants which are needed and not yet initialized
-		if self.params.sparse:
-			self.Ir = ss.eye(self.r)
-		else:
-			self.Ir = np.eye(self.r)
-
 		self.l = (1-self.params.eta)/self.params.eta
 		if self.params.w0 is None:
 			self.params.w0 = 1/self.n
@@ -363,8 +361,8 @@ class shariAS (genericAS):
 		D = np.squeeze(A.sum(1)) 
 		self.Dinv = 1./D
 
-		I_A = np.squeeze(B*self.Dinv)
-		I_A[xrange(n), xrange(n)] += 1
+		I_A = np.squeeze(B*self.Dinv)*A
+		I_A[xrange(self.n), xrange(self.n)] += 1
 
 		# if self.params.sparse:
 		# 	self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
@@ -383,14 +381,23 @@ class shariAS (genericAS):
 		# else:
 		# 	self.Cinv = nlg.inv(self.C)
 
-		self.f = self.I_A_inv.dot(self.q)
-
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
+
+		self.f = self.I_A_inv.dot(self.q)
+		
+		if self.params.verbose:
+			print ("Done with the initialization.")
+		
+		self.initialized = True
 
 	def firstMessage(self, idx):
 		# Assuming this is always +ve. Can be changed otherwise
 		# Need to check whether this does the right thing.
+
+		if not self.initialized:
+			raise Exception ("Has not been initialized with data")
+
 		if self.iter >= 0:
 			print("First message has already been set. Treating this as a positive.")
 		else:
@@ -453,11 +460,11 @@ class shariAS (genericAS):
 		s = self.params.eta*lbl - self.params.w0*self.params.pi/(1+ self.params.w0)
 
 		fdel = (s - (1-r)*(self.f-self.params.w0*self.params.pi/(1+ self.params.w0)))
-		fdel /= (1+(1-r)*A[idx,:].dot(self.I_A_inv[:,idx]))
+		fdel /= (1+(1-r)*self.A[idx,:].dot(self.I_A_inv[:,idx]))
 		self.f = self.f + fdel*self.I_A_inv[:,idx]
 
 		IAdel =  - (1-r)*self.I_A_inv[:,idx].dot(self.A[idx,:].dot(self.I_A_inv))
-		self.I_A_inv += IAdel/(1 + (1-r)*A[idx,:].dot(self.I_A_inv[:,idx]))
+		self.I_A_inv += IAdel/(1 + (1-r)*self.A[idx,:].dot(self.I_A_inv[:,idx]))
 
 		# self.q[idx] = lbl*self.l/(1+self.l)
 		# gamma = -(self.l/(1+self.l)-1/(1+self.params.w0))*self.Dinv[idx]

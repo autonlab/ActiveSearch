@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
+from __future__ import division
 import MySQLdb
 import scipy.sparse as ss
 import numpy as np, numpy.linalg as nlg
@@ -256,14 +257,18 @@ def getSenderMatrix (db):
 def getWordMatrix(db):
 	similarity_data = getTFIDFSimilarity(db)
 	s = 1./(np.sqrt((similarity_data.multiply(similarity_data)).sum(1)))
-	print s.shape
-	print similarity_data.shape
-	print type(similarity_data)
-	print type(s)
+#	print s.shape
+#	print similarity_data.shape
+#      print type(similarity_data)
+#	print type(s)		
 
-	similarity_data = similarity_data.multiply(s[:,None])
+#	import IPython
+#	IPython.embed()
+
+
 	s[np.isinf(s)] == 0
-	return similarity_data
+	similarity_data = similarity_data.multiply(s)
+	return ss.csr_matrix(similarity_data)
 
 
 def getFinalFeatureMatrix (db, tc=1.0, sc=1.0):
@@ -277,6 +282,19 @@ def getFinalFeatureMatrix (db, tc=1.0, sc=1.0):
 	if (sc > 0):
 		sMat = getSenderSimMatrix (db)
 		wMat = ss.bmat([[wMat],[sc*sMat]])
-
+	
+	# import IPython
+	# IPython.embed()
+	# The next two lines of code remove rows/columns of wMat which 
+	# are entirely only 0.
+	wMat = wMat[np.squeeze(np.array(np.nonzero(wMat.sum(axis=1))[0])),:]
+	wMat = wMat[:,np.squeeze(np.array(np.nonzero(wMat.sum(axis=0))))[0]]
 	return wMat
+
+
+def getAffinityMatrix (db, tc=1.0, sc=1.0):
+	# if not using any of these matrices, remove them from the calculation to save computation of zeros
+	
+	wMat = getFinalFeatureMatrix(db, tc, sc)
+	return wMat.T.dot(wMat)
 

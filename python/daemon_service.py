@@ -1,6 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/python2.7
 from flask import Flask
 from flask import Response
+import numpy as np
 import mysql_connect as mysql_conn
 import activeSearchInterface as asI
 ##
@@ -13,13 +14,17 @@ import activeSearchInterface as asI
 
 app = Flask(__name__)
 
-db = mysql_conn.mysql_connect("scottwalker")
-activeSearch = asI.kernelAS()
-wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
-activeSearch.initialize(wMat)
+db = mysql_conn.mysql_connect("scottwalker_5000_small")
+# activeSearch = asI.kernelAS()  
+# wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
+# activeSearch.initialize(wMat)
+activeSearch = asI.shariAS()   
+A = mysql_conn.getAffinityMatrix(db,0,0)
+# Feeding in the dense version to shari's code because the sparse version is not implemented 
+activeSearch.initialize(np.array(A.todense())) 
 
 # track the message ID that we're currently presenting the user for evaluation
-currentMessage = -1
+currentMessage = -1 
 
 #@app.route(...)
 #def login():
@@ -86,7 +91,7 @@ def setLabeLBulk(csv):
 @app.route('/getNextMessage')
 def getNextMessage():
     res = activeSearch.getNextMessage()
-    return Response(res,  mimetype='text/plain')
+    return Response(str(res),  mimetype='text/plain')
 
 @app.route('/pickRandomLabeledMessage')
 def pickRandomLabeledMessage():
