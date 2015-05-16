@@ -763,13 +763,76 @@ def test_interface ():
 	IPython.embed()
 
 
+def test_interface2 ():
+	verbose = True
+	#ts_data = ef.load_timestamps (tsfile)
+	Xfull = load_sparse_csr('X2.npz')
+	print Xfull.shape
+	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[0]))]
+	r,n = Xfull.shape
+
+	nt = int(0.05*n)
+	num_eval = 10
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+
+	pi = sum(Y)/len(Y)
+	init_pt = 5
+
+
+	A = np.array(Xfull.T.dot(Xfull).todense())
+
+	t1 = time.time()
+
+	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
+	kAS = ASI.kernelAS(prms)
+	kAS.initialize(Xfull)
+	sAS = ASI.naiveShariAS(prms)
+	sAS.initialize(A)
+	
+	import IPython
+	IPython.embed()
+
+	kAS.firstMessage(init_pt)
+	fs2 = [kAS.f]
+	sAS.firstMessage(init_pt)
+	fs3 = [sAS.f]
+
+	import IPython
+	IPython.embed()
+
+
+	for i in range(num_eval):
+		idx1 = kAS.getNextMessage()
+		idx2 = sAS.getNextMessage()
+
+		import IPython
+		IPython.embed()
+
+		kAS.setLabelCurrent(Y[idx1])
+		sAS.setLabelCurrent(Y[idx2])
+		fs2.append(kAS.f)
+		fs3.append(sAS.f)
+
+	t2 = time.time()
+
+	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+
+	t3 = time.time()
+
+	checks = [np.allclose(fs1[i],fs2[i]) for i in range(len(fs1))]
+
+	import IPython
+	IPython.embed()
+
+
 def RBFkernel (x,y,bw):
 	x = np.array(x)
 	y = np.array(y)
 
 def test_grf ():
 	bw = 10
-	grf1 = 
+	grf1 = 1
 
 
 
@@ -792,10 +855,10 @@ if __name__ == '__main__':
 	# rr,h2,t2 = test11()
 	#test12()
 	#test13()
-	test_interface()
+	# test_interface()
+	test_interface2()
 	# import IPython
 	# IPython.embed()
-
 	# plt.figure()
 	# plt.plot(dr, h1,c='b',label='TK')
 	# plt.plot(rr, h2,c='r',label='Kernel')
