@@ -288,7 +288,7 @@ def getFinalFeatureMatrix (db, tc=1.0, sc=1.0):
 	# The next two lines of code remove rows/columns of wMat which 
 	# are entirely only 0.
 	wMat = wMat[np.squeeze(np.array(np.nonzero(wMat.sum(axis=1))[0])),:]
-	wMat = wMat[:,np.squeeze(np.array(np.nonzero(wMat.sum(axis=0))))[0]]
+	wMat = wMat[:,np.squeeze(np.array(np.nonzero(wMat.sum(axis=0))))[1]]
 	return wMat
 
 

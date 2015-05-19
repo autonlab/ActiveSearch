@@ -443,12 +443,12 @@ def test9():
 	# getting rid of features which are zero for all these elements
 	X = np.array((Xfull[:,:n]).todense())
 	X = X[np.nonzero(X.sum(axis=1))[0],:]
-	X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	# import IPython 
 	# IPython.embed()
 	X = X[:r,:]
 	X = X[np.nonzero(X.sum(axis=1))[0],:]
-	X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	# import IPython 
 	# IPython.embed()
 
@@ -554,12 +554,12 @@ def test11():
 	# getting rid of features which are zero for all these elements
 	# X = np.array((Xfull[:,:n]).todense())
 	# X = X[np.nonzero(X.sum(axis=1))[0],:]
-	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	# X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	# import IPython 
 	# IPython.embed()
 	# X = X[:r,:]
 	# X = X[np.nonzero(X.sum(axis=1))[0],:]
-	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	# X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	X = np.load('X11.npy')
 
 	# import IPython
@@ -580,7 +580,7 @@ def test11():
 	for r in rrange:
 		Xr = X[:r,:]
 		Xr = Xr[np.nonzero(Xr.sum(axis=1))[0],:]
-		Xr = Xr[:,np.nonzero(Xr.sum(axis=0))[0]]
+		Xr = Xr[:,np.nonzero(Xr.sum(axis=0))[1]]
 
 		t1 = time.time()
 		f1,h1,s1,fs1 = AS.kernel_AS (Xr, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
@@ -623,12 +623,12 @@ def test12():
 	X = np.array(Xfull.todense())
 	# getting rid of features which are zero for all these elements
 	X = X[np.nonzero(X.sum(axis=1))[0],:]
-	X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	# import IPython 
 	# IPython.embed()
 	X = X[:r,:]
 	X = X[np.nonzero(X.sum(axis=1))[0],:]
-	X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	#X2 = np.load('X11.npy')
 
 	# import IPython
@@ -686,7 +686,7 @@ def test13(): # testing sparse AS
 	Xfull = load_sparse_csr('Xfull1.npz')
 	print Xfull.shape
 	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
-	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[0]))]
+	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[1]))]
 	r,n = Xfull.shape
 
 	nt = int(0.1*n)
@@ -694,12 +694,12 @@ def test13(): # testing sparse AS
 	# getting rid of features which are zero for all these elements
 	# X = np.array((Xfull[:,:n]).todense())
 	# X = X[np.nonzero(X.sum(axis=1))[0],:]
-	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	# X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	# import IPython 
 	# IPython.embed()
 	# X = X[:r,:]
 	# X = X[np.nonzero(X.sum(axis=1))[0],:]
-	# X = X[:,np.nonzero(X.sum(axis=0))[0]]
+	# X = X[:,np.nonzero(X.sum(axis=0))[1]]
 	#X = np.load('X11.npy')
 
 	# import IPython
@@ -725,9 +725,7 @@ def test_interface ():
 	verbose = False
 	#ts_data = ef.load_timestamps (tsfile)
 	Xfull = load_sparse_csr('Xfull1.npz')
-	print Xfull.shape
-	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
-	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[0]))]
+
 	r,n = Xfull.shape
 
 	nt = int(0.05*n)
@@ -765,28 +763,49 @@ def test_interface ():
 
 def test_interface2 ():
 	verbose = True
+	nac = np.allclose
 	#ts_data = ef.load_timestamps (tsfile)
-	Xfull = load_sparse_csr('X2.npz')
+	Xfull = load_sparse_csr('Xfull1.npz')
 	print Xfull.shape
-	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
-	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[0]))]
-	r,n = Xfull.shape
+	# Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	# Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[1]))]
+	# r,n = Xfull.shape
 
+	# print Xfull.shape
+	# Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	# Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[1]))]
+
+	# getting rid of features which are zero for all these elements
+	n = 300
+	r = 600
+	X = Xfull[:,:n]
+
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+
+	X = X[:r,:]
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	print X.shape
+	#X = np.load('X11.npy')
+	r,n = X.shape
+	
 	nt = int(0.05*n)
-	num_eval = 10
+	num_eval = 50
 	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
 
 	pi = sum(Y)/len(Y)
 	init_pt = 5
 
+	# import IPython 
+	# IPython.embed()
 
-	A = np.array(Xfull.T.dot(Xfull).todense())
-
+	A = np.array((X.T.dot(X)).todense())
 	t1 = time.time()
 
 	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
 	kAS = ASI.kernelAS(prms)
-	kAS.initialize(Xfull)
+	kAS.initialize(X)
 	sAS = ASI.naiveShariAS(prms)
 	sAS.initialize(A)
 	
@@ -801,13 +820,14 @@ def test_interface2 ():
 	import IPython
 	IPython.embed()
 
-
 	for i in range(num_eval):
 		idx1 = kAS.getNextMessage()
 		idx2 = sAS.getNextMessage()
-
-		import IPython
-		IPython.embed()
+		print('NEXT')
+		print idx1==idx2
+		print nac(kAS.f, sAS.f)
+		# import IPython
+		# IPython.embed()
 
 		kAS.setLabelCurrent(Y[idx1])
 		sAS.setLabelCurrent(Y[idx2])
@@ -816,11 +836,11 @@ def test_interface2 ():
 
 	t2 = time.time()
 
-	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+	# f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
 
 	t3 = time.time()
 
-	checks = [np.allclose(fs1[i],fs2[i]) for i in range(len(fs1))]
+	# checks = [np.allclose(fs1[i],fs2[i]) for i in range(len(fs1))]
 
 	import IPython
 	IPython.embed()

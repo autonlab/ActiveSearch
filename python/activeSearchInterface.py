@@ -355,14 +355,13 @@ class shariAS (genericAS):
 		if self.params.w0 is None:
 			self.params.w0 = 1/self.n
 
-
 		# Set up some of the initial values of some matrices
-		B = np.ones(self.n)/(1 + self.params.w0)
-		D = np.squeeze(A.sum(1)) 
+		B = np.ones(self.n)/(1 + self.params.w0) ##
+		D = np.squeeze(self.A.sum(1)) ##
 		self.Dinv = 1./D
 
-		I_A = -np.squeeze(B*self.Dinv)*A
-		I_A[xrange(self.n), xrange(self.n)] += 1
+		I_A = -np.squeeze(B*self.Dinv)*self.A
+		I_A[xrange(self.n), xrange(self.n)] += 1 ##
 
 		# if self.params.sparse:
 		# 	self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
@@ -600,10 +599,10 @@ class naiveShariAS (genericAS):
 		if self.params.w0 is None:
 			self.params.w0 = 1/self.n
 
-
-		# Set up some of the initial values of some matrices
-		B = np.ones(self.n)/(1 + self.params.w0)
-		D = np.squeeze(A.sum(1)) 
+	
+	# Set up some of the initial values of some matrices
+		B = np.ones(self.n)/(1 + self.params.w0) ##
+		D = np.squeeze(self.A.sum(1)) ##
 		self.Dinv = 1./D
 		self.BDinv = np.diag(np.squeeze(B*self.Dinv))
 		# if self.params.sparse:
@@ -678,11 +677,11 @@ class naiveShariAS (genericAS):
 		self.labels[idx] = lbl
 		self.unlabeled_idxs.remove(idx)
 
-		self.BDinv[idx] = self.Dinv[idx]*self.l/(1+self.l) 
-		self.I_A = np.eye(self.n) - self.BDinv.dot(self.A)
+		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l) 
+		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
 		self.q[idx] = lbl*self.l/(1+self.l)
 
-		self.f =  nlg.solve(self.I_A, self.q)
+		self.f =  nlg.solve(I_A, self.q)
 
 		# Some more book-keeping
 		self.labeled_idxs.append(idx)
