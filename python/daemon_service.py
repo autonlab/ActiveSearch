@@ -14,14 +14,15 @@ import activeSearchInterface as asI
 
 app = Flask(__name__)
 
-db = mysql_conn.mysql_connect("scottwalker_5000_small")
-# activeSearch = asI.kernelAS()  
-# wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
-# activeSearch.initialize(wMat)
-activeSearch = asI.shariAS()   
-A = mysql_conn.getAffinityMatrix(db,0,0)
+db = mysql_conn.mysql_connect("scottwalker_5000_tiny")
+activeSearch = asI.kernelAS()  
+wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
+activeSearch.initialize(wMat)
+
+#activeSearch = asI.naiveShariAS()   
+#A = mysql_conn.getAffinityMatrix(db,0,0)
 # Feeding in the dense version to shari's code because the sparse version is not implemented 
-activeSearch.initialize(np.array(A.todense())) 
+#activeSearch.initialize(np.array(A.todense())) 
 
 # track the message ID that we're currently presenting the user for evaluation
 currentMessage = -1 
@@ -35,37 +36,40 @@ currentMessage = -1
 @app.route('/firstmessage/<message>')
 def firstMessage(message):
     activeSearch.firstMessage(int(message))
-    return Response("hello",  mimetype='text/plain')
+    return Response("ok",  mimetype='text/plain')
 
 @app.route('/messageinteresting')
 def interestingMessage():
-    res = activeSearch.interestingMessage()
-    return Response(res,  mimetype='text/plain')
+    activeSearch.interestingMessage()
+    res = activeSearch.getNextMessage()
+    return Response(str(res),  mimetype='text/plain')
 
 @app.route('/messageboring')
 def boringMessage():
-    res = activeSearch.boringMessage()
-    return Response(res,  mimetype='text/plain')
+    activeSearch.boringMessage()
+    res = activeSearch.getNextMessage()
+    return Response(str(res),  mimetype='text/plain')
 
 @app.route('/setalpha/<alpha>')
 def setalpha(alpha):
-    activeSearch.setalpha(double(alpha))
-    return Response("hello",  mimetype='text/plain')
+    activeSearch.setalpha(float(alpha))
+    return Response("ok",  mimetype='text/plain')
 
 @app.route('/getStartPoint')
 def getStartPoint():
     res = activeSearch.getStartPoint()
-    return Response(res,  mimetype='text/plain')
+    return Response(str(res),  mimetype='text/plain')
 
 @app.route('/resetLabel/<index>/<value>')
 def resetLabel(index, value):
-    activeSearch.resetLabel(int(index), int(value))
-    return Response("hello",  mimetype='text/plain')
+    ret = activeSearch.resetLabel(int(index), int(value))
+    return Response(str(ret),  mimetype='text/plain')
 
 @app.route('/setLabelCurrent/<value>')
 def setLabelCurrent(value):
     activeSearch.setLabelCurrent(int(value))
-    return Response("hello",  mimetype='text/plain')
+    #res = activeSearch.getNextMessage()
+    return Response("ok",  mimetype='text/plain')
 
 # input is [index, value [,index, value etc]]
 @app.route('/setLabelBulk/<csv>')
@@ -96,12 +100,12 @@ def getNextMessage():
 @app.route('/pickRandomLabeledMessage')
 def pickRandomLabeledMessage():
     res = activeSearch.pickRandomLabeledMessage()
-    return Response(res,  mimetype='text/plain')
+    return Response(str(res),  mimetype='text/plain')
 
 @app.route('/getLabel/<message>')
 def getLabel(message):
     res = activeSearch.getLabel(int(message))
-    return Response(res,  mimetype='text/plain')
+    return Response(str(res),  mimetype='text/plain')
 
 #####
 # For documentation on the following functions, see their analogs in mysql_connect.py
@@ -121,7 +125,9 @@ def getMessageSubjectFromMessageID(id):
 
 @app.route('/getMessageBodyFromMessageID/<id>')
 def getMessageBodyFromMessageID(id):
-    return Response(mysql_conn.getMessageBodyFromMessageID(int(id), db), mimetype='text/plain')
+    ret = mysql_conn.getMessageBodyFromMessageID(int(id), db)
+    mystr = str(ret[0]) + "\n\n" + ret[1] + "\n\n" + ret[2]
+    return Response(mystr, mimetype='text/plain')
 
 @app.route('/getTotalMessageCount')
 def getTotalMessageCount():
@@ -133,7 +139,11 @@ def getMessageTimesAndSenders(id):
 
 @app.route('/getUsersByMessage/<id>')
 def getUsersByMessage(id):
-    return Response(mysql_conn.getUsersByMessage(int(id), db), mimetype='text/plain')
+    ret_arr = mysql_conn.getUsersByMessage(int(id), db)
+    mystr = ""
+    for row in ret_arr:
+        mystr += str(row) + "\n"
+    return Response(mystr, mimetype='text/plain')
 
 @app.route('/getSenderByMessage/<id>')
 def getSenderByMessage(id):

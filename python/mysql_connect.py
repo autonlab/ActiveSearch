@@ -109,7 +109,7 @@ def getSubjectByMessage(message_id, db):
 
 # for a message_id, return the timestamp
 def getTimeByMessage(message_id, db):
-	return getFieldByMessage(message_id, "messagedt", db)
+	return str(getFieldByMessage(message_id, "messagedt", db)) + ""
 
 # for a message_id, return the sender_id
 def getSenderByMessage(message_id, db):
@@ -124,7 +124,7 @@ def getFieldByMessage(message_id, field_name, db):
 	return row[0]
 
 # return an array listing all people involved in a message: the sender and the recipients
-def getUsersByMessage(message_id):
+def getUsersByMessage(message_id, db):
 	ret_array = getRecipientsByMessage(message_id, db)
 	ret_array.append(getSenderByMessage(message_id, db))
 	return ret_array
@@ -196,6 +196,8 @@ def getUserNameFromID(user_id, db):
 	cur.execute("SELECT * FROM people WHERE personid=" + str(user_id))
 
 	row=cur.fetchone()
+	if (row is None):
+		return str(user_id) + " "
 
 	email_address = row[1]
 	name = row[2]

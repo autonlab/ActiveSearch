@@ -120,6 +120,8 @@ class kernelAS (genericAS):
 		# Set up some of the initial values of some matrices needed to compute D, BDinv, q and f
 		B = 1/(1+self.params.w0)*np.ones(self.n)
 		D = np.squeeze(Xf.T.dot(Xf.dot(np.ones((self.n,1))))) 
+		#import IPython
+		#IPython.embed()
 		self.Dinv = 1./D
 
 		if self.params.sparse:
@@ -145,10 +147,15 @@ class kernelAS (genericAS):
 		if self.params.verbose:
 			print ("Inverting C")
 			t1 = time.time()
-		if self.params.sparse:
-			self.Cinv = ssl.inv(C.tocsc()) # Need to update Cinv every iteration
-		else:
-			self.Cinv = nlg.inv(C)
+#               Our matrix is around 40% sparse which makes ssl.inv run very slowly. We will just use the regular nlg.inv
+#		if self.params.sparse:
+#			self.Cinv = ssl.inv(C.tocsc()) # Need to update Cinv every iteration
+#		else:
+#			self.Cinv = nlg.inv(C)
+#		import IPython
+#		IPython.embed()
+		self.Cinv = nlg.inv(C.todense())
+		self.Cinv = ss.csr_matrix(self.Cinv)
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
 			print("Done with the initialization.")
@@ -260,14 +267,16 @@ class kernelAS (genericAS):
 		return self.start_point
 
 	# Need to think a bit about the math here
+	# we return the old label
 	def resetLabel (self, idx, lbl):
 		# Reset label for given message id
 
 		# If reset label is called on something not yet set, it should do the same as setLabel
-		if self.label[idx] == -1:
+		ret = self.labels[idx]
+		if self.labels[idx] == -1:
 			self.setLabel(idx, lbl)
 			return
-		elif self.label[idx] == lbl:
+		elif self.labels[idx] == lbl:
 			print("Already the same value!")
 			return
 
@@ -310,6 +319,8 @@ class kernelAS (genericAS):
 		if self.params.verbose:
 			elapsed = time.time() - t1
 			print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
+
+		return ret
 
 	def getNextMessage (self):
 		if self.next_message is None:
