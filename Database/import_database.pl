@@ -2,6 +2,7 @@
 use DBI;
 use strict;
 use Getopt::Long;
+use Lingua::Stem::Snowball;
 
 my $old_fh = select(STDOUT);
 $| = 1;
@@ -45,8 +46,8 @@ sub printOpts() {
   print "  -COL_BCC=<#> The zero-indexed column in the tsv containing the csv of 'bcc' recipients\n";
   print "  -COL_SUBJECT=<#> The zero-indexed column in the tsv containing the subject\n";
   print "  -COL_BODY=<#> The zero-indexed column in the tsv containing the body\n";
-  print "  -wordlimit=<#> Keep the number of tfidf words below this\n";
-  print "  -userlimit=<#> Keep the number of users below this\n";
+  print "  -wordlimit=<#> Keep the number of tfidf words below this. 0=skip\n";
+  print "  -userlimit=<#> Keep the number of users below this. 0=skip\n";
 }
 
 
@@ -77,6 +78,12 @@ if ($DATABASE_USERNAME eq "") {
     printOpts();
     die ("database username must be set");
 }
+
+my $stemmer = Lingua::Stem::Snowball->new(
+    lang     => 'es', 
+    encoding => 'UTF-8',
+    );
+die $@ if $@;
 
 my %skip_words = ();
 $skip_words{'the'} = 1;
@@ -208,22 +215,24 @@ foreach my $row (@data) {
 }
 $messageid = undef;
 
-print "\nCalculating usercount threshold\n";
-my $usercount_threshold = 1;
-while (scalar keys %usercount > $user_limit) {
-    if ($usercount_threshold % 10 == 0) {
-	print ".";
-    }
-
-    foreach my $user (keys %usercount) {
-	if ($usercount{$user} < $usercount_threshold) {
-	    # remove
-	    delete $usercount{$user};
+if ($user_limit > 0) {
+    print "\nCalculating usercount threshold\n";
+    my $usercount_threshold = 1;
+    while (scalar keys %usercount > $user_limit) {
+	if ($usercount_threshold % 10 == 0) {
+	    print ".";
 	}
+
+	foreach my $user (keys %usercount) {
+	    if ($usercount{$user} < $usercount_threshold) {
+		# remove
+		delete $usercount{$user};
+	    }
+	}
+	$usercount_threshold++;
     }
-    $usercount_threshold++;
+    print "\nUsercount threshold was $usercount_threshold. " . (scalar keys %usercount) . " users remain\n";
 }
-print "\nUsercount threshold was $usercount_threshold. " . (scalar keys %usercount) . " users remain\n";
 print "Saving user and message data to database\n";
 my $new_messageid = 0;
 foreach my $messageid (sort {$a <=> $b} keys %parse_data) {
@@ -292,6 +301,8 @@ sub setTFIDF() {
 
     while (my $row = $sth->fetchrow_hashref) {
 	my @body = split(/\s/,lc($row->{'body'}));
+	$stemmer->stem_in_place(\@body);
+
 	my $messageid = $row->{'messageid'};
 
 	if ($messageid % 100 == 0) {
@@ -339,22 +350,24 @@ sub setTFIDF() {
 	}
     }
 
-    print "\nCalculating wordcount threshold\n";
-    my $wordcount_threshold = 1;
-    while (scalar keys %wordcount > $tfidf_wordlimit) {
-	if ($wordcount_threshold % 10 == 0) {
-	    print ".";
-	}
-
-	foreach my $word (keys %wordcount) {
-	    if ($wordcount{$word} < $wordcount_threshold) {
-		# remove
-		delete $wordcount{$word};
+    if ($tfidf_wordlimit > 0) {
+	print "\nCalculating wordcount threshold\n";
+	my $wordcount_threshold = 1;
+	while (scalar keys %wordcount > $tfidf_wordlimit) {
+	    if ($wordcount_threshold % 10 == 0) {
+		print ".";
 	    }
+
+	    foreach my $word (keys %wordcount) {
+		if ($wordcount{$word} < $wordcount_threshold) {
+		    # remove
+		    delete $wordcount{$word};
+		}
+	    }
+	    $wordcount_threshold++;
 	}
-	$wordcount_threshold++;
+	print "\nWordcount threshold was $wordcount_threshold. " . (scalar keys %wordcount) . " words remain\n";
     }
-    print "\nWordcount threshold was $wordcount_threshold. " . (scalar keys %wordcount) . " words remain\n";
 
     print "Writing TFIDF data to database\n";
 
