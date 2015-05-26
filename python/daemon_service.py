@@ -14,10 +14,13 @@ import activeSearchInterface as asI
 
 app = Flask(__name__)
 
-db = mysql_conn.mysql_connect("scottwalker_5000_tiny")
-activeSearch = asI.kernelAS()  
+#db = mysql_conn.mysql_connect("scottwalker_5000_tiny")
+db = mysql_conn.mysql_connect("jebbush")
+messageCount = mysql_conn.getTotalMessageCount(db)
+
+activeSearch = asI.kernelAS()
 wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
-activeSearch.initialize(wMat)
+activeSearch.initialize(messageCount, wMat)
 
 #activeSearch = asI.naiveShariAS()   
 #A = mysql_conn.getAffinityMatrix(db,0,0)

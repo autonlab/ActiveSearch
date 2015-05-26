@@ -29,7 +29,7 @@ my $DATABASE_USERNAME = "";
 my $DATABASE_PASSWORD = "";
 
 # remove the least frequently seen words so that there are approximately this many left
-my $tfidf_wordlimit=8000;
+my $tfidf_wordlimit=2000;
 
 # remove the least frequently seen users so that there are approximately this many left
 my $user_limit=600;
@@ -48,8 +48,10 @@ sub printOpts() {
   print "  -COL_BODY=<#> The zero-indexed column in the tsv containing the body\n";
   print "  -wordlimit=<#> Keep the number of tfidf words below this. 0=skip\n";
   print "  -userlimit=<#> Keep the number of users below this. 0=skip\n";
+  print "  -dotfidf Do tfidf calculation. About 5x slower than having daemon do it, but results are saved so it is only done once\n";
 }
 
+my $dotfidf = undef;
 
 my $TSV_FILE_NAME = "scottwalker.tsv";
 my $DATABASE_NAME = "";
@@ -65,7 +67,8 @@ if (!GetOptions ("file=s" => \$TSV_FILE_NAME,
 		"COL_SUBJECT=i" => \$SUBJECT_INDEX,
 		"COL_BODY=i" => \$BODY_INDEX,
                 "wordlimit=i" => \$tfidf_wordlimit,
-                "userlimit=i" => \$user_limit)) {
+                "userlimit=i" => \$user_limit,
+                "dotfidf" => \$dotfidf)) {
     printOpts();
     die ("Error in command line arguments\n");
 }
@@ -210,6 +213,12 @@ foreach my $row (@data) {
 	    $usercount{$user} = 1;
 	}
     }
+    if (defined $usercount{$from}) {
+	$usercount{$from}++;
+    }
+    else {
+      	$usercount{$from} = 1;
+    }
 
     $messageid++;
 }
@@ -231,13 +240,18 @@ if ($user_limit > 0) {
 	}
 	$usercount_threshold++;
     }
+    # The actual number of users may be lower than this because later on we filter out emails
+    # where the sender has been culled but in doing so some users in the to/cc/bcc fields will
+    # also be eliminated
     print "\nUsercount threshold was $usercount_threshold. " . (scalar keys %usercount) . " users remain\n";
 }
 print "Saving user and message data to database\n";
+my $skip_messages = 0;
 my $new_messageid = 0;
 foreach my $messageid (sort {$a <=> $b} keys %parse_data) {
     #if the sender has been culled, don't save this email
     if (!(defined $usercount{$parse_data{$messageid}{"from"}})) {
+	$skip_messages++;
 	next;
     }
 
@@ -255,7 +269,14 @@ foreach my $messageid (sort {$a <=> $b} keys %parse_data) {
 print "\n";
 print "Users: " . (scalar keys %user_map). "\n";
 print "Messages: $new_messageid\n";
-setTFIDF();
+print "Messages skipped due to lack of sender: $skip_messages\n";
+if (defined $dotfidf) {
+    my $curdate = `date`;
+    print $curdate . "\n";
+    setTFIDF();
+    $curdate = `date`;
+    print $curdate . "\n";
+}
 
 sub insertRecipientFromArray($$) {
     (my $new_messageid, my $emailarrayref) = @_;
@@ -300,7 +321,8 @@ sub setTFIDF() {
     my $message_count = scalar @data;
 
     while (my $row = $sth->fetchrow_hashref) {
-	my @body = split(/\s/,lc($row->{'body'}));
+	my @body = split(/\s+/,lc($row->{'body'}));
+
 	$stemmer->stem_in_place(\@body);
 
 	my $messageid = $row->{'messageid'};
@@ -345,7 +367,7 @@ sub setTFIDF() {
 		$wordcount{$word} += $emailwords{$messageid}{$word};
 	    }
 	    else {
-		$wordcount{$word} = 1;
+		$wordcount{$word} = $emailwords{$messageid}{$word};
 	    }
 	}
     }
