@@ -19,25 +19,28 @@ app = Flask(__name__)
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--method', default='kernel', help='shari, naiveshari, kernel, default to kernel')
 parser.add_argument('-d', '--database', default='jebbush', help='database name')
-#parser.add_argument('-v', dest='verbose', action='store_true')
+parser.add_argument('-w', '--wordlimit', default=3000, type=int, help='in kernel mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
+parser.add_argument('-t', '--dotfidf', default=False, action='store_true', help='do tfidf computation at startup')
 args = parser.parse_args()
 
 db = mysql_conn.mysql_connect(args.database)
-#db = mysql_conn.mysql_connect("jebbush")
 messageCount = mysql_conn.getTotalMessageCount(db)
 
 activeSearch = None
 
 if (args.method == "kernel"):
+    print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
-    activeSearch.initialize(messageCount, wMat)
+    wMat = mysql_conn.getFinalFeatureMatrix(db,args.wordlimit,args.dotfidf,0,0)
+    activeSearch.initialize(wMat)
 elif (args.method == "shari"):
+    print "Using shariAS"
     activeSearch = asI.shariAS()   
     A = mysql_conn.getAffinityMatrix(db,0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 elif (args.method == "naieveshari"):
+    print "Using naieveShariAS"
     activeSearch = asI.naiveShariAS()   
     A = mysql_conn.getAffinityMatrix(db,0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 

@@ -95,7 +95,7 @@ class kernelAS (genericAS):
 	def __init__ (self, params=Parameters()):
 		genericAS.__init__ (self, params)
 
-	def initialize(self, messageCount, Xf):
+	def initialize(self, Xf):
 		"""
 		Xf 			--> r x n matrix of feature values for each point.
 		"""
@@ -104,7 +104,6 @@ class kernelAS (genericAS):
 		self.r, self.n = Xf.shape
 
 		self.unlabeled_idxs = range(self.n)
-#		self.unlabeled_idxs = range(messageCount)
 		self.labels = [-1]*self.n
 
 		# Initialize some parameters and constants which are needed and not yet initialized

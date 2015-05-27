@@ -3,7 +3,7 @@ from __future__ import division
 import MySQLdb
 import scipy.sparse as ss
 import numpy as np, numpy.linalg as nlg
-#import nltk.stem.snowball.SnowballStemmer as stem
+
 from nltk.stem.snowball import SnowballStemmer
 import gaussianRandomFeatures as grf
 import time
@@ -44,7 +44,9 @@ def getTFIDFSimilarity(db):
 # getTFIDFSimilarity retrieves the pre-processed similarity from the database. Building the database
 # is slow. This function builds the TFIDF in memory here which is about 5x faster but has to be done
 # every time the daemon is started
-def getTFIDFSimilarityFromMessage(db):
+def getTFIDFSimilarityFromMessage(db, tfidf_wordlimit):
+	stopword_threshold = 0.85
+
 	skip_words = {'the': 1}
 	skip_words['the'] = 1
 	skip_words['be'] = 1
@@ -87,15 +89,23 @@ def getTFIDFSimilarityFromMessage(db):
 	skip_words['there'] = 1
 	skip_words['their'] = 1
 	skip_words['what'] = 1
-
+	total_words = 0
+	# the total number of times a word was seen
+	# a word being in this dict will determine if it is used
+	# if a word is removed from this dict it will not be used
 	wordcount = {}
+	# the number of messages that this word was in
+	wordcount_message = {}
+	# the number of times a word was seen in a given message
 	emailwords = {}	
+
 	message_count = getTotalMessageCount(db)
 
 	stemmer = SnowballStemmer("english")
 
 	cur = db.cursor()
 	cur.execute("SELECT * FROM bodies ORDER BY messageid")
+	# loop through the messages and track the words seen
 	for message in cur.fetchall():
 		messageid = message[0]
 		body = message[1]
@@ -108,30 +118,51 @@ def getTFIDFSimilarityFromMessage(db):
 			print str(messageid) + " / " + str(message_count)
 
 		for word in message_arr:
-			re.sub('[\W_]', '', word)
+			# remove nonword characters
+			word = re.sub('[\W_]+', '', word)
 			if (word == ""):
-				continue
-			if (word not in skip_words):
 				continue
 			if (len(word) > 255):
 				continue
+			if (word in skip_words):
+				continue
 
-			word = stemmer.stem(word)
-
+			try:
+				word = stemmer.stem(word)
+			except:
+				print "Stemming error in word ", word, " message ", messageid
+			total_words += 1
+			# save the count of this word in this message
 			if (messageid not in emailwords):
 				emailwords[messageid] = {}
-
 			if (word in emailwords[messageid]):
 				emailwords[messageid][word] += 1
 			else:
 				emailwords[messageid][word] = 1
+	print "Total words seen ", total_words
+	# count the total number of times each word was seen
 	for messageid in emailwords.keys():
 		for word in emailwords[messageid].keys():
 			if (word in wordcount):
 				wordcount[word] += emailwords[messageid][word]
 			else:
 				wordcount[word] = emailwords[messageid][word]
-	tfidf_wordlimit = 0
+			if (emailwords[messageid][word] > 0):
+				if (word in wordcount_message):
+					wordcount_message[word] += 1
+				else:
+					wordcount_message[word] = 1
+
+	stopword_threshold_count = int(stopword_threshold * float(message_count))
+	print "\nRemoving words seen in more than " + str(stopword_threshold_count) + " messages"
+	stopword_removed_count = 0
+	for word in wordcount_message:
+		if (wordcount_message[word] > stopword_threshold_count):
+			print "Removing high frequency word ", word
+			del wordcount[word]
+			stopword_removed_count += 1
+	print "Removed ", stopword_removed_count
+
 	if (tfidf_wordlimit > 0):
 		print "\nCalculating wordcount threshold"
 		wordcount_threshold = 1
@@ -142,7 +173,7 @@ def getTFIDFSimilarityFromMessage(db):
 				if (wordcount[word] < wordcount_threshold):
 					del wordcount[word]
 			wordcount_threshold += 1
-		print "\nWordcount threshold was $wordcount_threshold. " + (len(wordcount)) + " words remain"
+		print "\nWordcount threshold was " + str(wordcount_threshold) + ". " + (str(len(wordcount))) + " words remain"
 
 	word_id_next = 0
 	word_id_list = {}
@@ -375,7 +406,7 @@ def getTimeSimMatrix (db):
 	return ret_matrix
 
 
-def getSenderMatrix (db):
+def getSenderSimMatrix (db):
 	# sdata = getMessageTimes(db)
 	emailCount = getTotalMessageCount(db)
 
@@ -393,14 +424,16 @@ def getSenderMatrix (db):
 	ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(getTotalUserCount(db), emailCount))
 	return ret_matrix
 
-def getWordMatrix(db):
+def getWordMatrix(db, tfidf_wordlimit, dotfidf):
+	similarity_data = None
+	if (dotfidf):
+		t1 = time.time()
+		similarity_data = getTFIDFSimilarityFromMessage(db, tfidf_wordlimit)
+		print("Time for importing data ", time.time() - t1)
+	else:
+		print "Skipping tfidf computation and reading it from the database instead"
+		similarity_data = getTFIDFSimilarity(db)
 
-	print "XYZ"
-	t1 = time.time()
-	similarity_data = getTFIDFSimilarityFromMessage(db)
-	print("Time for constructing ", time.time() - t1)
-
-#	similarity_data = getTFIDFSimilarity(db)
 	s = 1./(np.sqrt((similarity_data.multiply(similarity_data)).sum(1)))
 #	print s.shape
 #	print similarity_data.shape
@@ -416,10 +449,10 @@ def getWordMatrix(db):
 	return ss.csr_matrix(similarity_data)
 
 
-def getFinalFeatureMatrix (db, tc=1.0, sc=1.0):
+def getFinalFeatureMatrix (db, tfidf_wordlimit, dotfidf, tc=1.0, sc=1.0):
 	# if not using any of these matrices, remove them from the calculation to save computation of zeros
 
-	wMat = getWordMatrix(db)
+	wMat = getWordMatrix(db, tfidf_wordlimit, dotfidf)
 
 	if (tc > 0):
 		tMat = getTimeSimMatrix (db)
