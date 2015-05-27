@@ -42,7 +42,8 @@ def getTFIDFSimilarity(db):
 	return ret_matrix
 	
 # getTFIDFSimilarity retrieves the pre-processed similarity from the database. Building the database
-# is slow. This function builds the TFIDF in memory here which will hopefully be much faster
+# is slow. This function builds the TFIDF in memory here which is about 5x faster but has to be done
+# every time the daemon is started
 def getTFIDFSimilarityFromMessage(db):
 	skip_words = {'the': 1}
 	skip_words['the'] = 1
@@ -256,9 +257,13 @@ def getFieldByMessage(message_id, field_name, db):
 	return row[0]
 
 # return an array listing all people involved in a message: the sender and the recipients
+# If the sender is negative (culled but frequency threshold) don't return it
 def getUsersByMessage(message_id, db):
 	ret_array = getRecipientsByMessage(message_id, db)
-	ret_array.append(getSenderByMessage(message_id, db))
+	sender = getSenderByMessage(message_id, db)
+	if (sender >= 0):
+		ret_array.append(sender)
+
 	return ret_array
 
 # returns an array where each value is a string of the form "<message_id> <seconds from epoch timestamp>""

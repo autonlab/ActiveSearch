@@ -246,18 +246,21 @@ if ($user_limit > 0) {
     print "\nUsercount threshold was $usercount_threshold. " . (scalar keys %usercount) . " users remain\n";
 }
 print "Saving user and message data to database\n";
-my $skip_messages = 0;
+my $no_sender_id = -1;
 my $new_messageid = 0;
 foreach my $messageid (sort {$a <=> $b} keys %parse_data) {
-    #if the sender has been culled, don't save this email
-    if (!(defined $usercount{$parse_data{$messageid}{"from"}})) {
-	$skip_messages++;
-	next;
+    #if the sender has been culled, use a unique negative ID
+    my $senderID = $no_sender_id;
+    if (defined $usercount{$parse_data{$messageid}{"from"}}) {
+	$senderID = getUserIDFromEmail($parse_data{$messageid}{"from"})
+    }
+    else {
+	$no_sender_id--;
     }
 
     $dbh->do("INSERT INTO bodies VALUES($new_messageid, " . $dbh->quote($parse_data{$messageid}{"body"}) . ")");
     $dbh->do("INSERT INTO messages VALUES($new_messageid, " . $dbh->quote($parse_data{$messageid}{"datetime"}) .
-	     ", " . getUserIDFromEmail($parse_data{$messageid}{"from"}) . ", " .
+	     ", " . $senderID . ", " .
 	     $dbh->quote($parse_data{$messageid}{"subject"}) . ")");
 
     insertRecipientFromArray($new_messageid, $parse_data{$messageid}{"to"});
@@ -269,7 +272,6 @@ foreach my $messageid (sort {$a <=> $b} keys %parse_data) {
 print "\n";
 print "Users: " . (scalar keys %user_map). "\n";
 print "Messages: $new_messageid\n";
-print "Messages skipped due to lack of sender: $skip_messages\n";
 if (defined $dotfidf) {
     my $curdate = `date`;
     print $curdate . "\n";

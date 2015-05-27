@@ -4,6 +4,8 @@ from flask import Response
 import numpy as np
 import mysql_connect as mysql_conn
 import activeSearchInterface as asI
+import argparse
+import sys
 ##
 # To run this, make sure the permissions are right:
 # chmod a+x daemon_service.py 
@@ -14,18 +16,35 @@ import activeSearchInterface as asI
 
 app = Flask(__name__)
 
-#db = mysql_conn.mysql_connect("scottwalker_5000_tiny")
-db = mysql_conn.mysql_connect("jebbush")
+parser = argparse.ArgumentParser()
+parser.add_argument('-m', '--method', default='kernel', help='shari, naiveshari, kernel, default to kernel')
+parser.add_argument('-d', '--database', default='jebbush', help='database name')
+#parser.add_argument('-v', dest='verbose', action='store_true')
+args = parser.parse_args()
+
+db = mysql_conn.mysql_connect(args.database)
+#db = mysql_conn.mysql_connect("jebbush")
 messageCount = mysql_conn.getTotalMessageCount(db)
 
-activeSearch = asI.kernelAS()
-wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
-activeSearch.initialize(messageCount, wMat)
+activeSearch = None
 
-#activeSearch = asI.naiveShariAS()   
-#A = mysql_conn.getAffinityMatrix(db,0,0)
-# Feeding in the dense version to shari's code because the sparse version is not implemented 
-#activeSearch.initialize(np.array(A.todense())) 
+if (args.method == "kernel"):
+    activeSearch = asI.kernelAS()
+    wMat = mysql_conn.getFinalFeatureMatrix(db, 0, 0)
+    activeSearch.initialize(messageCount, wMat)
+elif (args.method == "shari"):
+    activeSearch = asI.shariAS()   
+    A = mysql_conn.getAffinityMatrix(db,0,0)
+    # Feeding in the dense version to shari's code because the sparse version is not implemented 
+    activeSearch.initialize(np.array(A.todense())) 
+elif (args.method == "naieveshari"):
+    activeSearch = asI.naiveShariAS()   
+    A = mysql_conn.getAffinityMatrix(db,0,0)
+    # Feeding in the dense version to shari's code because the sparse version is not implemented 
+    activeSearch.initialize(np.array(A.todense())) 
+else:
+    print "Invalid method argument. See help (run with -h)"
+    sys.exit()
 
 # track the message ID that we're currently presenting the user for evaluation
 currentMessage = -1 
