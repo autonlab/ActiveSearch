@@ -29,10 +29,10 @@ my $DATABASE_USERNAME = "";
 my $DATABASE_PASSWORD = "";
 
 # remove the least frequently seen words so that there are approximately this many left
-my $tfidf_wordlimit=2000;
+my $tfidf_wordlimit=3000;
 
 # remove the least frequently seen users so that there are approximately this many left
-my $user_limit=600;
+my $user_limit=2000;
 
 sub printOpts() {
   print "  -file=<file>  The path to the tsv file containing the email information\n";
