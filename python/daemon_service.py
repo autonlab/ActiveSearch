@@ -21,9 +21,12 @@ parser.add_argument('-m', '--method', default='kernel', help='shari, naiveshari,
 parser.add_argument('-d', '--database', default='jebbush', help='database name')
 parser.add_argument('-w', '--wordlimit', default=3000, type=int, help='in kernel mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
 parser.add_argument('-t', '--dotfidf', default=False, action='store_true', help='do tfidf computation at startup')
+parser.add_argument('-u', '--database_user', default='root', help='database user')
+parser.add_argument('-p', '--database_pass', default='', help='database pass')
+parser.add_argument('-n', '--database_hostname', default='', help='database hostname')
 args = parser.parse_args()
 
-db = mysql_conn.mysql_connect(args.database)
+db = mysql_conn.mysql_connect(args.database, args.database_hostname, args.database_user, args.database_pass)
 messageCount = mysql_conn.getTotalMessageCount(db)
 
 activeSearch = None

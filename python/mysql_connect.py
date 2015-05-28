@@ -12,9 +12,9 @@ import string
 import sys
 def mysql_connect(database, db_host="localhost", db_user="root", db_password=""):
 	db = MySQLdb.connect(host=db_host,
-						 user=db_user,
-						 passwd=db_password,
-						 db=database)
+			     user=db_user,
+			     passwd=db_password,
+			     db=database)
 	return db
 
 # retrieve the tf_idf frequencies from the database
