@@ -171,7 +171,7 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		else:
 			BDinv[idx] *= (1+w0)*l/(1+l) 
 
-		q[idx] = labels[idx]*l/(1+l)
+		q[idx] = labels[idx]*1/(1+l)
 		gamma = -(l/(1+l)-1/(1+w0))*Dinv[idx]
 
 		Xi = X[:,[idx]] # ith feature vector

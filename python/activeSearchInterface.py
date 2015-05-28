@@ -241,7 +241,7 @@ class kernelAS (genericAS):
 		else:
 			self.BDinv[idx] = self.l/(1+self.l) * self.Dinv[idx]
 
-		self.q[idx] = lbl*self.l/(1+self.l)
+		self.q[idx] = lbl*1/(1+self.l)
 		gamma = -(self.l/(1+self.l)-1/(1+self.params.w0))*self.Dinv[idx]
 
 		Xi = self.Xf[:,[idx]] # ith feature vector
@@ -678,7 +678,7 @@ class naiveShariAS (genericAS):
 
 		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l)
 		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
-		self.q[idx] = lbl*self.l/(1+self.l)
+		self.q[idx] = lbl*1/(1+self.l)
 
 		self.f =  nlg.solve(I_A, self.q)
 
