@@ -5,6 +5,10 @@ import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
+def matrix_squeeze(X):
+	# converts into numpy.array and squeezes out singular dimensions
+	return np.squeeze(np.asarray(X))
+
 class Parameters:
 
 	def __init__ (self, pi=0.05, eta=0.5, w0=None, sparse=True, verbose=True):
@@ -98,6 +102,7 @@ class kernelAS (genericAS):
 	def initialize(self, Xf):
 		"""
 		Xf 			--> r x n matrix of feature values for each point.
+						where r is the number of features, n the number of points
 		"""
 		# Save Xf and initialize some of the variables which depend on Xf
 		self.Xf = Xf
@@ -156,6 +161,14 @@ class kernelAS (genericAS):
 #		IPython.embed()
 		self.Cinv = nlg.inv(C.todense())
 		self.Cinv = ss.csr_matrix(self.Cinv)
+
+		# Just keeping this around. Don't really need it.
+		if self.params.sparse:
+			self.f = self.q + self.BDinv.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
+		else:
+			self.f = self.q + self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q)))))
+
+
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
 			print("Done with the initialization.")
@@ -333,7 +346,7 @@ class kernelAS (genericAS):
 
 	def setLabelBulk (self, idxs, lbls):
 		for idx,lbl in zip(idxs,lbls):
-			self.setLabel(idx,lbls)
+			self.setLabel(idx,lbl)
 
 	def pickRandomLabeledMessage (self):
 		if iter < 0:
@@ -371,30 +384,20 @@ class shariAS (genericAS):
 		D = np.squeeze(self.A.sum(1)) ##
 		self.Dinv = 1./D
 
-		I_A = -np.squeeze(B*self.Dinv)*self.A
+		I_A = -np.squeeze(B*self.Dinv)[:,None]*self.A
 		I_A[xrange(self.n), xrange(self.n)] += 1 ##
 
-		# if self.params.sparse:
-		# 	self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
-		# else:
-		# 	self.BDinv = np.squeeze(B*self.Dinv)
-
-		self.q = (1-B)*self.params.pi*np.ones(self.n) # Need to update q every iteration
-
-		# Constructing and inverting C
+		# Constructing and inverting I - A'
 		if self.params.verbose:
 			print ("Inverting I_A")
 			t1 = time.time()
-		self.I_A_inv = nlg.inv(I_A)
-		# if self.params.sparse:
-		# 	self.Cinv = ssl.inv(self.C.tocsc()) # Need to update Cinv every iteration
-		# else:
-		# 	self.Cinv = nlg.inv(self.C)
+		self.I_A_inv = np.matrix(nlg.inv(I_A))
 
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
 
-		self.f = self.I_A_inv.dot(self.q)
+		q = (1-B)*self.params.pi*np.ones(self.n)
+		self.f = matrix_squeeze(self.I_A_inv.dot(q))
 		
 		if self.params.verbose:
 			print ("Done with the initialization.")
@@ -461,36 +464,21 @@ class shariAS (genericAS):
 		self.labels[idx] = lbl
 		self.unlabeled_idxs.remove(idx)
 
-		# Updating various parameters to calculate next C inverse and f
-		# if self.params.sparse:
-		# 	self.BDinv[idx,idx] *= (1+self.params.w0)*self.l/(1+self.l) 
-		# else:
-		# 	self.BDinv[idx] *= (1+self.params.w0)*self.l/(1+self.l) 
-		r = (1+self.params.w0)*(1-self.params.eta)
-		s = self.params.eta*lbl - self.params.w0*self.params.pi/(1+ self.params.w0)
+		# Keeping some constants around
+		p1 = self.params.w0*self.params.pi/(1+ self.params.w0)
 
-		fdel = (s - (1-r)*(self.f-self.params.w0*self.params.pi/(1+ self.params.w0)))
-		fdel /= (1+(1-r)*self.A[idx,:].dot(self.I_A_inv[:,idx]))
-		self.f = self.f + fdel*self.I_A_inv[:,idx]
+		t = (1+self.params.w0)*(1-self.params.eta)
+		s = self.params.eta*lbl - p1
 
-		IAdel =  - (1-r)*self.I_A_inv[:,idx].dot(self.A[idx,:].dot(self.I_A_inv))
-		self.I_A_inv += IAdel/(1 + (1-r)*self.A[idx,:].dot(self.I_A_inv[:,idx]))
+		# More constants
+		BDinv_Ai = self.Dinv[idx]/(1+ self.params.w0)*self.A[idx,:]
+		p2 = (1+(1-t)*matrix_squeeze(BDinv_Ai.dot(self.I_A_inv[:,idx])))
 
-		# self.q[idx] = lbl*self.l/(1+self.l)
-		# gamma = -(self.l/(1+self.l)-1/(1+self.params.w0))*self.Dinv[idx]
+		fdel = (s - (1-t)*(self.f[idx]-p1))/p2
+		IAdel =  - (1-t)*self.I_A_inv[:,idx].dot(BDinv_Ai.dot(self.I_A_inv))/p2
 
-		# Xi = self.Xf[:,[idx]] # ith feature vector
-		# Cif = self.Cinv.dot(Xi)
-
-		# if self.params.sparse:
-		# 	self.Cinv = self.Cinv - gamma*(Cif.dot(Cif.T))/(1 + (gamma*Xi.T.dot(Cif))[0,0])
-		# else:
-		# 	self.Cinv = self.Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
-	
-		# if self.params.sparse:
-		# 	self.f = self.q + self.BDinv.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
-		# else:
-		# 	self.f = self.q + self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q)))))
+		self.f += fdel*matrix_squeeze(self.I_A_inv[:,idx])
+		self.I_A_inv += IAdel
 
 		# Some more book-keeping
 		self.labeled_idxs.append(idx)
@@ -688,7 +676,7 @@ class naiveShariAS (genericAS):
 		self.labels[idx] = lbl
 		self.unlabeled_idxs.remove(idx)
 
-		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l) 
+		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l)
 		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
 		self.q[idx] = lbl*self.l/(1+self.l)
 
