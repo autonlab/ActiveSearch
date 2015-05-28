@@ -28,10 +28,16 @@ messageCount = mysql_conn.getTotalMessageCount(db)
 
 activeSearch = None
 
+# when firstMessage is called we reinitialize the kernel algorithm. However calling
+# initialize again requires us to invert C so we could be smarter and save that 
+# For now the invert time is a couple of seconds so we can do that as future work
+restart_save = None
+first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
     wMat = mysql_conn.getFinalFeatureMatrix(db,args.wordlimit,args.dotfidf,0,0)
+    restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):
     print "Using shariAS"
@@ -60,6 +66,11 @@ currentMessage = -1
 ## functions that we had implemented in the Java version for TK's version of active search
 @app.route('/firstmessage/<message>')
 def firstMessage(message):
+    global first_run
+    if (first_run == False and restart_save != None):
+        activeSearch.initialize(restart_save)
+
+    first_run = False
     activeSearch.firstMessage(int(message))
     return Response("ok",  mimetype='text/plain')
 

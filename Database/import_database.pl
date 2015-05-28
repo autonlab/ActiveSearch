@@ -88,6 +88,9 @@ my $stemmer = Lingua::Stem::Snowball->new(
     );
 die $@ if $@;
 
+## The python code can purge words seen in more than a % of the emails
+# but it turned out to not catch very much so it hasn't been implemented
+# in this code yet
 my %skip_words = ();
 $skip_words{'the'} = 1;
 $skip_words{'be'} = 1;
@@ -321,7 +324,7 @@ sub setTFIDF() {
     my %wordcount = ();
     my %emailwords = ();
     my $message_count = scalar @data;
-
+    my $total_words_seen = 0;
     while (my $row = $sth->fetchrow_hashref) {
 	my @body = split(/\s+/,lc($row->{'body'}));
 
@@ -354,6 +357,7 @@ sub setTFIDF() {
 #		$wordcount{$word} = 1;
 #	    }
 
+	    $total_words_seen++;
 	    if (defined $emailwords{$messageid}{$word}) {
 		$emailwords{$messageid}{$word}++;
 	    }
@@ -362,7 +366,7 @@ sub setTFIDF() {
 	    }
 	}
     }
-
+    print "Total words seen: $total_words_seen\n";
     foreach my $messageid (keys %emailwords) {
 	foreach my $word (keys %{$emailwords{$messageid}}) {
 	    if (defined $wordcount{$word}) {

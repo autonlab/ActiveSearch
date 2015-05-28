@@ -45,7 +45,10 @@ def getTFIDFSimilarity(db):
 # is slow. This function builds the TFIDF in memory here which is about 5x faster but has to be done
 # every time the daemon is started
 def getTFIDFSimilarityFromMessage(db, tfidf_wordlimit):
-	stopword_threshold = 0.85
+	# This code can remove words seen in more than some % of the messages
+	# It turns out this is not very useful in the datasets that we have so 
+	# the functionality hasn't been implemented in the Perl import code yet
+	stopword_threshold = 0.95
 
 	skip_words = {'the': 1}
 	skip_words['the'] = 1
