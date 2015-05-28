@@ -846,6 +846,119 @@ def test_interface2 ():
 	IPython.embed()
 
 
+def test_interface3 ():
+
+	verbose = True
+	nac = np.allclose
+	#ts_data = ef.load_timestamps (tsfile)
+	Xfull = load_sparse_csr('Xfull1.npz')
+	print Xfull.shape
+	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[1]))]
+	# r,n = Xfull.shape
+
+	print Xfull.shape
+	Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[1]))]
+
+	# getting rid of features which are zero for all these elements
+	# n = 300
+	# r = 600
+	X = Xfull#[:,:n]
+
+	# X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	# X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+
+	# X = X[:r,:]
+	# X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	# X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	# print X.shape
+	# #X = np.load('X11.npy')
+	r,n = X.shape
+	
+	nt = int(0.05*n)
+	num_eval = 50
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+
+	pi = sum(Y)/len(Y)
+	init_pt = 5
+
+	# import IPython 
+	# IPython.embed()
+
+	A = np.array((X.T.dot(X)).todense())
+	t1 = time.time()
+
+	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
+	kAS = ASI.kernelAS(prms)
+	kAS.initialize(X)
+	sAS = ASI.shariAS(prms)
+	sAS.initialize(A)
+
+	# ofk = kAS.f
+	# ofs = sAS.f
+
+	# import IPython
+	# IPython.embed()
+
+
+	kAS.firstMessage(init_pt)
+	fs2 = [kAS.f]
+	sAS.firstMessage(init_pt)
+	fs3 = [sAS.f]
+
+	# #
+	# lbl = 1
+	# idx = 5
+	
+	# B = np.ones(n)/(1+prms.w0)
+	# D = A.sum(axis=1)
+	# BDinv = np.diag(np.squeeze(B*1./D))
+	# IA = np.eye(n) - BDinv.dot(A)
+	# IAi = np.matrix(nlg.inv(IA))
+	# IAk = nlg.inv(np.eye(n) + kAS.BDinv.dot(X.T.dot(nlg.inv(np.eye(r) - X.dot(kAS.BDinv.dot(X.T))))).dot(X.todense()))
+	# IAki = nlg.inv(IAk)
+	
+	# t = (1+prms.w0)*(1-prms.eta)
+	# e = np.zeros((n,1))
+	# e[idx] = 1
+	# IA2 = IA + (1-t)*e.dot(e.T).dot(BDinv.dot(A))
+	# ai = (1./D)[idx]/(1+ prms.w0)*A[idx,:]
+	# Ad = (1-t)*IAi[:,idx].dot(ai.dot(IAi))/(1 + (1-t)*ai.dot(IAi[:,idx]))
+	# IA2i = IAi - Ad
+	#
+
+
+	# import IPython
+	# IPython.embed()
+
+	for i in range(num_eval):
+		idx1 = kAS.getNextMessage()
+		idx2 = sAS.getNextMessage()
+		print('NEXT')
+		print idx1==idx2
+		print nac(kAS.f, sAS.f)
+		# import IPython
+		# IPython.embed()
+
+		kAS.setLabelCurrent(Y[idx1])
+		sAS.setLabelCurrent(Y[idx2])
+		fs2.append(kAS.f)
+		fs3.append(sAS.f)
+
+	t2 = time.time()
+
+	# f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+
+	t3 = time.time()
+
+	# checks = [np.allclose(fs1[i],fs2[i]) for i in range(len(fs1))]
+
+	import IPython
+	IPython.embed()
+
+
+
 def RBFkernel (x,y,bw):
 	x = np.array(x)
 	y = np.array(y)
@@ -876,7 +989,8 @@ if __name__ == '__main__':
 	#test12()
 	#test13()
 	# test_interface()
-	test_interface2()
+	# test_interface2()
+	test_interface3()
 	# import IPython
 	# IPython.embed()
 	# plt.figure()
