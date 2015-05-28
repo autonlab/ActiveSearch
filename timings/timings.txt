@@ -1,0 +1,11 @@
+n = 10000
+r = 300
+nt = 6000
+rcross = 50
+d = 2*r - rcross
+num_eval = 200
+
+Time taken for kernel: 2.79627013206
+Time taken for eigenmap + computing X.T*X: 2282.83993387
+Time taken for lreg: 5.42118692398
+--------------------------------------------------------------------------------

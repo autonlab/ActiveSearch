@@ -2,6 +2,11 @@
 use DBI;
 use strict;
 use Getopt::Long;
+use Lingua::Stem::Snowball;
+
+my $old_fh = select(STDOUT);
+$| = 1;
+select($old_fh);
 
 my $old_fh = select(STDOUT);
 $| = 1;
@@ -27,6 +32,12 @@ my $BODY_INDEX = 15;
 my $DATABASE_USERNAME = "";
 my $DATABASE_PASSWORD = "";
 
+# remove the least frequently seen words so that there are approximately this many left
+my $tfidf_wordlimit=3000;
+
+# remove the least frequently seen users so that there are approximately this many left
+my $user_limit=2000;
+
 sub printOpts() {
   print "  -file=<file>  The path to the tsv file containing the email information\n";
   print "  -database=<db> The database to use\n";
@@ -39,8 +50,12 @@ sub printOpts() {
   print "  -COL_BCC=<#> The zero-indexed column in the tsv containing the csv of 'bcc' recipients\n";
   print "  -COL_SUBJECT=<#> The zero-indexed column in the tsv containing the subject\n";
   print "  -COL_BODY=<#> The zero-indexed column in the tsv containing the body\n";
+  print "  -wordlimit=<#> Keep the number of tfidf words below this. 0=skip\n";
+  print "  -userlimit=<#> Keep the number of users below this. 0=skip\n";
+  print "  -dotfidf Do tfidf calculation. About 5x slower than having daemon do it, but results are saved so it is only done once\n";
 }
 
+my $dotfidf = undef;
 
 my $TSV_FILE_NAME = "scottwalker.tsv";
 my $DATABASE_NAME = "";
@@ -54,7 +69,10 @@ if (!GetOptions ("file=s" => \$TSV_FILE_NAME,
 		"COL_CC=i" => \$CC_LIST_INDEX,
 		"COL_BCC=i" => \$BCC_LIST_INDEX,
 		"COL_SUBJECT=i" => \$SUBJECT_INDEX,
-		"COL_BODY=i" => \$BODY_INDEX)) {
+		"COL_BODY=i" => \$BODY_INDEX,
+                "wordlimit=i" => \$tfidf_wordlimit,
+                "userlimit=i" => \$user_limit,
+                "dotfidf" => \$dotfidf)) {
     printOpts();
     die ("Error in command line arguments\n");
 }
@@ -68,6 +86,15 @@ if ($DATABASE_USERNAME eq "") {
     die ("database username must be set");
 }
 
+my $stemmer = Lingua::Stem::Snowball->new(
+    lang     => 'es', 
+    encoding => 'UTF-8',
+    );
+die $@ if $@;
+
+## The python code can purge words seen in more than a % of the emails
+# but it turned out to not catch very much so it hasn't been implemented
+# in this code yet
 my %skip_words = ();
 $skip_words{'the'} = 1;
 $skip_words{'be'} = 1;
@@ -137,10 +164,16 @@ splice(@data, 0, 1);
 my %user_map = ();
 my $next_user_id = 0;
 
+
+my $file_line = 0;
+
+my %parse_data = ();
+my %usercount = ();
+
+print "Reading in tsv\n";
 my $messageid = 0;
 my $file_line = 0;
-foreach my $row (@data) {
-	
+foreach my $row (@data) {	
     my @row_fields = split(/\t/, $row);
     if (!(defined($row_fields[$DATETIME_INDEX])) ||
 	!(defined($row_fields[$SENDER_INDEX])) ||
@@ -164,36 +197,104 @@ foreach my $row (@data) {
     my $body = $row_fields[$BODY_INDEX];
     $body =~ s/\[:newline:\]/\n/g;
 
-    if ($messageid % 100 == 0) {
+    if ($messageid % 1000 == 0) {
 	print ".";
     }
-    if ($messageid % 1000 == 0) {
-	print "$messageid / " . (scalar @data) . "\n";
+
+    $parse_data{$messageid}{"datetime"} = $datetime;
+    $parse_data{$messageid}{"from"} = $from;
+    $parse_data{$messageid}{"to"} = \@to;
+    $parse_data{$messageid}{"cc"} = \@cc;
+    $parse_data{$messageid}{"bcc"} = \@bcc;
+    $parse_data{$messageid}{"subject"} = $subject;
+    $parse_data{$messageid}{"body"} = $body;
+
+    foreach my $user ((@to, @cc, @bcc)) {
+	if (defined $usercount{$user}) {
+	    $usercount{$user}++;
+	}
+	else {
+	    $usercount{$user} = 1;
+	}
     }
-
-    $dbh->do("INSERT INTO bodies VALUES($messageid, " . $dbh->quote($body) . ")");
-    $dbh->do("INSERT INTO messages VALUES($messageid, " . $dbh->quote($datetime) . ", " . getUserIDFromEmail($from) . ", " . $dbh->quote($subject) . ")");
-
-    insertRecipientFromArray($messageid, \@to);
-    insertRecipientFromArray($messageid, \@cc);
-    insertRecipientFromArray($messageid, \@bcc);
+    if (defined $usercount{$from}) {
+	$usercount{$from}++;
+    }
+    else {
+      	$usercount{$from} = 1;
+    }
 
     $messageid++;
 }
+# this messageid is an internal counter. Some of these messages won't be saved to the DB so the DB messageid won't
+# necessarily align with these
+$messageid = undef;
+
+if ($user_limit > 0) {
+    print "\nCalculating usercount threshold\n";
+    my $usercount_threshold = 1;
+    while (scalar keys %usercount > $user_limit) {
+	if ($usercount_threshold % 10 == 0) {
+	    print ".";
+	}
+
+	foreach my $user (keys %usercount) {
+	    if ($usercount{$user} < $usercount_threshold) {
+		# remove
+		delete $usercount{$user};
+	    }
+	}
+	$usercount_threshold++;
+    }
+    # The actual number of users may be lower than this because later on we filter out emails
+    # where the sender has been culled but in doing so some users in the to/cc/bcc fields will
+    # also be eliminated
+    print "\nUsercount threshold was $usercount_threshold. " . (scalar keys %usercount) . " users remain\n";
+}
+print "Saving user and message data to database\n";
+my $no_sender_id = -1;
+my $new_messageid = 0;
+foreach my $messageid (sort {$a <=> $b} keys %parse_data) {
+    #if the sender has been culled, use a unique negative ID
+    my $senderID = $no_sender_id;
+    if (defined $usercount{$parse_data{$messageid}{"from"}}) {
+	$senderID = getUserIDFromEmail($parse_data{$messageid}{"from"})
+    }
+    else {
+	$no_sender_id--;
+    }
+
+    $dbh->do("INSERT INTO bodies VALUES($new_messageid, " . $dbh->quote($parse_data{$messageid}{"body"}) . ")");
+    $dbh->do("INSERT INTO messages VALUES($new_messageid, " . $dbh->quote($parse_data{$messageid}{"datetime"}) .
+	     ", " . $senderID . ", " .
+	     $dbh->quote($parse_data{$messageid}{"subject"}) . ")");
+
+    insertRecipientFromArray($new_messageid, $parse_data{$messageid}{"to"});
+    insertRecipientFromArray($new_messageid, $parse_data{$messageid}{"cc"});
+    insertRecipientFromArray($new_messageid, $parse_data{$messageid}{"bcc"});
+
+    $new_messageid++;
+}
 print "\n";
 print "Users: " . (scalar keys %user_map). "\n";
-print "Messages: $messageid\n";
-print "Generating TFIDF data\n";
-setTFIDF();
-#removeTFIDFThreshold(26);
+print "Messages: $new_messageid\n";
+if (defined $dotfidf) {
+    my $curdate = `date`;
+    print $curdate . "\n";
+    setTFIDF();
+    $curdate = `date`;
+    print $curdate . "\n";
+}
 
 sub insertRecipientFromArray($$) {
-    (my $messageid, my $emailarrayref) = @_;
+    (my $new_messageid, my $emailarrayref) = @_;
 
     my @emailarray = @{$emailarrayref};
 
     foreach my $email (@emailarray) {
-	$dbh->do("INSERT INTO recipients VALUES($messageid, " . getUserIDFromEmail($email) . ")");
+	if (defined $usercount{$email}) {
+	    $dbh->do("INSERT INTO recipients VALUES($new_messageid, " . getUserIDFromEmail($email) . ")");
+	}
     }
 }
 
@@ -217,20 +318,28 @@ sub setTFIDF() {
     my $sql;
     my $sth;
 
+    print "Processing TFIDF data in memory\n";
+
     $sql = "SELECT * FROM bodies ORDER BY messageid";
     $sth = $dbh->prepare($sql);
     $sth->execute
 	or die "SQL Error: $DBI::errstr\n";
+    my %wordcount = ();
+    my %emailwords = ();
+    my $message_count = scalar @data;
+    my $total_words_seen = 0;
     while (my $row = $sth->fetchrow_hashref) {
-	my %words = ();
-	my @body = split(/\s/,lc($row->{'body'}));
+	my @body = split(/\s+/,lc($row->{'body'}));
+
+	$stemmer->stem_in_place(\@body);
+
 	my $messageid = $row->{'messageid'};
 
 	if ($messageid % 100 == 0) {
 	    print ".";
 	}
 	if ($messageid % 1000 == 0) {
-	    print "$messageid / " . (scalar @data) . "\n";
+	    print "$messageid / $message_count\n";
 	}
 	foreach my $word (@body) {
 	    $word =~ s/[\W_]//g;
@@ -243,24 +352,81 @@ sub setTFIDF() {
 	    if (length($word) > 255) {
 		next;
 	    }
-	    if (defined $words{$word}) {
-		$words{$word}++;
+
+	    #if (defined $wordcount{$word}) {
+#		$wordcount{$word}++;#
+	    #}
+	    #else {
+#		$wordcount{$word} = 1;
+#	    }
+
+	    $total_words_seen++;
+	    if (defined $emailwords{$messageid}{$word}) {
+		$emailwords{$messageid}{$word}++;
 	    }
 	    else {
-		$words{$word} = 1;
+		$emailwords{$messageid}{$word} = 1;
 	    }
-	}
-
-	foreach my $key (keys %words) {
-	    my $word_id = getWordID($key);
-	    if ($word_id == -1) {
-		$dbh->do("INSERT INTO tf_idf_wordmap VALUES($wordIndex, \"$key\")");
-		$wordIndex++;
-		$word_id = getWordID($key);
-	    }
-	    $dbh->do("INSERT INTO tf_idf_dictionary VALUES($word_id, $messageid, $words{$key})");
 	}
     }
+    print "Total words seen: $total_words_seen\n";
+    foreach my $messageid (keys %emailwords) {
+	foreach my $word (keys %{$emailwords{$messageid}}) {
+	    if (defined $wordcount{$word}) {
+		$wordcount{$word} += $emailwords{$messageid}{$word};
+	    }
+	    else {
+		$wordcount{$word} = $emailwords{$messageid}{$word};
+	    }
+	}
+    }
+
+    if ($tfidf_wordlimit > 0) {
+	print "\nCalculating wordcount threshold\n";
+	my $wordcount_threshold = 1;
+	while (scalar keys %wordcount > $tfidf_wordlimit) {
+	    if ($wordcount_threshold % 10 == 0) {
+		print ".";
+	    }
+
+	    foreach my $word (keys %wordcount) {
+		if ($wordcount{$word} < $wordcount_threshold) {
+		    # remove
+		    delete $wordcount{$word};
+		}
+	    }
+	    $wordcount_threshold++;
+	}
+	print "\nWordcount threshold was $wordcount_threshold. " . (scalar keys %wordcount) . " words remain\n";
+    }
+
+    print "Writing TFIDF data to database\n";
+
+    # (sort as int not string)
+    foreach my $messageid (sort {$a <=> $b} keys %emailwords) {
+	if ($messageid % 100 == 0) {
+	    print ".";
+	}
+	if ($messageid % 1000 == 0) {
+	    print "$messageid / $message_count\n";
+	}
+	foreach my $word (keys %{$emailwords{$messageid}}) {
+	    # if this is not defined, then we removed it earlier, indicating that we don't want this in the database
+	    if (!(defined $wordcount{$word})) {
+		next;
+	    }
+
+	    my $word_id = getWordID($word);
+	    if ($word_id == -1) {
+		$dbh->do("INSERT INTO tf_idf_wordmap VALUES($wordIndex, \"$word\")");
+		$wordIndex++;
+		$word_id = getWordID($word);
+	    }
+	    $dbh->do("INSERT INTO tf_idf_dictionary VALUES($word_id, $messageid, $emailwords{$messageid}{$word})");
+	}
+    }
+    print "Done writing TFIDF data to database\n";
+
     $sth->finish();
 }
 
@@ -285,56 +451,4 @@ sub getWordID($) {
     $word_id_cache{$word} = $ret;
 
     return $ret;
-}
-
-sub removeTFIDFThreshold($) {
-    (my $count_threshold) = @_;
-
-    # total appearances, not just number of emails appearing in
-    print "\n\nDeleting words from tf_idf where the word appears fewer than $count_threshold times\n";
-
-    my $sql = "SELECT word, SUM(count) as cnt FROM tf_idf_dictionary GROUP BY word";
-    my $sth = $dbh->prepare($sql);
-    my $rows = $sth->execute
-	or die "SQL Error: $DBI::errstr\n";
-    while (my $row = $sth->fetchrow_hashref) {
-	my $word = $row->{'word'};
-	if ($row->{'cnt'} < $count_threshold) {
-	    $dbh->do("DELETE FROM tf_idf_dictionary WHERE word = $word");
-	    $dbh->do("DELETE FROM tf_idf_wordmap WHERE word_id = $word");
-	}
-	if ($word % 1000 == 0) {
-	    print ".";
-	}
-	if ($word % 10000 == 0) {
-	    print "$word / " . $rows . "\n";
-	}
-    }
-    $sth->finish();
-
-    #now compact the word_id so there are no gaps
-    print  "compacting wordID numbers so there are no gaps\n";
-
-    my $nextID = 0;
-    $sql = "SELECT word_id FROM tf_idf_wordmap ORDER BY word_id";
-    $sth = $dbh->prepare($sql);
-    $sth->execute
-	or die "SQL Error: $DBI::errstr\n";
-    while (my $row = $sth->fetchrow_hashref) {
-	my $word = $row->{'word_id'};
-	# this ID is appropriate where it is
-	if ($word == $nextID) {
-	    $nextID++;
-	}
-	# this ID needs to be remapped to nextID
-	else {
-	    $dbh->do("UPDATE tf_idf_wordmap SET word_id=$nextID WHERE word_id=$word");
-	    $dbh->do("UPDATE tf_idf_dictionary SET word=$nextID WHERE word=$word");
-	    $nextID++;
-	}
-	if ($nextID % 100 == 0) {
-	    print ".";
-	}
-    }
-    $sth->finish();
 }
