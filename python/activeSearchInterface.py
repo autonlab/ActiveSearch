@@ -241,7 +241,7 @@ class kernelAS (genericAS):
 		else:
 			self.BDinv[idx] = self.l/(1+self.l) * self.Dinv[idx]
 
-		self.q[idx] = lbl*self.l/(1+self.l)
+		self.q[idx] = lbl*1/(1+self.l)
 		gamma = -(self.l/(1+self.l)-1/(1+self.params.w0))*self.Dinv[idx]
 
 		Xi = self.Xf[:,[idx]] # ith feature vector
@@ -306,7 +306,7 @@ class kernelAS (genericAS):
 
 		# Updating various parameters to calculate next f
 		# Cinv is already correct as it does not depend on the label -- just whether the nodes are labeled or not
-		# self.q[idx] = lbl*self.l/(1+self.l) --> old
+		# self.q[idx] = lbl*1/(1+self.l) --> old
 		gamma = (lbl-self.labels[idx])*self.l/(1+self.l)
 		ei = np.zeros((self.n,1))
 		ei[idx] = 1
@@ -527,7 +527,7 @@ class shariAS (genericAS):
 
 	# 	# Updating various parameters to calculate next f
 	# 	# Cinv is already correct as it does not depend on the label -- just whether the nodes are labeled or not
-	# 	# self.q[idx] = lbl*self.l/(1+self.l) --> old
+	# 	# self.q[idx] = lbl*1/(1+self.l) --> old
 	# 	gamma = (lbl-self.labels[idx])*self.l/(1+self.l)
 	# 	ei = np.zeros((self.n,1))
 	# 	ei[idx] = 1
@@ -678,7 +678,7 @@ class naiveShariAS (genericAS):
 
 		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l)
 		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
-		self.q[idx] = lbl*self.l/(1+self.l)
+		self.q[idx] = lbl*1/(1+self.l)
 
 		self.f =  nlg.solve(I_A, self.q)
 
@@ -729,8 +729,8 @@ class naiveShariAS (genericAS):
 
 	# 	# Updating various parameters to calculate next f
 	# 	# Cinv is already correct as it does not depend on the label -- just whether the nodes are labeled or not
-	# 	# self.q[idx] = lbl*self.l/(1+self.l) --> old
-	# 	gamma = (lbl-self.labels[idx])*self.l/(1+self.l)
+	# 	# self.q[idx] = lbl*1/(1+self.l) --> old
+	# 	gamma = (lbl-self.labels[idx])*1/(1+self.l)
 	# 	ei = np.zeros((self.n,1))
 	# 	ei[idx] = 1
 	
