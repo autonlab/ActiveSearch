@@ -99,17 +99,21 @@ class kernelAS (genericAS):
 	def __init__ (self, params=Parameters()):
 		genericAS.__init__ (self, params)
 
-	def initialize(self, Xf):
+	def initialize(self, Xf, init_labels = {}):
 		"""
 		Xf 			--> r x n matrix of feature values for each point.
-						where r is the number of features, n the number of points
+						where r is # features, n is # points.
+		init_labels	--> dictionary from emailID to label of initial labels.
 		"""
 		# Save Xf and initialize some of the variables which depend on Xf
 		self.Xf = Xf
 		self.r, self.n = Xf.shape
 
-		self.unlabeled_idxs = range(self.n)
-		self.labels = [-1]*self.n
+		self.labeled_idxs = init_labels.keys()
+		self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
+
+		self.labels = np.array([-1]*self.n)
+		self.labels[self.labeled_idxs] = init_labels.values()
 
 		# Initialize some parameters and constants which are needed and not yet initialized
 		if self.params.sparse:
@@ -123,20 +127,19 @@ class kernelAS (genericAS):
 
 
 		# Set up some of the initial values of some matrices needed to compute D, BDinv, q and f
-		B = 1/(1+self.params.w0)*np.ones(self.n)
+		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
+		# B[self.labeled_idxs] = self.l/(1+self.l)
 		D = np.squeeze(Xf.T.dot(Xf.dot(np.ones((self.n,1))))) 
-		#import IPython
-		#IPython.embed()
+
 		self.Dinv = 1./D
 
 		if self.params.sparse:
-			# import IPython
-			# IPython.embed()
 			self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
 		else:
 			self.BDinv = np.squeeze(B*self.Dinv)
 
-		self.q = (1-B)*self.params.pi*np.ones(self.n) # Need to update q every iteration
+		self.q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
+		#self.q[self.labeled_idxs] *= np.array(init_labels.values())/self.params.pi
 
 		# Constructing and inverting C
 		if self.params.verbose:
@@ -157,8 +160,7 @@ class kernelAS (genericAS):
 #			self.Cinv = ssl.inv(C.tocsc()) # Need to update Cinv every iteration
 #		else:
 #			self.Cinv = nlg.inv(C)
-#		import IPython
-#		IPython.embed()
+
 		self.Cinv = nlg.inv(C.todense())
 		self.Cinv = ss.csr_matrix(self.Cinv)
 
@@ -168,6 +170,15 @@ class kernelAS (genericAS):
 		else:
 			self.f = self.q + self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q)))))
 
+		# Setting iter/start_point
+		# If batch initialization is done, then start_point is everything given
+		if len(self.labeled_idxs) > 0:
+			if len(self.labeled_idxs) == 0:
+				self.start_point = self.labeled_idxs[0]
+			else:
+				self.start_point = [eid for eid in self.labeled_idxs]
+			self.iter = 0
+			self.hits = [sum(init_labels.values())]
 
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
@@ -363,16 +374,20 @@ class shariAS (genericAS):
 	def __init__ (self, params=Parameters()):
 		genericAS.__init__ (self, params)
 
-	def initialize(self, A):
+	def initialize(self, A, init_labels = {}):
 		"""
 		A 			--> n x n affinity matrix of feature values for each point.
+		init_labels	--> dictionary from emailID to label of initial labels.
 		"""
 		# Save Xf and initialize some of the variables which depend on Xf
 		self.A = A
 		self.n = A.shape[0]
 
-		self.unlabeled_idxs = range(self.n)
-		self.labels = [-1]*self.n
+		self.labeled_idxs = init_labels.keys()
+		self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
+
+		self.labels = np.array([-1]*self.n)
+		self.labels[self.labeled_idxs] = init_labels.values()
 
 		# Initialize some parameters and constants which are needed and not yet initialized
 		self.l = (1-self.params.eta)/self.params.eta
@@ -380,7 +395,8 @@ class shariAS (genericAS):
 			self.params.w0 = 1/self.n
 
 		# Set up some of the initial values of some matrices
-		B = np.ones(self.n)/(1 + self.params.w0) ##
+		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
+		#B = np.ones(self.n)/(1 + self.params.w0) ##
 		D = np.squeeze(self.A.sum(1)) ##
 		self.Dinv = 1./D
 
@@ -396,8 +412,19 @@ class shariAS (genericAS):
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
 
-		q = (1-B)*self.params.pi*np.ones(self.n)
+		q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
+		#q = (1-B)*self.params.pi*np.ones(self.n)
 		self.f = matrix_squeeze(self.I_A_inv.dot(q))
+		
+		# Setting iter/start_point
+		# If batch initialization is done, then start_point is everything given
+		if len(self.labeled_idxs) > 0:
+			if len(self.labeled_idxs) == 0:
+				self.start_point = self.labeled_idxs[0]
+			else:
+				self.start_point = [eid for eid in self.labeled_idxs]
+			self.iter = 0
+			self.hits = [sum(init_labels.values())]
 		
 		if self.params.verbose:
 			print ("Done with the initialization.")
@@ -582,7 +609,7 @@ class naiveShariAS (genericAS):
 	def __init__ (self, params=Parameters()):
 		genericAS.__init__ (self, params)
 
-	def initialize(self, A):
+	def initialize(self, A, init_labels = {}):
 		"""
 		A 			--> n x n affinity matrix of feature values for each point.
 		"""
@@ -590,8 +617,15 @@ class naiveShariAS (genericAS):
 		self.A = A
 		self.n = A.shape[0]
 
-		self.unlabeled_idxs = range(self.n)
-		self.labels = [-1]*self.n
+		# self.unlabeled_idxs = range(self.n)
+		# self.labels = [-1]*self.n
+
+		self.labeled_idxs = init_labels.keys()
+		self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
+
+		self.labels = np.array([-1]*self.n)
+		self.labels[self.labeled_idxs] = init_labels.values()
+
 
 		# Initialize some parameters and constants which are needed and not yet initialized
 		self.l = (1-self.params.eta)/self.params.eta
@@ -599,8 +633,9 @@ class naiveShariAS (genericAS):
 			self.params.w0 = 1/self.n
 
 	
-	# Set up some of the initial values of some matrices
-		B = np.ones(self.n)/(1 + self.params.w0) ##
+		# Set up some of the initial values of some matrices
+		#B = np.ones(self.n)/(1 + self.params.w0) ##
+		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
 		D = np.squeeze(self.A.sum(1)) ##
 		self.Dinv = 1./D
 		self.BDinv = np.diag(np.squeeze(B*self.Dinv))
@@ -609,8 +644,22 @@ class naiveShariAS (genericAS):
 		# else:
 		# 	self.BDinv = np.squeeze(B*self.Dinv)
 
-		self.q = (1-B)*self.params.pi*np.ones(self.n) # Need to update q every iteration
+		# self.q = (1-B)*self.params.pi*np.ones(self.n) # Need to update q every iteration
+		self.q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
+		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
+
+		self.f =  nlg.solve(I_A, self.q)
+		# Setting iter/start_point
+		# If batch initialization is done, then start_point is everything given
+		if len(self.labeled_idxs) > 0:
+			if len(self.labeled_idxs) == 0:
+				self.start_point = self.labeled_idxs[0]
+			else:
+				self.start_point = [eid for eid in self.labeled_idxs]
+			self.iter = 0
+			self.hits = [sum(init_labels.values())]
 		
+
 		if self.params.verbose:
 			print ("Done with the initialization.")
 		
@@ -677,8 +726,8 @@ class naiveShariAS (genericAS):
 		self.unlabeled_idxs.remove(idx)
 
 		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l)
-		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
 		self.q[idx] = lbl*1/(1+self.l)
+		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
 
 		self.f =  nlg.solve(I_A, self.q)
 
