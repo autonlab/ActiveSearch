@@ -958,6 +958,87 @@ def test_interface3 ():
 	IPython.embed()
 
 
+def test_warm_start ():
+
+	verbose = True
+	nac = np.allclose
+	#ts_data = ef.load_timestamps (tsfile)
+	Xfull = load_sparse_csr('Xfull1.npz')
+	# print Xfull.shape
+	# Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	# Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[1]))]
+	# # r,n = Xfull.shape
+
+	# print Xfull.shape
+	# Xfull = Xfull[np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=1))[0])),:]
+	# Xfull = Xfull[:,np.squeeze(np.asarray(np.nonzero(Xfull.sum(axis=0))[1]))]
+
+	# getting rid of features which are zero for all these elements
+	n = 300
+	r = 600
+	X = Xfull[:,:n]
+
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+
+	X = X[:r,:]
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	print X.shape
+	#X = np.load('X11.npy')
+	r,n = X.shape
+	
+	nt = int(0.05*n)
+	num_eval = 50
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+	nr.shuffle(Y)
+
+	pi = sum(Y)/len(Y)
+	init_pt = 5
+
+	# import IPython 
+	# IPython.embed()
+
+	A = np.array((X.T.dot(X)).todense())
+	t1 = time.time()
+
+	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
+	kAS = ASI.kernelAS(prms)
+	kAS.initialize(X)
+	
+	kAS2 = ASI.kernelAS(prms)
+	sAS = ASI.shariAS(prms)
+	sAS2 = ASI.naiveShariAS(prms)
+
+	# import IPython
+	# IPython.embed()
+
+	init_lbls = {init_pt:1}
+
+	kAS.firstMessage(init_pt)
+	fs2 = [kAS.f]
+
+	for i in range(num_eval):
+		idx1 = kAS.getNextMessage()
+		kAS.setLabelCurrent(Y[idx1])
+		init_lbls[idx1] = Y[idx1]
+		# sAS.setLabelCurrent(Y[idx2])
+		# fs2.append(kAS.f)
+		# fs3.append(sAS.f)
+
+	print("Batch initializing:")
+	print("Kernel AS:")
+	kAS2.initialize(X, init_lbls)
+	print("Shari AS:")
+	sAS.initialize(A, init_lbls)
+	print("Naive Shari AS:")
+	sAS2.initialize(A, init_lbls)
+
+
+	import IPython
+	IPython.embed()
+
+
 
 def RBFkernel (x,y,bw):
 	x = np.array(x)
@@ -990,7 +1071,8 @@ if __name__ == '__main__':
 	#test13()
 	# test_interface()
 	# test_interface2()
-	test_interface3()
+	# test_interface3()
+	test_warm_start()
 	# import IPython
 	# IPython.embed()
 	# plt.figure()

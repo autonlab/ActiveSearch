@@ -372,7 +372,7 @@ class shariAS (genericAS):
 	def __init__ (self, params=Parameters()):
 		genericAS.__init__ (self, params)
 
-	def initialize(self, A,, init_labels = {}):
+	def initialize(self, A, init_labels = {}):
 		"""
 		A 			--> n x n affinity matrix of feature values for each point.
 		init_labels	--> dictionary from emailID to label of initial labels.
@@ -607,7 +607,7 @@ class naiveShariAS (genericAS):
 	def __init__ (self, params=Parameters()):
 		genericAS.__init__ (self, params)
 
-	def initialize(self, A):
+	def initialize(self, A, init_labels = {}):
 		"""
 		A 			--> n x n affinity matrix of feature values for each point.
 		"""
@@ -631,7 +631,7 @@ class naiveShariAS (genericAS):
 			self.params.w0 = 1/self.n
 
 	
-	# Set up some of the initial values of some matrices
+		# Set up some of the initial values of some matrices
 		#B = np.ones(self.n)/(1 + self.params.w0) ##
 		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
 		D = np.squeeze(self.A.sum(1)) ##
@@ -644,10 +644,9 @@ class naiveShariAS (genericAS):
 
 		# self.q = (1-B)*self.params.pi*np.ones(self.n) # Need to update q every iteration
 		self.q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
-		
-		if self.params.verbose:
-			print ("Done with the initialization.")
-		
+		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
+
+		self.f =  nlg.solve(I_A, self.q)
 		# Setting iter/start_point
 		# If batch initialization is done, then start_point is everything given
 		if len(self.labeled_idxs) > 0:
@@ -657,7 +656,11 @@ class naiveShariAS (genericAS):
 				self.start_point = [eid for eid in self.labeled_idxs]
 			self.iter = 0
 			self.hits = [sum(init_labels.values())]
+		
 
+		if self.params.verbose:
+			print ("Done with the initialization.")
+		
 		self.initialized = True
 
 	def firstMessage(self, idx):
@@ -721,8 +724,8 @@ class naiveShariAS (genericAS):
 		self.unlabeled_idxs.remove(idx)
 
 		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l)
-		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
 		self.q[idx] = lbl*1/(1+self.l)
+		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
 
 		self.f =  nlg.solve(I_A, self.q)
 
