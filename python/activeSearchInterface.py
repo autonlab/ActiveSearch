@@ -155,14 +155,11 @@ class kernelAS (genericAS):
 		if self.params.verbose:
 			print ("Inverting C")
 			t1 = time.time()
-#               Our matrix is around 40% sparse which makes ssl.inv run very slowly. We will just use the regular nlg.inv
-#		if self.params.sparse:
-#			self.Cinv = ssl.inv(C.tocsc()) # Need to update Cinv every iteration
-#		else:
-#			self.Cinv = nlg.inv(C)
-
-		self.Cinv = nlg.inv(C.todense())
-		self.Cinv = ss.csr_matrix(self.Cinv)
+		# Our matrix is around 40% sparse which makes ssl.inv run very slowly. We will just use the regular nlg.inv
+		if self.params.sparse:
+			self.Cinv = ss.csr_matrix(nlg.inv(C.todense())) # Need to update Cinv every iteration
+		else:
+			self.Cinv = nlg.inv(C)
 
 		# Just keeping this around. Don't really need it.
 		if self.params.sparse:
@@ -177,6 +174,12 @@ class kernelAS (genericAS):
 				self.start_point = self.labeled_idxs[0]
 			else:
 				self.start_point = [eid for eid in self.labeled_idxs]
+			# Finding the next message to show -- get the current max element
+			uidx = np.argmax(self.f[self.unlabeled_idxs])
+			self.next_message = self.unlabeled_idxs[uidx]
+			# Now that a new message has been selected, mark it as unseen
+			self.seen_next = False 
+
 			self.iter = 0
 			self.hits = [sum(init_labels.values())]
 
@@ -423,6 +426,13 @@ class shariAS (genericAS):
 				self.start_point = self.labeled_idxs[0]
 			else:
 				self.start_point = [eid for eid in self.labeled_idxs]
+
+			# Finding the next message to show -- get the current max element
+			uidx = np.argmax(self.f[self.unlabeled_idxs])
+			self.next_message = self.unlabeled_idxs[uidx]
+			# Now that a new message has been selected, mark it as unseen
+			self.seen_next = False 
+
 			self.iter = 0
 			self.hits = [sum(init_labels.values())]
 		
@@ -656,9 +666,14 @@ class naiveShariAS (genericAS):
 				self.start_point = self.labeled_idxs[0]
 			else:
 				self.start_point = [eid for eid in self.labeled_idxs]
+			# Finding the next message to show -- get the current max element
+			uidx = np.argmax(self.f[self.unlabeled_idxs])
+			self.next_message = self.unlabeled_idxs[uidx]
+			# Now that a new message has been selected, mark it as unseen
+			self.seen_next = False 
+
 			self.iter = 0
-			self.hits = [sum(init_labels.values())]
-		
+			self.hits = [sum(init_labels.values())]		
 
 		if self.params.verbose:
 			print ("Done with the initialization.")
