@@ -19,11 +19,14 @@ app = Flask(__name__)
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--method', default='kernel', help='shari, naiveshari, kernel, default to kernel')
 parser.add_argument('-d', '--database', default='jebbush', help='database name')
-parser.add_argument('-w', '--wordlimit', default=3000, type=int, help='in kernel mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
+parser.add_argument('-w', '--wordlimit', default=6000, type=int, help='in kernel mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
 parser.add_argument('-t', '--dotfidf', default=False, action='store_true', help='do tfidf computation at startup')
 parser.add_argument('-u', '--database_user', default='root', help='database user')
 parser.add_argument('-p', '--database_pass', default='', help='database pass')
 parser.add_argument('-n', '--database_hostname', default='', help='database hostname')
+parser.add_argument('-z', '--num_threads', default=2, type=int, help='number of threads for tfidf - physical cores only')
+parser.add_argument('-s', '--skip_stemmer', default=False, action='store_true', help='skip a slow part of tfidf. Drops result quality but improves speed. Save time when testing code')
+
 args = parser.parse_args()
 
 db = mysql_conn.mysql_connect(args.database, args.database_hostname, args.database_user, args.database_pass)
@@ -39,19 +42,19 @@ first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = mysql_conn.getFinalFeatureMatrix(db,args.wordlimit,args.dotfidf,0,0)
+    wMat = mysql_conn.getFinalFeatureMatrix(db,args.wordlimit,args.dotfidf,args.skip_stemmer, args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database, 0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):
     print "Using shariAS"
     activeSearch = asI.shariAS()   
-    A = mysql_conn.getAffinityMatrix(db,0,0)
+    A = mysql_conn.getAffinityMatrix(db,args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
-elif (args.method == "naieveshari"):
+elif (args.method == "naiveshari"):
     print "Using naieveShariAS"
     activeSearch = asI.naiveShariAS()   
-    A = mysql_conn.getAffinityMatrix(db,0,0)
+    A = mysql_conn.getAffinityMatrix(db,args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 else:
