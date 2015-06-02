@@ -10,6 +10,10 @@ import time
 import re
 import string
 import sys
+
+from multiprocessing import Process, Queue
+
+
 def mysql_connect(database, db_host="localhost", db_user="root", db_password=""):
 	db = MySQLdb.connect(host=db_host,
 			     user=db_user,
@@ -44,55 +48,17 @@ def getTFIDFSimilarity(db):
 # getTFIDFSimilarity retrieves the pre-processed similarity from the database. Building the database
 # is slow. This function builds the TFIDF in memory here which is about 5x faster but has to be done
 # every time the daemon is started
-def getTFIDFSimilarityFromMessage(db, tfidf_wordlimit):
+def getTFIDFSimilarityFromMessage(db, tfidf_wordlimit, number_of_threads, hostname, username, password, database,skip_stemmer):
 	# This code can remove words seen in more than some % of the messages
 	# It turns out this is not very useful in the datasets that we have so 
 	# the functionality hasn't been implemented in the Perl import code yet
 	stopword_threshold = 0.95
 
-	skip_words = {'the': 1}
-	skip_words['the'] = 1
-	skip_words['be'] = 1
-	skip_words['to'] = 1
-	skip_words['of'] = 1
-	skip_words['and'] = 1
-	skip_words['a'] = 1
-	skip_words['in'] = 1
-	skip_words['that'] = 1
-	skip_words['have'] = 1
-	skip_words['i'] = 1
-	skip_words['it'] = 1
-	skip_words['for'] = 1
-	skip_words['not'] = 1
-	skip_words['on'] = 1
-	skip_words['with'] = 1
-	skip_words['he'] = 1
-	skip_words['as'] = 1
-	skip_words['you'] = 1
-	skip_words['do'] = 1
-	skip_words['at'] = 1
 
-	skip_words['this'] = 1
-	skip_words['but'] = 1
-	skip_words['his'] = 1
-	skip_words['by'] = 1
-	skip_words['from'] = 1
-	skip_words['they'] = 1
-	skip_words['we'] = 1
-	skip_words['say'] = 1
-	skip_words['her'] = 1
-	skip_words['she'] = 1
-	skip_words['or'] = 1
-	skip_words['an'] = 1
-	skip_words['will'] = 1
-	skip_words['my'] = 1
-	skip_words['one'] = 1
-	skip_words['all'] = 1
-	skip_words['would'] = 1
-	skip_words['there'] = 1
-	skip_words['their'] = 1
-	skip_words['what'] = 1
 	total_words = 0
+
+	message_count = int(getTotalMessageCount(db))
+
 	# the total number of times a word was seen
 	# a word being in this dict will determine if it is used
 	# if a word is removed from this dict it will not be used
@@ -100,61 +66,53 @@ def getTFIDFSimilarityFromMessage(db, tfidf_wordlimit):
 	# the number of messages that this word was in
 	wordcount_message = {}
 	# the number of times a word was seen in a given message
-	emailwords = {}	
+	emailwords = []
 
-	message_count = getTotalMessageCount(db)
+	thread_range_messages = int(message_count / number_of_threads)
+	# round up so the last thread doesn't drop messages
+	if ((message_count % number_of_threads) != 0):
+		thread_range_messages += 1
+	print "range is ", thread_range_messages
+	mythreads = []
+	myqueues = []
+	for i in range(number_of_threads):
+		start_message = thread_range_messages * i
+		end_message = min(thread_range_messages * (i+1), message_count)
+		# range is [start_message, end_message)
+		print "Thread ", start_message, " to ", end_message
+		q = Queue()
+		t = Process(target=calculateTFIDF, args=(start_message,end_message, q, hostname, username, password, database, i, skip_stemmer))
+		t.start()
+		mythreads.append(t)
+		myqueues.append(q)
 
-	stemmer = SnowballStemmer("english")
-
-	cur = db.cursor()
-	cur.execute("SELECT * FROM bodies ORDER BY messageid")
-	# loop through the messages and track the words seen
-	for message in cur.fetchall():
-		messageid = message[0]
-		body = message[1]
-
-		message_arr = re.split('\s+', string.lower(body))
-
-		if (messageid % 100 == 0):
-			sys.stdout.write('.')
-		if (messageid % 1000 == 0):
-			print str(messageid) + " / " + str(message_count)
-
-		for word in message_arr:
-			# remove nonword characters
-			word = re.sub('[\W_]+', '', word)
-			if (word == ""):
-				continue
-			if (len(word) > 255):
-				continue
-			if (word in skip_words):
-				continue
-
-			try:
-				word = stemmer.stem(word)
-			except:
-				print "Stemming error in word ", word, " message ", messageid
-			total_words += 1
-			# save the count of this word in this message
-			if (messageid not in emailwords):
-				emailwords[messageid] = {}
-			if (word in emailwords[messageid]):
-				emailwords[messageid][word] += 1
-			else:
-				emailwords[messageid][word] = 1
-	print "Total words seen ", total_words
-	# count the total number of times each word was seen
-	for messageid in emailwords.keys():
-		for word in emailwords[messageid].keys():
+	for i in range(number_of_threads):
+		mycount = myqueues[i].get()
+		print "array size " , mycount
+		for j in range(mycount):
+			mydict = myqueues[i].get()
+			emailwords.append(mydict)
+		wordcount_local = myqueues[i].get()
+		for word in wordcount_local:
+			total_words += wordcount_local[word]
 			if (word in wordcount):
-				wordcount[word] += emailwords[messageid][word]
+				wordcount[word] += wordcount_local[word]
 			else:
-				wordcount[word] = emailwords[messageid][word]
-			if (emailwords[messageid][word] > 0):
-				if (word in wordcount_message):
-					wordcount_message[word] += 1
-				else:
-					wordcount_message[word] = 1
+				wordcount[word] = wordcount_local[word]
+		wordcount_message_local = myqueues[i].get()
+		for word in wordcount_message_local:
+			if (word in wordcount_message):
+				wordcount_message[word] += wordcount_message_local[word]
+			else:
+				wordcount_message[word] = wordcount_message_local[word]
+		mythreads[i].join()
+	print "Threads done"
+
+	# We used to count the words all at once here in the main thread but it is
+	# 3% to 6% faster to do it in the thread and send it over a pipe because
+	# most threads can do their counting while waiting for the slowest thread to
+	# finish doing its main processing. 
+	print "Total words seen ", total_words
 
 	stopword_threshold_count = int(stopword_threshold * float(message_count))
 	print "\nRemoving words seen in more than " + str(stopword_threshold_count) + " messages"
@@ -184,7 +142,7 @@ def getTFIDFSimilarityFromMessage(db, tfidf_wordlimit):
 	ret_col = []
 	ret_data = []
 
-	for messageid in emailwords.keys():
+	for messageid in range(message_count):
 		for word in emailwords[messageid].keys():
 			if (word not in wordcount):
 				continue
@@ -203,6 +161,7 @@ def getTFIDFSimilarityFromMessage(db, tfidf_wordlimit):
 
 	ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(len(wordcount), message_count))
 	return ret_matrix
+
 
 # return the number of words in the tf_idf computation
 def getTotalWordCount(db):
@@ -303,7 +262,7 @@ def getUsersByMessage(message_id, db):
 # returns an array where each value is a string of the form "<message_id> <seconds from epoch timestamp>""
 def getMessageTimes(db):
 	cur = db.cursor()
-	cur.execute("SELECT messageid, UNIX_TIMESTAMP(messagedt)")
+	cur.execute("SELECT messageid, UNIX_TIMESTAMP(messagedt) FROM messages")
 	data = []
 
 	for row in cur.fetchall():
@@ -383,12 +342,13 @@ randomFeatures = None
 ts_magic_number = 13168189440000.0
 rn = 100
 sine=True
+rfc = None
 
 def getTimeSimMatrix (db):
 	global rfc
 
 	if rfc is None:
-		randomFeatures = grf.gaussianRandomFeatures(dim=2,gammak=1/ts_magic_number,rn=rn,sine=True)
+		randomFeatures = grf.GaussianRandomFeatures(dim=2,gammak=1/ts_magic_number,rn=rn,sine=True)
 
 	tdata = getMessageTimes(db)
 
@@ -397,7 +357,7 @@ def getTimeSimMatrix (db):
 
 	for t in tdata:
 
-		rf = randomFeatures.computeFeatures (t[1])
+		rf = randomFeatures.computeRandomFeatures (t[1])
 
 		for idx,v in enumerate([rf]):
 			ret_col.append(t[0])
@@ -427,16 +387,16 @@ def getSenderSimMatrix (db):
 	ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(getTotalUserCount(db), emailCount))
 	return ret_matrix
 
-def getWordMatrix(db, tfidf_wordlimit, dotfidf):
+def getWordMatrix(db, tfidf_wordlimit, dotfidf,skip_stemmer, num_threads, hostname, username, password, database):
 	similarity_data = None
 	if (dotfidf):
 		t1 = time.time()
-		similarity_data = getTFIDFSimilarityFromMessage(db, tfidf_wordlimit)
+		similarity_data = getTFIDFSimilarityFromMessage(db, tfidf_wordlimit, num_threads, hostname, username, password, database,skip_stemmer)
 		print("Time for importing data ", time.time() - t1)
 	else:
 		print "Skipping tfidf computation and reading it from the database instead"
 		similarity_data = getTFIDFSimilarity(db)
-
+	print "one"
 	s = 1./(np.sqrt((similarity_data.multiply(similarity_data)).sum(1)))
 #	print s.shape
 #	print similarity_data.shape
@@ -446,16 +406,16 @@ def getWordMatrix(db, tfidf_wordlimit, dotfidf):
 #	import IPython
 #	IPython.embed()
 
-
 	s[np.isinf(s)] == 0
+	s = ss.csr_matrix(s)
+
 	similarity_data = similarity_data.multiply(s)
-	return ss.csr_matrix(similarity_data)
+	return similarity_data
 
-
-def getFinalFeatureMatrix (db, tfidf_wordlimit, dotfidf, tc=1.0, sc=1.0):
+def getFinalFeatureMatrix (db, tfidf_wordlimit, dotfidf,skip_stemmer, num_threads, hostname, username, password, database, tc=1.0, sc=1.0):
 	# if not using any of these matrices, remove them from the calculation to save computation of zeros
 
-	wMat = getWordMatrix(db, tfidf_wordlimit, dotfidf)
+	wMat = getWordMatrix(db, tfidf_wordlimit, dotfidf,skip_stemmer, num_threads, hostname, username, password, database)
 
 	if (tc > 0):
 		tMat = getTimeSimMatrix (db)
@@ -470,12 +430,140 @@ def getFinalFeatureMatrix (db, tfidf_wordlimit, dotfidf, tc=1.0, sc=1.0):
 	# are entirely only 0.
 	wMat = wMat[np.squeeze(np.array(np.nonzero(wMat.sum(axis=1))[0])),:]
 	wMat = wMat[:,np.squeeze(np.array(np.nonzero(wMat.sum(axis=0))))[1]]
+
 	return wMat
 
 
-def getAffinityMatrix (db, tc=1.0, sc=1.0):
+def getAffinityMatrix (db, tfidf_wordlimit, dotfidf,skip_stemmer, num_threads, hostname, username, password, database, tc=1.0, sc=1.0):
 	# if not using any of these matrices, remove them from the calculation to save computation of zeros
 	
-	wMat = getFinalFeatureMatrix(db, tc, sc)
+	wMat = getFinalFeatureMatrix(db, tfidf_wordlimit, dotfidf,skip_stemmer, num_threads, hostname, username, password, database, tc, sc)
 	return wMat.T.dot(wMat)
 
+def calculateTFIDF(start_message, end_message, myqueue, hostname, username, password, database, thread_id, skip_stemmer):
+	db = mysql_connect(database, hostname, username, password)
+
+	emailwords = [dict() for x in range(end_message - start_message)]
+
+	skip_words = {'the': 1}
+	skip_words['the'] = 1
+	skip_words['be'] = 1
+	skip_words['to'] = 1
+	skip_words['of'] = 1
+	skip_words['and'] = 1
+	skip_words['a'] = 1
+	skip_words['in'] = 1
+	skip_words['that'] = 1
+	skip_words['have'] = 1
+	skip_words['i'] = 1
+	skip_words['it'] = 1
+	skip_words['for'] = 1
+	skip_words['not'] = 1
+	skip_words['on'] = 1
+	skip_words['with'] = 1
+	skip_words['he'] = 1
+	skip_words['as'] = 1
+	skip_words['you'] = 1
+	skip_words['do'] = 1
+	skip_words['at'] = 1
+
+	skip_words['this'] = 1
+	skip_words['but'] = 1
+	skip_words['his'] = 1
+	skip_words['by'] = 1
+	skip_words['from'] = 1
+	skip_words['they'] = 1
+	skip_words['we'] = 1
+	skip_words['say'] = 1
+	skip_words['her'] = 1
+	skip_words['she'] = 1
+	skip_words['or'] = 1
+	skip_words['an'] = 1
+	skip_words['will'] = 1
+	skip_words['my'] = 1
+	skip_words['one'] = 1
+	skip_words['all'] = 1
+	skip_words['would'] = 1
+	skip_words['there'] = 1
+	skip_words['their'] = 1
+	skip_words['what'] = 1
+
+	# the total number of times a word was seen
+	# a word being in this dict will determine if it is used
+	# if a word is removed from this dict it will not be used
+	wordcount = {}
+	# the number of messages that this word was in
+	wordcount_message = {}
+
+
+	message_count = end_message - start_message
+	local_message_id = 0
+
+	stemmer = SnowballStemmer("english")
+	
+	prev_msg = -1
+
+	cur = db.cursor()
+	cur.execute("SELECT * FROM bodies WHERE messageid >=" + str(start_message) + " AND messageid <" + str(end_message) + " ORDER BY messageid")
+	# loop through the messages and track the words seen
+	for message in cur.fetchall():
+		messageid = message[0]
+		body = message[1]
+		if (prev_msg >= 0 and (prev_msg+1) != messageid):
+			print "OKOK ", prev_msg, " and ", messageid
+		prev_msg = messageid
+
+		message_arr = re.split('\s+', string.lower(body))
+
+		if (local_message_id % 1000 == 0):
+			print "Thread ",thread_id, " ", local_message_id, " / ", message_count
+		for word in message_arr:
+			# remove nonword characters
+			word = re.sub('[\W_]+', '', word)
+			if (word == ""):
+				continue
+			if (len(word) > 255):
+				continue
+			if (word in skip_words):
+				continue
+			if (skip_stemmer == False):
+				try:
+					word = stemmer.stem(word)
+				except:
+					print "Stemming error in word ", word, " message ", messageid
+
+				# save the count of this word in this message
+#			if (local_message_id not in emailwords):
+#				emailwords[local_message_id] = {}
+			if (word in emailwords[local_message_id]):
+				emailwords[local_message_id][word] += 1
+			else:
+				emailwords[local_message_id][word] = 1
+
+		local_message_id += 1
+
+	print "Thread ", thread_id, ": Counting words"
+	# count the total number of times each word was seen
+	for messageid in range(local_message_id):
+		for word in emailwords[messageid].keys():
+			if (word in wordcount):
+				wordcount[word] += emailwords[messageid][word]
+			else:
+				wordcount[word] = emailwords[messageid][word]
+			if (emailwords[messageid][word] > 0):
+				if (word in wordcount_message):
+					wordcount_message[word] += 1
+				else:
+					wordcount_message[word] = 1
+
+	if (len(emailwords) != (end_message - start_message)):
+		print "Error: Thread ", thread_id, ":emailwords array size (", len(emailwords), ") does not match expected number of words: ", (end_message - start_message)
+		sys.exit()
+	if (local_message_id != (end_message - start_message)):
+		print "Error: Thread ", thread_id, ":local_message_id (", local_message_id, ") does not match expected number of words: ", (end_message - start_message)
+		sys.exit()
+	myqueue.put(end_message - start_message)
+	for i in range(end_message - start_message):
+	     myqueue.put(emailwords[i])
+	myqueue.put(wordcount)
+	myqueue.put(wordcount_message)
