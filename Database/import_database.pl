@@ -8,10 +8,6 @@ my $old_fh = select(STDOUT);
 $| = 1;
 select($old_fh);
 
-my $old_fh = select(STDOUT);
-$| = 1;
-select($old_fh);
-
 sub insertRecipientFromArray($$);
 sub getUserIDFromEmail($);
 sub getWordID($);
@@ -163,9 +159,6 @@ splice(@data, 0, 1);
 
 my %user_map = ();
 my $next_user_id = 0;
-
-
-my $file_line = 0;
 
 my %parse_data = ();
 my %usercount = ();
