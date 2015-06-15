@@ -2,7 +2,7 @@ package org.autonlab.activesearch;
 
 public class ActiveSearchConstants {
 
-    public static final String REST_URL_PREFIX = "http://localhost:8080/ActiveSearchDaemon/rest/";
+    public static final String REST_URL_PREFIX = "http://127.0.0.1:5000/";
 
     /* The JSlider class can only work with ints so we'll divide this by 1000 when we actually apply it */
     public static final int SEARCH_MAIN_ALPHA_INIT = 0;

@@ -52,7 +52,7 @@ public class SearchMain {
     /* for now we assume this will be 1 for the forseeable future */
     int num_initial = 1; //number of initial target points
 
-    static int start_point = -1;
+    static int start_point = 99;
     int[] hits;
     int[] selected;
 
@@ -196,12 +196,15 @@ public class SearchMain {
 	DoubleMatrix temp1 = eigenMapXpTranspose.mul(rVal).mmul(eigenMapXp);
 	DoubleMatrix temp2 = eigenMapXp.getRow(best_ind).transpose().mmul(eigenMapXp.getRow(best_ind)).mul(1-rVal);
 	DoubleMatrix temp3 = DoubleMatrix.eye(dimensions);
+	
+
 	for (i = 0; i < nConnComp; i++) {
 	    temp3.put(i, i, 0.0);
 	}
 	temp3.muli(lamb);
 
 	C = temp1.addi(temp2).addi(temp3);
+
 	// calculate the inverse
 	C = Solve.solve(C, DoubleMatrix.eye(dimensions));
 
@@ -213,6 +216,16 @@ public class SearchMain {
 	temp1 = eigenMapXpTranspose.mmul(sqd).mul(pai*rVal);
 	temp2 = eigenMapXp.getRow(best_ind).transpose().mul(yp.get(best_ind)-(sqd.get(best_ind)*rVal*pai));
 	f = eigenMapX.mmul(C.mmul(temp1.add(temp2)));
+
+	/*	System.out.println("h-----" + h.rows + " " + h.columns);
+	for (i=0;i<100;i++) {
+	    System.out.print(h.get(i) + ",");
+	}
+	System.out.println("F-----" + f.rows + " " + f.columns);
+	for (i=0;i<100;i++) {
+	    System.out.print(f.get(i) + ",");
+	    }*/
+
     }
 
 
@@ -369,7 +382,21 @@ public class SearchMain {
 	DoubleMatrix temp1 = test_ind.transpose().mmul(eigenMapX).mmul(C).mmul(eigenMapXpTranspose).transpose().sub(h.div(sqd));
 	DoubleMatrix temp2 = sqd.mul(f.rsub((1-rVal*pai)*cVal)).div(h.add(cVal));
 	DoubleMatrix change = temp1.mul(temp2);
-
+	/*	System.out.println("C-----" + C.rows + " " + C.columns);
+	for (i=0;i<20;i++) {
+	    System.out.print(C.get(i) + ",");
+	}
+	System.out.println("okok");
+	System.out.println("h-----" + h.rows + " " + h.columns);
+	for (i=0;i<20;i++) {
+	    System.out.print(h.get(i) + ",");
+	}
+	System.out.println("okok");
+	System.out.println("test_ind-----" + test_ind.rows + " " + test_ind.columns);
+	for (i=0;i<20;i++) {
+	    System.out.print(test_ind.get(i) + ",");
+	}
+	System.out.println("okok");*/
 	// f_bnd = min(max(f(test_ind),0),1);
 	// get(test_ind) returns all values f[i] where test_ind[i] is nonzero 
 	DoubleMatrix f_bnd = f.get(test_ind).max(DoubleMatrix.zeros(test_ind.rows, test_ind.columns)).min(DoubleMatrix.ones(test_ind.rows, test_ind.columns));
@@ -387,6 +414,7 @@ public class SearchMain {
 	    }
 	}
 	DoubleMatrix score = f_bnd.add(f_bnd.mul(tempScore).mul(alpha));
+	int[] foo = score.sortingPermutation();
 
 	// [best_score best_ind] = max(score);
 	int best_ind = score.argmax();
@@ -409,6 +437,26 @@ public class SearchMain {
 
 	/* make best_ind map to the original set of emails rather than the reduced set of score emails */
 	best_ind = (int)temp_ind_list_matrix.get(best_ind);
+
+	// dump the data 
+	File file = new File("13000_d" + ActiveSearchConstants.SEARCH_MAIN_DIMENSIONS + "_out.txt");
+	try {
+	    if (!file.exists()) {
+		file.createNewFile();
+	    }
+	    FileWriter fw = new FileWriter(file.getAbsoluteFile());
+	    BufferedWriter bw = new BufferedWriter(fw);
+	    for (i = 0; i < score.length; i++) {
+		int remappedIndex = (int)temp_ind_list_matrix.get(foo[i]);
+		bw.write(remappedIndex + " " + score.get(foo[i]));
+		bw.newLine();
+	    }
+	    bw.close();
+	}
+	catch (IOException e) {
+	    e.printStackTrace();
+	    throw new RuntimeException("Error writing sparse matrix to disk");
+	}
 
 	return best_ind;
     }

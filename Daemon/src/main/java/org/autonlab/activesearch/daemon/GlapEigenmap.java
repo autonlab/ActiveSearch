@@ -7,6 +7,8 @@ import java.io.*;
 
 import java.util.*;
 
+import no.uib.cipr.matrix.*;
+import no.uib.cipr.matrix.sparse.*;
 
 //Eigen.symmetricEigenvectors(DoubleMatrix A) 
 // an array of DoubleMatrix objects containing the eigenvectors stored as the columns of the first matrix, and the eigenvalues as diagonal elements of the second matrix.
@@ -99,9 +101,40 @@ public class GlapEigenmap {
 
 	// [X lambda] = eig(full(L));
 	System.out.println("Calculate eigen decomposition on " + myLMatrix.rows + "x" + myLMatrix.columns);
+
+
 	tempMatrix = Eigen.symmetricEigenvectors(myLMatrix);
 	myXMatrix = tempMatrix[0];
 	myLambda = tempMatrix[1];
+
+	/*
+	DenseMatrix denseTemp = new DenseMatrix(myLMatrix.rows, myLMatrix.columns);
+	for (i=0;i<myLMatrix.rows;i++) {
+	    for (j=i;j<myLMatrix.columns;j++) {
+		denseTemp.set(i,j,myLMatrix.get(i,j));
+		denseTemp.set(j,i,myLMatrix.get(i,j));
+	    }
+	}
+	System.out.println("Copied");
+	ArpackSym packTemp = new ArpackSym(denseTemp);
+	Map<Double, DenseVectorSub> retTemp = packTemp.solve(myLMatrix.columns-1, ArpackSym.Ritz.LA);
+	System.out.println("Solved");
+	myXMatrix = new DoubleMatrix(myLMatrix.rows, myLMatrix.columns);
+	myLambda = new DoubleMatrix(myLMatrix.rows, myLMatrix.columns);
+	int copyIndex = 0;
+	for (Double key : retTemp.keySet()) {
+	    myLambda.put(copyIndex,copyIndex, key);
+
+	    DenseVectorSub vectorTemp = retTemp.get(key);
+	    for (j=0;j<vectorTemp.size();j++) {
+		myXMatrix.put(copyIndex, j, vectorTemp.get(j));
+	    }
+	    copyIndex++;
+	}
+	System.out.println("Copied2");
+	retTemp = null;
+	*/
+
 	System.out.println("Resulting X " + myXMatrix.rows + "x" + myXMatrix.columns);
 	System.out.println("Resulting L " + myLambda.rows + "x" + myLambda.columns);
 	DoubleMatrix foo = myXMatrix.rowSums().columnSums();
@@ -213,6 +246,50 @@ public class GlapEigenmap {
 	    throw new RuntimeException("Error writing sparse matrix to disk");
 	}
     }
+    /*
+    LinkedSparseMatrix rowSumLinkedSparse(LinkedSparseMatrix inMatrix) {
+	LinkedSparseMatrix temp = new LinkedSparseMatrix(inMatrix.numRows(), 1);
+
+	int i;
+	int j;
+	for (i = 0; i < inMatrix.numRows(); i++) {
+	    double oneSum = 0.0;
+	    for (j = 0; j < inMatrix.numColumns(); j++) {
+		oneSum += inMatrix.put(i, j);
+	    }
+	    temp.set(i, 1, oneSum);
+	}
+	return temp;
+    }
+
+    LinkedSparseMatrix putDiagLinkedSparse(LinkedSparseMatrix inMatrix) {
+	LinkedSparseMatrix temp = new LinkedSparseMatrix(inMatrix.numRows(), inMatrix.numRows());
+
+	int i;
+	for (i = 0; i < inMatrix.numRows(); i++) {
+	    temp.put(i, i, inMatrix.get(i, 1));
+	}
+	return temp;
+    }
+
+    LinkedSparseMatrix subtractLinkedSparse(LinkedSparseMatrix inMatrix, LinkedSparseMatrix subMatrix) {
+	if (inMatrix.numRows() != subMatrix.numRows() ||
+	    inMatrix.numColumns() != subMatrix.numColumns()) {
+	    throw new RuntimeException("Matrices are not the same size");
+	}
+
+	LinkedSparseMatrix temp = new LinkedSparseMatrix(inMatrix.numRows(), inMatrix.numColumns());
+
+	int i;
+	int j;
+	for (i = 0; i < inMatrix.numRows(); i++) {
+	    for (j = 0; j < inMatrix.numColumns(); j++) {
+		temp.put(i, j, inMatrix.get(i, j) - subMatrix.get(i, j));
+	    }
+	}
+	return temp;
+    }
+    */
 }
 
     

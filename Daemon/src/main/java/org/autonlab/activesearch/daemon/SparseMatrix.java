@@ -110,16 +110,19 @@ public class SparseMatrix {
 		 * The matrix is symmetrical so we only need to dump half of it. We'll dump
 		 * the upper half by using all values of i and only values of j >= i.
 		 */
+		//update: we now dump the whole thing
 		for (Map.Entry<Integer, Double> entry: matrix.get(i).descendingMap().entrySet()) {
 		    int j = entry.getKey();
-		    if (j >= i) {
+		    //if (j >= i) {
 			double thisValue = entry.getValue().doubleValue();
-			bw.write((i+1) + " " + (j+1) + " " + thisValue);
+			//			bw.write((i+1) + " " + (j+1) + " " + thisValue);
+			// update we don't do +1 to the indices now
+			bw.write((i) + " " + (j) + " " + thisValue);
 			bw.newLine();
-		    }
-		    else {
-			break;
-		    }
+			//}
+			//else {
+			//break;
+			//}
 		}
 	    }
 	    bw.close();

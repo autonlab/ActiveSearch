@@ -8,7 +8,7 @@ import java.util.regex.*;
 
 public class ActiveSearchConstants {
 
-    public static String DATABASE_NAME = "scottwalker";
+    public static String DATABASE_NAME = "scottwalker_5000_small";
     public static int DATABASE_PORT = 3306;
     public static String DATABASE_USERNAME = "root";
     public static String DATABASE_PASSWORD = "";
@@ -20,7 +20,7 @@ public class ActiveSearchConstants {
     // by default, this is generated automatically so we don't set it
     public static String LABELS_FILE = "";
 
-    public static int SEARCH_MAIN_DIMENSIONS = 2000;
+    public static int SEARCH_MAIN_DIMENSIONS = 13914;
 
     /* The JSlider class can only work with ints so we'll divide this by 1000 when we actually apply it */
     public static int SEARCH_MAIN_ALPHA_INIT = 0;

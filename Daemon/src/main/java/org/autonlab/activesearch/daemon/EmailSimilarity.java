@@ -26,6 +26,9 @@ import java.io.FileWriter;
 
 import java.util.Scanner;
 
+import no.uib.cipr.matrix.sparse.*;
+import no.uib.cipr.matrix.*;
+
 public class EmailSimilarity implements Runnable {
     int myThreadID;
     int matrixType;
@@ -130,12 +133,54 @@ public class EmailSimilarity implements Runnable {
 	System.out.println("Loading word frequency matrix");
 	DoubleMatrix emailWordFrequency = dataConnection.getTFIDFSimilarity();
 
+	/**
+	 ** for sibi
+	 */
+	System.out.println("rows " + emailWordFrequency.rows + " cols" + emailWordFrequency.columns);
+	SparseMatrix dump_matrix_for_sibi = new SparseMatrix(Math.max(emailWordFrequency.columns, emailWordFrequency.rows));
+	for(i=0;i<emailWordFrequency.rows;i++){
+	    for(j=0;j<emailWordFrequency.columns;j++) {
+		if (emailWordFrequency.get(i,j) != 0.0) {
+		    dump_matrix_for_sibi.put(i,j,emailWordFrequency.get(i,j));
+		}
+	    }
+	}
+	
+	dump_matrix_for_sibi.write("sibi.txt");
+	dump_matrix_for_sibi = null;
+	/**
+	 ** for sibi
+	 */
+
 	System.out.println("Calculating TFIDF matrix");
 
 	DoubleMatrix s = MatrixFunctions.sqrt(MatrixFunctions.pow(emailWordFrequency,2).rowSums());
 	emailWordFrequency.diviColumnVector(s);	
+
+	/**
+	 ** for sibi
+	 */
+	System.out.println("rows " + emailWordFrequency.rows + " cols" + emailWordFrequency.columns);
+	dump_matrix_for_sibi = new SparseMatrix(Math.max(emailWordFrequency.columns, emailWordFrequency.rows));
+	for(i=0;i<emailWordFrequency.rows;i++){
+	    for(j=0;j<emailWordFrequency.columns;j++) {
+		if (emailWordFrequency.get(i,j) != 0.0) {
+		    dump_matrix_for_sibi.put(i,j,emailWordFrequency.get(i,j));
+		}
+	    }
+	}
 	
+	dump_matrix_for_sibi.write("sibi2.txt");
+	dump_matrix_for_sibi = null;
+	if (1==1){
+	    return;
+	}
+	/**
+	 ** for sibi
+	 */
+
 	System.out.println("Loading up sparses");
+	
 	/*
 	 * The word similarity matrix is very sparse (i.e., most emails contain very few of all possible words). In the Scott Walker
 	 * dataset that we used, the matrix had only 0.031% nonzero values. Despite copying the matrices to a different math library
@@ -244,6 +289,7 @@ public class EmailSimilarity implements Runnable {
 	//emailWordSimilarity.put(i,j,emailWordSimilarity.get(i,j) * timeSimilarity);
 
 	// if the edge similarity is going to be zero we can skip the rest of the calculations
+
 	if (size1 > 0 && size2 > 0 && commonCount > 0) {
 	    edgeSimilarity = ((double)commonCount) / (Math.sqrt(size1*size2));
 
@@ -387,11 +433,27 @@ public class EmailSimilarity implements Runnable {
 	return similarityMatrixReal;
     }
 
-    public void readMatrixFile(int matrixSize, String filename) {
-	BufferedReader br = null;
-	emailCount = matrixSize;
+    /* this is not an efficient way of converting our sparse matrix to the mtj sparse matrix
+       however using mtj is a proof of concept. We might replace our sparse implementation
+       with the mtj one eventually *//*
+    public LinkedSparseMatrix getLinkedSparseMatrix() {
+	int i;
+	int j;
+	LinkedSparseMatrix retMatrix = new LinkedSparseMatrix(emailCount, emailCount);
+	for (i = 0; i < emailCount; i++) {
+	    for (j = 0; j < emailCount; j++) {
+		// LinkedSparseMatrix knows not to store zeros
+		retMatrix.set(i, j, similarityMatrixSparse.get(i, j));
+	    }
+	}
+	return retMatrix;
 
-	similarityMatrixReal = new DoubleMatrix(emailCount, emailCount);
+    }
+				     */
+    public DoubleMatrix readMatrixFile(String filename) {
+	BufferedReader br = null;
+	emailCount = 0;
+	
 	int count = 0;
 	try {
  
@@ -401,6 +463,11 @@ public class EmailSimilarity implements Runnable {
 	    System.out.print("Importing matrix ");
 	    while ((sCurrentLine = br.readLine()) != null) {
 		sParts = sCurrentLine.split(" ");
+		if (emailCount == 0) {
+		    emailCount = sParts.length;
+		    similarityMatrixReal = new DoubleMatrix(emailCount, emailCount);
+		}
+
 		if (count % 200000 == 0) {
 		    //System.out.println(count + ":" + Integer.parseInt(sParts[0]) + " " + Integer.parseInt(sParts[1]) + " " + Double.parseDouble(sParts[2]));
 		    System.out.print(".");
@@ -428,5 +495,6 @@ public class EmailSimilarity implements Runnable {
 		ex.printStackTrace();
 	    }
 	}
+	return similarityMatrixReal;
     }
 }

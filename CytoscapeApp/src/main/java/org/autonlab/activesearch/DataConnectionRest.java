@@ -24,7 +24,8 @@ public class DataConnectionRest {
 
     public void firstEmail(int email, int mode)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "firstemail/" + email + "/" + mode);
+	//WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "firstmessage/" + email + "/" + mode);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "firstmessage/" + email);
 	String ret = webResource.accept("text/plain").get(String.class);
 	if (!ret.equals("ok")) {
 	    throw new RuntimeException("firstEmail " + ret);
@@ -33,13 +34,13 @@ public class DataConnectionRest {
 
     public int emailInteresting()
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "emailinteresting");
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "messageinteresting");
 	return Integer.parseInt(webResource.accept("text/plain").get(String.class));
     }
 
     public int emailBoring()
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "emailboring");
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "messageboring");
 	return Integer.parseInt(webResource.accept("text/plain").get(String.class));
     }
 
@@ -75,13 +76,13 @@ public class DataConnectionRest {
 
     public int getNextEmail()
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getNextEmail");
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getNextMessage");
 	return Integer.parseInt(webResource.accept("text/plain").get(String.class));
     }
 
     public int pickRandomLabeledEmail()
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "pickRandomLabeledEmail");
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "pickRandomLabeledMessage");
 	return Integer.parseInt(webResource.accept("text/plain").get(String.class));
     }
 
@@ -135,7 +136,7 @@ public class DataConnectionRest {
      */
     public String getEmailSubjectFromMessageID(int messageID)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getEmailSubjectFromMessageID/" + messageID);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getMessageSubjectFromMessageID/" + messageID);
 	return webResource.accept("text/plain").get(String.class);
     }
 
@@ -148,7 +149,7 @@ public class DataConnectionRest {
      */
     public String getEmailBodyFromMessageID(int messageID)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getEmailBodyFromMessageID/" + messageID);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getMessageBodyFromMessageID/" + messageID);
 	return webResource.accept("text/plain").get(String.class);
     }
 
@@ -159,7 +160,7 @@ public class DataConnectionRest {
      */
     public int getTotalEmailCount()
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getTotalEmailCount");
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getTotalMessageCount");
 	return Integer.parseInt(webResource.accept("text/plain").get(String.class));
     }
 
@@ -177,7 +178,7 @@ public class DataConnectionRest {
 	int[] emailTime = new int[emailCount];
 	 int[] emailSender = new int[emailCount];
 
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getEmailTimesAndSenders");
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getMessageTimesAndSenders");
 	String[] messages = webResource.accept("text/plain").get(String.class).split("[\\r\\n]+");
 
 	for (int i = 0; i < messages.length; i++) {
@@ -192,7 +193,7 @@ public class DataConnectionRest {
 
     public LinkedList<Integer> getUsersByEmail(int email)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getUsersByEmail/" + email);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getUsersByMessage/" + email);
 	String[] messages = webResource.accept("text/plain").get(String.class).split("[\\r\\n]+");
 
 	LinkedList<Integer> retList = new LinkedList<Integer>();
@@ -205,25 +206,25 @@ public class DataConnectionRest {
 
     public int getSenderByEmail(int email)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getSenderByEmail/" + email);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getSenderByMessage/" + email);
 	return Integer.parseInt(webResource.accept("text/plain").get(String.class));
     }
 
     public String getTimeByEmail(int email)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getTimeByEmail/" + email);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getTimeByMessage/" + email);
 	return webResource.accept("text/plain").get(String.class);
     }
 
     public String getSubjectByEmail(int email)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getSubjectByEmail/" + email);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getSubjectByMessage/" + email);
 	return webResource.accept("text/plain").get(String.class);
     }
 
     public LinkedList<String> getEmailsByKeyword(String word)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getEmailsByKeyword/" + word);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getMessagesByKeyword/" + word);
 	String[] messages = webResource.accept("text/plain").get(String.class).split("[\\r\\n]+");
 
 	LinkedList<String> retList = new LinkedList<String>();
@@ -236,7 +237,7 @@ public class DataConnectionRest {
 
     public LinkedList<String> getEmailsByKeywordSubject(String word)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getEmailsByKeywordSubject/" + word);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getMessagesByKeywordSubject/" + word);
 	String[] messages = webResource.accept("text/plain").get(String.class).split("[\\r\\n]+");
 
 	LinkedList<String> retList = new LinkedList<String>();
@@ -271,7 +272,7 @@ public class DataConnectionRest {
 
     public LinkedList<Integer> getEmailRecipientsByEmail(int email)
     {
-	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getEmailRecipientsByEmail/" + email);
+	WebResource webResource = client.resource(ActiveSearchConstants.REST_URL_PREFIX + "getMessageRecipientsByMessage/" + email);
 	String[] recipients = webResource.accept("text/plain").get(String.class).split("[\\r\\n]+");
 
 	LinkedList<Integer> retList = new LinkedList<Integer>();

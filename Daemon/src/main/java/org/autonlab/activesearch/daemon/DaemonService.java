@@ -91,6 +91,7 @@ public class DaemonService implements ServletContextListener {
 	return Response.status(200).entity(output).build();
     }
 
+    // When testing against the matlab code, remember matlab email indexes start at 1 and Java's start at 0 
     @GET
     @Path("firstemail/{email}")
     public Response firstEmail(@PathParam("email") int email) {
@@ -231,7 +232,6 @@ public class DaemonService implements ServletContextListener {
     public Response generateEigenmap(@PathParam("count") int threadCount) {
 	int i;   
 	EmailSimilarity[] emailData;
-
 	System.out.println("num threads is " + threadCount);
 
 	emailData = new EmailSimilarity[threadCount];
@@ -253,7 +253,11 @@ public class DaemonService implements ServletContextListener {
 	}
 	emailData = null;
 	EmailSimilarity.clearStaticValues();
-
+	
+	GlapEigenmap.write(similaritySumMatrix, "similarity_matrix_13000_1.txt", similaritySumMatrix.rows, similaritySumMatrix.columns);
+	
+	//return Response.status(200).entity("hurrr").build();
+	//DoubleMatrix similaritySumMatrix = GenerateCompabilityMatrix.readFile("/home/tw/git/AutonlabCMU/ActiveSearch/Daemon/similarity_matrix_13000_1.txt", 13754, 0);
 	GlapEigenmap foo = new GlapEigenmap(ActiveSearchConstants.SEARCH_MAIN_DIMENSIONS, similaritySumMatrix);
 
 	
@@ -453,5 +457,13 @@ public class DaemonService implements ServletContextListener {
     public Response printConfigFile() {
 	String output = ActiveSearchConstants.returnConfig();
 	return Response.status(200).entity(output).build();
+    }
+
+    @GET
+    @Path("setDimensions/{dim}")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response setDimensions(@PathParam("dim") int dim) {
+	ActiveSearchConstants.SEARCH_MAIN_DIMENSIONS = dim;
+	return Response.status(200).entity("ok").build();
     }
 }
