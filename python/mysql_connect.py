@@ -13,6 +13,12 @@ import sys
 
 from multiprocessing import Process, Queue
 
+class ProcessArgs():
+	def __init__(self, messages_dict, q, i, skip_stemmer):
+		self.messages_dict = messages_dict
+		self.q = q
+		self.i = i
+		self.skip_stemmer = skip_stemmer
 
 class mysqlDataConnect ():
 	def __init__ (self):
@@ -78,13 +84,29 @@ class mysqlDataConnect ():
 		print "range is ", thread_range_messages
 		mythreads = []
 		myqueues = []
+		# we collect the message text into a dict and pass it into the process
+		# this can waste memory because we're storing all of the text in memory
+		# rather than iteratively reading it in. However we're looking at about
+		# 500MB for 250k emails with 55 million words so I'm hoping the drawback
+		# is minimal given the flexibility we get allowing for different methods
+		# of text ingest
 		for i in range(number_of_threads):
 			start_message = thread_range_messages * i
 			end_message = min(thread_range_messages * (i+1), message_count)
 			# range is [start_message, end_message)
 			print "Thread ", start_message, " to ", end_message
 			q = Queue()
-			t = Process(target=self.calculateTFIDF, args=(start_message,end_message, q, hostname, username, password, database, i, skip_stemmer))
+
+			messages_dict = {}
+			cur = self.db.cursor()
+			cur.execute("SELECT * FROM bodies WHERE messageid >=" + str(start_message) + " AND messageid <" + str(end_message)  + " ORDER BY messageid")
+			for message in cur.fetchall():
+				messageid = message[0]
+				body = message[1]
+				messages_dict[messageid] = body
+
+			process_args = ProcessArgs(messages_dict, q, i, skip_stemmer)
+			t = Process(target=self.calculateTFIDF, args=(process_args,))
 			t.start()
 			mythreads.append(t)
 			myqueues.append(q)
@@ -443,13 +465,8 @@ class mysqlDataConnect ():
 		wMat = self.getFinalFeatureMatrix(tfidf_wordlimit, dotfidf,skip_stemmer, num_threads, hostname, username, password, database, tc, sc)
 		return wMat.T.dot(wMat)
 
-	def calculateTFIDF(self, start_message, end_message, myqueue, hostname, username, password, database, thread_id, skip_stemmer):
-		db = MySQLdb.connect(host=hostname,
-				     user=username,
-				     passwd=password,
-				     db=database)
-
-		emailwords = [dict() for x in range(end_message - start_message)]
+	def calculateTFIDF(self, params):
+		emailwords = [dict() for x in range(len(params.messages_dict))]
 
 		skip_words = {'the': 1}
 		skip_words['the'] = 1
@@ -502,27 +519,18 @@ class mysqlDataConnect ():
 		wordcount_message = {}
 
 
-		message_count = end_message - start_message
+		message_count = len(params.messages_dict)
 		local_message_id = 0
 
 		stemmer = SnowballStemmer("english")
 
-		prev_msg = -1
-
-		cur = db.cursor()
-		cur.execute("SELECT * FROM bodies WHERE messageid >=" + str(start_message) + " AND messageid <" + str(end_message) + " ORDER BY messageid")
-		# loop through the messages and track the words seen
-		for message in cur.fetchall():
-			messageid = message[0]
-			body = message[1]
-			if (prev_msg >= 0 and (prev_msg+1) != messageid):
-				print "OKOK ", prev_msg, " and ", messageid
-			prev_msg = messageid
+		for messageid in params.messages_dict:
+			body = params.messages_dict[messageid]
 
 			message_arr = re.split('\s+', string.lower(body))
 
 			if (local_message_id % 1000 == 0):
-				print "Thread ",thread_id, " ", local_message_id, " / ", message_count
+				print "Thread ",params.i, " ", local_message_id, " / ", message_count
 			for word in message_arr:
 				# remove nonword characters
 				word = re.sub('[\W_]+', '', word)
@@ -532,7 +540,7 @@ class mysqlDataConnect ():
 					continue
 				if (word in skip_words):
 					continue
-				if (skip_stemmer == False):
+				if (params.skip_stemmer == False):
 					try:
 						word = stemmer.stem(word)
 					except:
@@ -548,7 +556,7 @@ class mysqlDataConnect ():
 
 			local_message_id += 1
 
-		print "Thread ", thread_id, ": Counting words"
+		print "Thread ", params.i, ": Counting words"
 		# count the total number of times each word was seen
 		for messageid in range(local_message_id):
 			for word in emailwords[messageid].keys():
@@ -562,14 +570,14 @@ class mysqlDataConnect ():
 					else:
 						wordcount_message[word] = 1
 
-		if (len(emailwords) != (end_message - start_message)):
-			print "Error: Thread ", thread_id, ":emailwords array size (", len(emailwords), ") does not match expected number of words: ", (end_message - start_message)
+		if (len(emailwords) != message_count):
+			print "Error: Thread ", params.i, ":emailwords array size (", len(emailwords), ") does not match expected number of words: ", message_count
 			sys.exit()
-		if (local_message_id != (end_message - start_message)):
-			print "Error: Thread ", thread_id, ":local_message_id (", local_message_id, ") does not match expected number of words: ", (end_message - start_message)
+		if (local_message_id != message_count):
+			print "Error: Thread ", params.i, ":local_message_id (", local_message_id, ") does not match expected number of words: ", message_count
 			sys.exit()
-		myqueue.put(end_message - start_message)
-		for i in range(end_message - start_message):
-		     myqueue.put(emailwords[i])
-		myqueue.put(wordcount)
-		myqueue.put(wordcount_message)
+		params.q.put(message_count)
+		for i in range(message_count):
+		     params.q.put(emailwords[i])
+		params.q.put(wordcount)
+		params.q.put(wordcount_message)
