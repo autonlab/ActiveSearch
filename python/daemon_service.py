@@ -29,8 +29,9 @@ parser.add_argument('-s', '--skip_stemmer', default=False, action='store_true', 
 
 args = parser.parse_args()
 
-db = mysql_conn.mysql_connect(args.database, args.database_hostname, args.database_user, args.database_pass)
-messageCount = mysql_conn.getTotalMessageCount(db)
+dataConn = mysql_conn.mysqlDataConnect()
+dataConn.connect(args.database, args.database_hostname, args.database_user, args.database_pass)
+messageCount = dataConn.getTotalMessageCount()
 
 activeSearch = None
 
@@ -42,19 +43,19 @@ first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = mysql_conn.getFinalFeatureMatrix(db,args.wordlimit,args.dotfidf,args.skip_stemmer, args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database, 0,0)
+    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.dotfidf,args.skip_stemmer, args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database, 0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):
     print "Using shariAS"
     activeSearch = asI.shariAS()   
-    A = mysql_conn.getAffinityMatrix(db,args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 elif (args.method == "naiveshari"):
     print "Using naieveShariAS"
     activeSearch = asI.naiveShariAS()   
-    A = mysql_conn.getAffinityMatrix(db,args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 else:
@@ -155,33 +156,33 @@ def getLabel(message):
 
 @app.route('/getUserNameFromID/<id>')
 def getUserNameFromID(id):
-    return Response(mysql_conn.getUserNameFromID(int(id), db), mimetype='text/plain')
+    return Response(dataConn.getUserNameFromID(int(id)), mimetype='text/plain')
 
 @app.route('/getMessagesFromUserToUser/<from_id>/<to_id>')
 def getMessagesFromUserToUser(from_id, to_id):
-    return Response(mysql_conn.getMessagesFromUserToUser(int(from_id), int(to_id), db), mimetype='text/plain')
+    return Response(dataConn.getMessagesFromUserToUser(int(from_id), int(to_id)), mimetype='text/plain')
 
 @app.route('/getMessageSubjectFromMessageID/<id>')
 def getMessageSubjectFromMessageID(id):
-    return Response(mysql_conn.getMessageSubjectFromMessageID(int(id), db), mimetype='text/plain')
+    return Response(dataConn.getMessageSubjectFromMessageID(int(id)), mimetype='text/plain')
 
 @app.route('/getMessageBodyFromMessageID/<id>')
 def getMessageBodyFromMessageID(id):
-    ret = mysql_conn.getMessageBodyFromMessageID(int(id), db)
+    ret = dataConn.getMessageBodyFromMessageID(int(id))
     mystr = str(ret[0]) + "\n\n" + ret[1] + "\n\n" + ret[2]
     return Response(mystr, mimetype='text/plain')
 
 @app.route('/getTotalMessageCount')
 def getTotalMessageCount():
-    return Response(mysql_conn.getTotalMessageCount(db), mimetype='text/plain')
+    return Response(dataConn.getTotalMessageCount(), mimetype='text/plain')
 
 @app.route('/getMessageTimesAndSenders/<id>')
 def getMessageTimesAndSenders(id):
-    return Response(mysql_conn.getMessageTimesAndSenders(db), mimetype='text/plain')
+    return Response(dataConn.getMessageTimesAndSenders(), mimetype='text/plain')
 
 @app.route('/getUsersByMessage/<id>')
 def getUsersByMessage(id):
-    ret_arr = mysql_conn.getUsersByMessage(int(id), db)
+    ret_arr = dataConn.getUsersByMessage(int(id))
     mystr = ""
     for row in ret_arr:
         mystr += str(row) + "\n"
@@ -189,20 +190,20 @@ def getUsersByMessage(id):
 
 @app.route('/getSenderByMessage/<id>')
 def getSenderByMessage(id):
-    return Response(str(mysql_conn.getSenderByMessage(int(id), db)), mimetype='text/plain')
+    return Response(str(dataConn.getSenderByMessage(int(id))), mimetype='text/plain')
 
 @app.route('/getTimeByMessage/<id>')
 def getTimeByMessage(id):
-    return Response(mysql_conn.getTimeByMessage(int(id), db), mimetype='text/plain')
+    return Response(dataConn.getTimeByMessage(int(id)), mimetype='text/plain')
 
 @app.route('/getSubjectByMessage/<id>')
 def getSubjectByMessage(id):
-    return Response(mysql_conn.getSubjectByMessage(int(id), db), mimetype='text/plain')
+    return Response(dataConn.getSubjectByMessage(int(id)), mimetype='text/plain')
 
 @app.route('/getMessagesByKeyword/<word>')
 def getMessagesByKeyword(word):
     # this returns an array of entries so we have to concatenate them into a big string
-    ret_arr = mysql_conn.getMessagesByKeyword(word, db)
+    ret_arr = dataConn.getMessagesByKeyword(word)
     mystr = ""
     for row in ret_arr:
         mystr += str(row) + "\n"
@@ -212,7 +213,7 @@ def getMessagesByKeyword(word):
 @app.route('/getMessagesByKeywordSubject/<word>')
 def getMessagesByKeywordSubject(word):
     # this returns an array of entries so we have to concatenate them into a big string
-    ret_arr = mysql_conn.getMessagesByKeywordSubject(word, db)
+    ret_arr = dataConn.getMessagesByKeywordSubject(word)
     mystr = ""
     for row in ret_arr:
         mystr += str(row) + "\n"
@@ -222,7 +223,7 @@ def getMessagesByKeywordSubject(word):
 @app.route('/getMessageRecipientsByMessage/<message>')
 def getMessageRecipientsByMessage(message):
     # this returns an array of entries so we have to concatenate them into a big string
-    ret_arr = mysql_conn.getRecipientsByMessage(message, db)
+    ret_arr = dataConn.getRecipientsByMessage(message)
 
     mystr = ""
     for row in ret_arr:
