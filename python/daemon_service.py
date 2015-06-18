@@ -6,6 +6,8 @@ import mysql_connect as mysql_conn
 import activeSearchInterface as asI
 import argparse
 import sys
+import multiprocessing
+
 ##
 # To run this, make sure the permissions are right:
 # chmod a+x daemon_service.py 
@@ -16,6 +18,9 @@ import sys
 
 app = Flask(__name__)
 
+cpu_count = multiprocessing.cpu_count()
+cpu_count /= 2 #we don't want hyperthreading cores, only physical cores. AMD also kind of cheats by having one FPU per two cores so this seems reasonable as a default
+
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--method', default='kernel', help='shari, naiveshari, kernel, default to kernel')
 parser.add_argument('-w', '--wordlimit', default=6000, type=int, help='in kernel mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
@@ -24,17 +29,14 @@ parser.add_argument('-u', '--database_user', default='root', help='database user
 parser.add_argument('-p', '--database_pass', default='', help='database pass')
 parser.add_argument('-n', '--database_hostname', default='', help='database hostname')
 parser.add_argument('-j', '--JSON_path', default='', help='path to file or directory with JSON flat file twitter data')
-parser.add_argument('-z', '--num_threads', default=2, type=int, help='number of threads for tfidf - physical cores only')
+parser.add_argument('-z', '--num_cpus', default=cpu_count, type=int, help='number of cpus for tfidf - physical cores only. Default is ' + str(cpu_count))
 parser.add_argument('-s', '--skip_stemmer', default=False, action='store_true', help='skip a slow part of tfidf. Drops result quality but improves speed. Save time when testing code')
 
 args = parser.parse_args()
 
-
-
-
 #message_count = dataConn.connect("/home/tw/tweets/pwfiregrl97.tweets")
 if (args.JSON_path is not None):
-    dataConn = mysql_conn.onefileDataConnect()
+    dataConn = mysql_conn.flatfileDataConnect()
     message_count = dataConn.connect(args.JSON_path)
 else:
     dataConn = mysql_conn.mysqlDataConnect()
@@ -50,19 +52,19 @@ first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_threads, message_count, 0,0)
+    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, 0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):
     print "Using shariAS"
     activeSearch = asI.shariAS()   
-    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_threads, message_count, 0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 elif (args.method == "naiveshari"):
     print "Using naieveShariAS"
     activeSearch = asI.naiveShariAS()   
-    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_threads, message_count, 0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 else:
@@ -240,4 +242,4 @@ def getMessageRecipientsByMessage(message):
     return Response(mystr, mimetype='text/plain')
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)

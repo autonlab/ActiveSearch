@@ -85,7 +85,7 @@ class generalDataConnect():
 		stemmer = SnowballStemmer("english")
 
 		for messageid in params.messages_data:
-			body = params.messages_data[messageid]["text"]
+			body = params.messages_data[messageid]
 			message_arr = re.split('\s+', string.lower(body))
 
 			if (local_message_id % 1000 == 0):
@@ -406,14 +406,14 @@ class generalDataConnect():
 	def getMessages(self, start_message, end_message):
 		raise NotImplementedError()
 
-class onefileDataConnect (generalDataConnect):
-	# onefileDataConnect
+class flatfileDataConnect (generalDataConnect):
+	# flatfileDataConnect
 	def __init__ (self):
 		self.messages_data = None
 		self.users_to_id = None
 		self.id_to_users = None
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def connect(self, path):
 		self.messages_data = {}
 		self.users_to_id = {}
@@ -422,12 +422,12 @@ class onefileDataConnect (generalDataConnect):
 		files_seen = 0;
 		message_index = 0;
 		if (os.path.isfile(path)):
-			message_index = self.processOneFile(path, message_index)
+			message_index = self.processFlatfile(path, message_index)
 
 		elif (os.path.isdir(path)):
 			for root, dirs, files in os.walk(path):
 				for name in files:
-					message_index = self.processOneFile(os.path.join(root, name), message_index)
+					message_index = self.processFlatfile(os.path.join(root, name), message_index)
 					if (files_seen % 100 == 0):
 						print "files: ",files_seen,"/",len(files)," num messages:", message_index
 					if (files_seen % 10 ==  0):
@@ -438,7 +438,7 @@ class onefileDataConnect (generalDataConnect):
 		return len(self.messages_data)
 
 	# returns the new message_index (a file may have any number of records in it)
-	def processOneFile(self, file, message_index):
+	def processFlatfile(self, file, message_index):
 		f = open(file)
 		data = f.read().split('\n')
 		# we can't just return len(data) because a line might be blank so we count actual lines before we return
@@ -469,24 +469,24 @@ class onefileDataConnect (generalDataConnect):
 
 		return message_index
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getTotalMessageCount(self):
 		return str(len(self.messages_data))
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getTotalUserCount(self):
 		return 1
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getRecipientsByMessage(self, message_id):
 		ret_arr = []
 		return ret_arr
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getMessagesByKeywordSubject(self, word):
 		return self.getMessagesByKeyword(word)
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getMessagesByKeyword(self, word):
 		data = []
 		for messageid in self.messages_data:
@@ -494,19 +494,19 @@ class onefileDataConnect (generalDataConnect):
 				data.append(str(messageid) + " : " + self.messages_data[messageid]["timestamp"] + " : " + self.messages_data[messageid]["text"])
 		return data
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getTimeByMessage(self, message_id):
 		return self.messages_data[message_id]["timestamp"]
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getSubjectByMessage(self, message_id):
 		return self.messages_data[message_id]["text"]
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getSenderByMessage(self, message_id):
 		return self.messages_data[message_id]["userid"]
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getMessageBodyFromMessageID(self, message_id):
 		data = []
 		data.append(self.messages_data[message_id]["timestamp"]);
@@ -514,27 +514,26 @@ class onefileDataConnect (generalDataConnect):
 		data.append(self.messages_data[message_id]["text"]);
 		return data
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getMessageSubjectFromMessageID(self, message_id):
 		return self.messages_data[message_id]["text"]
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getMessagesFromUserToUser(self, user_from, user_to):
 		return None
 
-	# onefileDataConnect
+	# flatfileDataConnect
 	def getUserNameFromID(self, user_id):
 		if (user_id < 0 or user_id >= len(self.id_to_users)):
 			return ""
 		return self.id_to_users[user_id]
 
-	# onefileDataConnect
+	# flatfileDataConnect
         # return messages [start_message, end_message) 
 	def getMessages(self, start_message, end_message):
-		print "XYZ ",len(self.messages_data)
 		messages_data_process = {}
 		for messageid in range(start_message,end_message):
-			messages_data_process[messageid] = self.messages_data[messageid]
+			messages_data_process[messageid] = self.messages_data[messageid]["text"]
 		return messages_data_process
 
 class mysqlDataConnect (generalDataConnect):
