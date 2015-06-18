@@ -13,6 +13,8 @@ import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 
+import java.lang.NumberFormatException;
+
 public class DataConnectionRest {
 
     Client client;
@@ -198,7 +200,13 @@ public class DataConnectionRest {
 
 	LinkedList<Integer> retList = new LinkedList<Integer>();
 	for (int i = 0; i < messages.length; i++) {
-	    retList.add(Integer.parseInt(messages[i]));
+	    try {
+		int id = Integer.parseInt(messages[i]);
+		retList.add(id);
+	    }
+	    catch (NumberFormatException e) {
+		// this is ok
+	    }
 	}
 
 	return retList;
@@ -278,7 +286,13 @@ public class DataConnectionRest {
 	LinkedList<Integer> retList = new LinkedList<Integer>();
 	for (int i = 0; i < recipients.length; i++) {
 	    if (!recipients[i].isEmpty()) {
-		retList.add(Integer.parseInt(recipients[i]));
+		try {
+		    int id = Integer.parseInt(recipients[i]);
+		    retList.add(id);
+		}
+		catch (NumberFormatException e) {
+		    // this is ok
+		}
 	    }
 	}
 

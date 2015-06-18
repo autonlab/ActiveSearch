@@ -18,20 +18,27 @@ app = Flask(__name__)
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-m', '--method', default='kernel', help='shari, naiveshari, kernel, default to kernel')
-parser.add_argument('-d', '--database', default='jebbush', help='database name')
 parser.add_argument('-w', '--wordlimit', default=6000, type=int, help='in kernel mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
-parser.add_argument('-t', '--dotfidf', default=False, action='store_true', help='do tfidf computation at startup')
+parser.add_argument('-d', '--database', default='jebbush', help='database name')
 parser.add_argument('-u', '--database_user', default='root', help='database user')
 parser.add_argument('-p', '--database_pass', default='', help='database pass')
 parser.add_argument('-n', '--database_hostname', default='', help='database hostname')
+parser.add_argument('-j', '--JSON_path', default='', help='path to file or directory with JSON flat file twitter data')
 parser.add_argument('-z', '--num_threads', default=2, type=int, help='number of threads for tfidf - physical cores only')
 parser.add_argument('-s', '--skip_stemmer', default=False, action='store_true', help='skip a slow part of tfidf. Drops result quality but improves speed. Save time when testing code')
 
 args = parser.parse_args()
 
-dataConn = mysql_conn.mysqlDataConnect()
-dataConn.connect(args.database, args.database_hostname, args.database_user, args.database_pass)
-messageCount = dataConn.getTotalMessageCount()
+
+
+
+#message_count = dataConn.connect("/home/tw/tweets/pwfiregrl97.tweets")
+if (args.JSON_path is not None):
+    dataConn = mysql_conn.onefileDataConnect()
+    message_count = dataConn.connect(args.JSON_path)
+else:
+    dataConn = mysql_conn.mysqlDataConnect()
+    message_count = dataConn.connect(args.database, args.database_hostname, args.database_user, args.database_pass)
 
 activeSearch = None
 
@@ -43,19 +50,19 @@ first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.dotfidf,args.skip_stemmer, args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database, 0,0)
+    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_threads, message_count, 0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):
     print "Using shariAS"
     activeSearch = asI.shariAS()   
-    A = dataConn.getAffinityMatrix(args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_threads, message_count, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 elif (args.method == "naiveshari"):
     print "Using naieveShariAS"
     activeSearch = asI.naiveShariAS()   
-    A = dataConn.getAffinityMatrix(args.wordlimit,args.dotfidf,args.skip_stemmer,args.num_threads, args.database_hostname, args.database_user, args.database_pass, args.database,0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_threads, message_count, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 else:
@@ -223,7 +230,8 @@ def getMessagesByKeywordSubject(word):
 @app.route('/getMessageRecipientsByMessage/<message>')
 def getMessageRecipientsByMessage(message):
     # this returns an array of entries so we have to concatenate them into a big string
-    ret_arr = dataConn.getRecipientsByMessage(message)
+    ret_arr = []
+    ret_arr.append(dataConn.getRecipientsByMessage(message))
 
     mystr = ""
     for row in ret_arr:

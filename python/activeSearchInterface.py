@@ -302,10 +302,10 @@ class kernelAS (genericAS):
 		ret = self.labels[idx]
 		if self.labels[idx] == -1:
 			self.setLabel(idx, lbl)
-			return
+			return ret 
 		elif self.labels[idx] == lbl:
 			print("Already the same value!")
-			return
+			return ret
 
 		if self.params.verbose:
 			t1 = time.time()
