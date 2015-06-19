@@ -13,7 +13,9 @@ import sys
 import os
 
 from multiprocessing import Process, Queue
-
+import datetime
+from dateutil.parser import parse
+import pytz
 import json
 
 class ProcessArgs():
@@ -24,6 +26,13 @@ class ProcessArgs():
 		self.skip_stemmer = skip_stemmer
 
 class generalDataConnect():
+	def __init__(self):
+		self.randomFeatures = None
+		self.ts_magic_number = 13168189440000.0
+		self.rn = 100
+		self.sine=True
+		self.rfc = None
+
 	# generalDataConnect
 	def calculateTFIDF(self, params):
 		emailwords = [dict() for x in range(len(params.messages_data))]
@@ -271,19 +280,10 @@ class generalDataConnect():
 		ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(len(wordcount), message_count))
 		return ret_matrix
 
-
-	randomFeatures = None
-	ts_magic_number = 13168189440000.0
-	rn = 100
-	sine=True
-	rfc = None
-
 	# generalDataConnect
 	def getTimeSimMatrix (self):
-		global rfc
-
-		if rfc is None:
-			randomFeatures = grf.GaussianRandomFeatures(dim=2,gammak=1/ts_magic_number,rn=rn,sine=True)
+		if self.rfc is None:
+			self.randomFeatures = grf.GaussianRandomFeatures(dim=2,gammak=1/self.ts_magic_number,rn=self.rn,sine=True)
 
 		tdata = self.getMessageTimes()
 
@@ -292,14 +292,14 @@ class generalDataConnect():
 
 		for t in tdata:
 
-			rf = randomFeatures.computeRandomFeatures (t[1])
+			rf = self.randomFeatures.computeRandomFeatures (t[1])
 
 			for idx,v in enumerate([rf]):
 				ret_col.append(t[0])
 				ret_row.append(idx)
 				ret_data.append(v)
 
-		num_f = rn*2 if sine else rn
+		num_f = self.rn*2 if self.sine else self.rn
 		ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(num_f, getTotalMessageCount()))
 		return ret_matrix
 
@@ -412,6 +412,7 @@ class flatfileDataConnect (generalDataConnect):
 		self.messages_data = None
 		self.users_to_id = None
 		self.id_to_users = None
+		generalDataConnect.__init__ (self)
 
 	# flatfileDataConnect
 	def connect(self, path):
@@ -444,6 +445,7 @@ class flatfileDataConnect (generalDataConnect):
 		# we can't just return len(data) because a line might be blank so we count actual lines before we return
 		f.close()
 
+		epoch = datetime.datetime(1970,1,1,0,0,0,0,pytz.UTC)
 		for one_data in data:
 			if (one_data == ""):
 				continue
@@ -455,7 +457,10 @@ class flatfileDataConnect (generalDataConnect):
 
 			self.messages_data[message_index] = {}
 			self.messages_data[message_index]["text"] = one_data_parsed["text"].encode('ascii', 'replace')
-			self.messages_data[message_index]["timestamp"] = one_data_parsed["created_at"]
+			# Fri Jun 01 08:44:12 +0000 2013
+			parsed_date = parse(one_data_parsed["created_at"])
+			self.messages_data[message_index]["timestamp"] = (parsed_date-epoch).total_seconds()
+
 			username = one_data_parsed["user"]["screen_name"]
 			if (self.users_to_id.get(username) != None):
 				self.messages_data[message_index]["userid"] = self.users_to_id.get(username)
@@ -528,6 +533,13 @@ class flatfileDataConnect (generalDataConnect):
 			return ""
 		return self.id_to_users[user_id]
 
+	# returns an array where each value is a string of the form "<message_id> <seconds from epoch timestamp>""
+	def getMessageTimes(self):
+		data = []
+		for messageid in self.messages_data:
+			data.append(str(messageid) + " " + str(self.messages_data[messageid]["timestamp"]))
+		return data
+
 	# flatfileDataConnect
         # return messages [start_message, end_message) 
 	def getMessages(self, start_message, end_message):
@@ -540,6 +552,7 @@ class mysqlDataConnect (generalDataConnect):
 	#mysqlDataConnect
 	def __init__ (self):
 		self.db = None
+		generalDataConnect.__init__ (self)
 
 	#mysqlDataConnect
 	def connect(self, database, db_host="localhost", db_user="root", db_password=""):
@@ -636,16 +649,15 @@ class mysqlDataConnect (generalDataConnect):
 		row=cur.fetchone()
 		return row[0]
 
-	# I think these functions are unused so I've commented them out to see
 	# returns an array where each value is a string of the form "<message_id> <seconds from epoch timestamp>""
-#	def getMessageTimes(self):
-#		cur = self.db.cursor()
-#		cur.execute("SELECT messageid, UNIX_TIMESTAMP(messagedt) FROM messages")
-#		data = []
-#
-#		for row in cur.fetchall():
-#			data.append((str(row[0]), float(row[1])))
-#		return data
+	def getMessageTimes(self):
+		cur = self.db.cursor()
+		cur.execute("SELECT messageid, UNIX_TIMESTAMP(messagedt) FROM messages")
+		data = []
+
+		for row in cur.fetchall():
+			data.append(str(row[0] + " " + str(row[1])))
+		return data
 
 
 	# returns an array where each value is a string of the form "<message_id> <seconds from epoch timestamp> <sender_id>"
