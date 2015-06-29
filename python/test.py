@@ -181,6 +181,24 @@ def createFakeData2 (n, r, nt, hubs):
 
 	return X, Y
 
+def createFakeData3 (n, r, nt, rcross=10):
+	"""
+	Builds data set
+	"""
+
+	low, high = 0, 5/n
+
+	Xt_t = nr.uniform(low=low, high=high, size=(r,nt))
+	Xt_n = np.zeros((r - rcross, nt))
+	Xn_n = nr.uniform(low=low, high=high, size=(r,n-nt))
+	Xn_t = np.zeros((r - rcross, n-nt))
+
+	X = np.c_[np.r_[Xt_t, Xt_n],np.r_[Xn_t, Xn_n]]
+	Y = np.array([1]*nt + [0]*(n-nt))
+
+	return X, Y
+
+
 def compute_f (A, labels, selected, l, w0, pi):
 	"""
 	Immediately compute f given selected points.
@@ -1049,6 +1067,108 @@ def test_grf ():
 	grf1 = 1
 
 
+def test_cinv ():
+	import cPickle as pickle
+	import os, os.path as osp
+
+	with open(osp.join(os.getenv('HOME'), 'Research/Data/ActiveSearch/ben/Xf.pkl'),'r') as fl:
+		X = pickle.load(fl)
+
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[0]))]
+
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[0]))]
+	print X.shape
+	r,n = X.shape
+
+	nt = int(0.05*n)
+	num_eval = 50
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+	nr.shuffle(Y)
+
+	pi = sum(Y)/len(Y)
+	init_pt = 5
+
+	# import IPython 
+	# IPython.embed()
+
+	# A = np.array((X.T.dot(X)).todense())
+	t1 = time.time()
+
+	verbose = True
+	prms = ASI.Parameters(pi=pi,sparse=False, verbose=verbose)	
+	kAS = ASI.kernelAS(prms)
+	kAS.initialize(X)
+
+
+	init_lbls = {init_pt:1}
+
+	kAS.firstMessage(init_pt)
+	# fs2 = [kAS.f]
+
+	import IPython
+	IPython.embed()
+
+	for i in range(num_eval):
+		idx1 = kAS.getNextMessage()
+		kAS.setLabelCurrent(Y[idx1])
+		init_lbls[idx1] = Y[idx1]
+		import IPython
+		IPython.embed()
+
+
+def test_CC ():
+
+	nac = np.allclose
+
+	n = 1000
+	r = 100
+	nt = 200
+	rcross = 0
+	X,Y = createFakeData3(n, r, nt, rcross)
+
+	num_eval = 50
+	pi = sum(Y)/len(Y)
+	init_pt = 5
+
+	# import IPython 
+	# IPython.embed()
+
+	A = X.T.dot(X)
+	t1 = time.time()
+
+	verbose = True
+	prms = ASI.Parameters(pi=pi,sparse=False, verbose=verbose)	
+	kAS = ASI.kernelAS(prms)
+	kAS.initialize(X)
+	
+	sAS = ASI.shariAS(prms)
+	sAS.initialize(A)
+	#sAS2 = ASI.naiveShariAS(prms)
+
+	kAS.firstMessage(init_pt)
+	sAS.firstMessage(init_pt)
+	# fs2 = [kAS.f]
+
+	for i in range(num_eval):
+		idx1 = kAS.getNextMessage()
+		kAS.setLabelCurrent(Y[idx1])
+		# init_lbls[idx1] = Y[idx1]
+		idx2 = sAS.getNextMessage()
+		sAS.setLabelCurrent(Y[idx2])
+
+		print('NEXT')
+		print idx1==idx2
+		print nac(kAS.f, sAS.f)
+		# fs2.append(kAS.f)
+		# fs3.append(sAS.f)
+
+	import IPython 
+	IPython.embed()
+
+
+
 
 if __name__ == '__main__':
 	#test1(n=10, cc=2, nt=1, d=4)
@@ -1072,7 +1192,9 @@ if __name__ == '__main__':
 	# test_interface()
 	# test_interface2()
 	# test_interface3()
-	test_warm_start()
+	# test_warm_start()
+	# test_cinv()
+	test_CC()
 	# import IPython
 	# IPython.embed()
 	# plt.figure()

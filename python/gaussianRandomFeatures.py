@@ -39,6 +39,7 @@ class GaussianRandomFeatures:
 		"""
 		Projects onto fourier feature space.
 		"""
+
 		f = np.array(f)
 		#f = np.atleast_2d(f)
 		ws = np.array(self.ws)

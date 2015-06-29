@@ -289,18 +289,23 @@ class generalDataConnect():
 
 		ret_row = []
 		ret_col = []
+		ret_data = []
 
 		for t in tdata:
 
-			rf = self.randomFeatures.computeRandomFeatures (t[1])
+			t = t.split()
+			row = int(t[0])
+			tm = float(t[1])
+
+			rf = self.randomFeatures.computeRandomFeatures (tm)
 
 			for idx,v in enumerate([rf]):
-				ret_col.append(t[0])
+				ret_col.append(row)
 				ret_row.append(idx)
 				ret_data.append(v)
 
 		num_f = self.rn*2 if self.sine else self.rn
-		ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(num_f, getTotalMessageCount()))
+		ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(num_f, self.getTotalMessageCount()))
 		return ret_matrix
 
 	# generalDataConnect
@@ -553,7 +558,7 @@ class mysqlDataConnect (generalDataConnect):
 	def __init__ (self):
 		self.db = None
 		generalDataConnect.__init__ (self)
-
+ 
 	#mysqlDataConnect
 	def connect(self, database, db_host="localhost", db_user="root", db_password=""):
 		self.db = MySQLdb.connect(host=db_host,

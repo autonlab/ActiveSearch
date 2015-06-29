@@ -52,7 +52,7 @@ first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, 0,0)
+    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, 1.0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):

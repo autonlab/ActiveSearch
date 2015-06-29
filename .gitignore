@@ -4,6 +4,12 @@
 *.project
 *.pyc
 
+*.npy
+*.npz
+*.orig
+*timings/
+*notes/
+
 *~
 
 *octave-workspace
