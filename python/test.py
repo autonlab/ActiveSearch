@@ -1074,11 +1074,11 @@ def test_cinv ():
 	with open(osp.join(os.getenv('HOME'), 'Research/Data/ActiveSearch/ben/Xf.pkl'),'r') as fl:
 		X = pickle.load(fl)
 
-	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
-	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[0]))]
+	# X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	# X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[0]))]
 
-	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
-	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[0]))]
+	# X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	# X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[0]))]
 	print X.shape
 	r,n = X.shape
 
@@ -1168,6 +1168,58 @@ def test_CC ():
 	IPython.embed()
 
 
+def test_nan ():
+	import cPickle as pickle
+	import os, os.path as osp
+
+	with open(osp.join(os.getenv('HOME'), 'Research/Data/ActiveSearch/ben/forumthreadsSparseMatrix.pkl'),'r') as fl:
+		X = pickle.load(fl)
+		X = X.T
+
+	# import IPython 
+	# IPython.embed()
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	print X.shape
+	r,n = X.shape
+
+	nt = int(0.05*n)
+	num_eval = 50
+	Y = np.array([1]*nt + [0]*(n-nt), dtype=int)
+	nr.shuffle(Y)
+
+	pi = sum(Y)/len(Y)
+	init_pt = 537
+
+	# import IPython 
+	# IPython.embed()
+
+	# A = np.array((X.T.dot(X)).todense())
+	t1 = time.time()
+
+	verbose = True
+	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
+	kAS = ASI.kernelAS(prms)
+	kAS.initialize(X)
+
+
+	init_lbls = {init_pt:1}
+
+	kAS.firstMessage(init_pt)
+	# fs2 = [kAS.f]
+
+	import IPython
+	IPython.embed()
+
+	for i in range(num_eval):
+		idx1 = kAS.getNextMessage()
+		kAS.setLabelCurrent(Y[idx1])
+		init_lbls[idx1] = Y[idx1]
+		import IPython
+		IPython.embed()
 
 
 if __name__ == '__main__':
@@ -1194,7 +1246,8 @@ if __name__ == '__main__':
 	# test_interface3()
 	# test_warm_start()
 	# test_cinv()
-	test_CC()
+	# test_CC()
+	test_nan()
 	# import IPython
 	# IPython.embed()
 	# plt.figure()
