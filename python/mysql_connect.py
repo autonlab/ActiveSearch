@@ -565,7 +565,7 @@ class mysqlDataConnect (generalDataConnect):
 					  user=db_user,
 					  passwd=db_password,
 					  db=database)
-		return self.getTotalMessageCout()
+		return self.getTotalMessageCount()
 
 	#mysqlDataConnect
 	# return the number of messages
@@ -574,7 +574,7 @@ class mysqlDataConnect (generalDataConnect):
 		cur.execute("SELECT COUNT(messageID) FROM messages")
 
 		row=cur.fetchone()
-		return str(row[0])
+		return row[0]
 
 	#mysqlDataConnect
 	# return the number of users
@@ -661,7 +661,7 @@ class mysqlDataConnect (generalDataConnect):
 		data = []
 
 		for row in cur.fetchall():
-			data.append(str(row[0] + " " + str(row[1])))
+			data.append(str(row[0]) + " " + str(row[1]))
 		return data
 
 
