@@ -35,7 +35,7 @@ parser.add_argument('-s', '--skip_stemmer', default=False, action='store_true', 
 args = parser.parse_args()
 
 #message_count = dataConn.connect("/home/tw/tweets/pwfiregrl97.tweets")
-if (args.JSON_path is not None):
+if (args.JSON_path is not ''):
     dataConn = mysql_conn.flatfileDataConnect()
     message_count = dataConn.connect(args.JSON_path)
 else:
@@ -52,7 +52,7 @@ first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, 1.0,0)
+    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, 0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):
