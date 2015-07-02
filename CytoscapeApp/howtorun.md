@@ -1,5 +1,6 @@
 # Running the Cytoscape App:
-[7/2/2015 note: this code was written for Cytoscape 3.1.0. It does not seem to work for the current 3.2.1]
+[7/2/2015 note: this code was written for Cytoscape 3.1.0. It does not build under the current 3.2.1]
+
 This document assumes that the user knows how to use Cytoscape and how to install an Cytoscape App. This document will focus on the dependencies and the build process.
 
  1. Add the Cytoscape API jar file to your maven repository. For this example we'll use 3.1.0:
