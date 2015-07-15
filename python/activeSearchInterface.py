@@ -11,7 +11,7 @@ def matrix_squeeze(X):
 
 class Parameters:
 
-	def __init__ (self, pi=0.05, eta=0.5, w0=None, sparse=True, verbose=True):
+	def __init__ (self, pi=0.05, eta=0.5, w0=None, sparse=True, verbose=True, remove_self_degree=True):
 		"""
 		pi 			--> prior target probability
 		eta 		--> jump probability
@@ -21,6 +21,7 @@ class Parameters:
 		self.eta = eta
 		self.w0 = w0
 		self.sparse = sparse
+		self.remove_self_degree = remove_self_degree
 
 		self.verbose = verbose
 
@@ -129,7 +130,10 @@ class kernelAS (genericAS):
 		# Set up some of the initial values of some matrices needed to compute D, BDinv, q and f
 		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
 		# B[self.labeled_idxs] = self.l/(1+self.l)
-		D = np.squeeze(Xf.T.dot(Xf.dot(np.ones((self.n,1))))) 
+		D = np.squeeze(Xf.T.dot(Xf.dot(np.ones((self.n,1)))))
+		if self.params.remove_self_degree:
+			Ds = matrix_squeeze((Xf**2).sum(0))
+			D = D - Ds
 
 		self.Dinv = 1./D
 
@@ -400,17 +404,30 @@ class shariAS (genericAS):
 		# Set up some of the initial values of some matrices
 		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
 		#B = np.ones(self.n)/(1 + self.params.w0) ##
-		D = np.squeeze(self.A.sum(1)) ##
+		D = matrix_squeeze(self.A.sum(1)) ##
+		if self.params.remove_self_degree:
+			D -= A.diagagonal()
 		self.Dinv = 1./D
 
-		I_A = -np.squeeze(B*self.Dinv)[:,None]*self.A
-		I_A[xrange(self.n), xrange(self.n)] += 1 ##
+		# import IPython
+		# IPython.embed()
+
+		if self.params.sparse:
+			BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
+			I_A = ss.diags([np.ones(self.n)],[0]).tocsr()-BDinv.dot(self.A)
+		else:
+			I_A = -np.squeeze(B*self.Dinv)[:,None]*self.A
+			I_A[xrange(self.n), xrange(self.n)] += 1 ##
 
 		# Constructing and inverting I - A'
 		if self.params.verbose:
 			print ("Inverting I_A")
 			t1 = time.time()
-		self.I_A_inv = np.matrix(nlg.inv(I_A))
+
+		if self.params.sparse:
+			self.I_A_inv = ss.csr_matrix(nlg.inv(I_A.todense()))
+		else:
+			self.I_A_inv = np.matrix(nlg.inv(I_A))
 
 		if self.params.verbose:
 			print("Time for inverse:", time.time() - t1)
@@ -509,13 +526,22 @@ class shariAS (genericAS):
 
 		# More constants
 		BDinv_Ai = self.Dinv[idx]/(1+ self.params.w0)*self.A[idx,:]
-		p2 = (1+(1-t)*matrix_squeeze(BDinv_Ai.dot(self.I_A_inv[:,idx])))
+
+		if self.params.sparse:
+			p2 = (1+(1-t)*matrix_squeeze(BDinv_Ai.dot(self.I_A_inv[:,idx]).todense()[0]))
+		else:
+			p2 = (1+(1-t)*matrix_squeeze(BDinv_Ai.dot(self.I_A_inv[:,idx])))
 
 		fdel = (s - (1-t)*(self.f[idx]-p1))/p2
 		IAdel =  - (1-t)*self.I_A_inv[:,idx].dot(BDinv_Ai.dot(self.I_A_inv))/p2
 
-		self.f += fdel*matrix_squeeze(self.I_A_inv[:,idx])
-		self.I_A_inv += IAdel
+		# import IPython
+		# IPython.embed()
+		if self.params.sparse:
+			self.f += fdel*matrix_squeeze(self.I_A_inv[:,idx].todense())
+		else:
+			self.f += fdel*matrix_squeeze(self.I_A_inv[:,idx])
+		self.I_A_inv = self.I_A_inv + IAdel
 
 		# Some more book-keeping
 		self.labeled_idxs.append(idx)

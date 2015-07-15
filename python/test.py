@@ -16,13 +16,13 @@ import gaussianRandomFeatures as grf
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 def save_sparse_csr(filename,array):
-    np.savez(filename,data = array.data ,indices=array.indices,
-             indptr =array.indptr, shape=array.shape )
+	np.savez(filename,data = array.data ,indices=array.indices,
+			 indptr =array.indptr, shape=array.shape )
 
 def load_sparse_csr(filename):
-    loader = np.load(filename)
-    return ss.csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
-                         shape = loader['shape'])
+	loader = np.load(filename)
+	return ss.csr_matrix((  loader['data'], loader['indices'], loader['indptr']),
+						 shape = loader['shape'])
 
 def test1 (n, cc=2, nt=1, d=4):
 	# Example where you chains of connections in targets
