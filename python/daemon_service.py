@@ -183,7 +183,7 @@ def getMessageBodyFromMessageID(id):
 
 @app.route('/getTotalMessageCount')
 def getTotalMessageCount():
-    return Response(dataConn.getTotalMessageCount(), mimetype='text/plain')
+    return Response(str(dataConn.getTotalMessageCount()), mimetype='text/plain')
 
 @app.route('/getMessageTimesAndSenders/<id>')
 def getMessageTimesAndSenders(id):

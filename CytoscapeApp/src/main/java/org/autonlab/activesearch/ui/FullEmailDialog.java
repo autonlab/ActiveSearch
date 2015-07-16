@@ -267,7 +267,7 @@ public class FullEmailDialog extends JDialog implements ActionListener{
 	panelBottomVote.setLayout(new FlowLayout());
 	panelBottomVote.add(buttonEmailInteresting);
 	panelBottomVote.add(buttonEmailBoring);
-	panelBottomVote.add(sliderAlpha);
+	//panelBottomVote.add(sliderAlpha);
 
 	layout = new GroupLayout(getContentPane());
         getContentPane().setLayout(layout);

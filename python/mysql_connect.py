@@ -574,7 +574,7 @@ class mysqlDataConnect (generalDataConnect):
 		cur.execute("SELECT COUNT(messageID) FROM messages")
 
 		row=cur.fetchone()
-		return row[0]
+		return int(row[0])
 
 	#mysqlDataConnect
 	# return the number of users
@@ -712,7 +712,7 @@ class mysqlDataConnect (generalDataConnect):
 		data = []
 
 		for row in cur.fetchall():
-			data.append(str(row[0]) + " : " + str(row[1]) + " : " + row[2])
+			data.append(str(row[0]) + " : " + str(row[1]) + " : " + row[2] + "\n")
 
 		return data
 
