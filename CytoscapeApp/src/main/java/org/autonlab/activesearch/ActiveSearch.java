@@ -28,8 +28,6 @@ import org.autonlab.activesearch.tasks.UpdateNodeNameViewTaskFactory;
 import org.autonlab.activesearch.tasks.ShowAdjacentNodeViewTaskFactory;
 import org.autonlab.activesearch.tasks.FilterMenuTaskFactory;
 
-
-import org.jblas.DoubleMatrix;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;

@@ -7,8 +7,6 @@ import org.cytoscape.view.model.CyNetworkView;
 import org.cytoscape.view.model.View;
 import org.cytoscape.work.TaskIterator;
 
-import org.jblas.DoubleMatrix;
-
 import java.net.URI;
 
 public class UpdateNodeNameViewTaskFactory extends AbstractNodeViewTaskFactory {

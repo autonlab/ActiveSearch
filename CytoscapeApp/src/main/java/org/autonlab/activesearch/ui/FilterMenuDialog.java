@@ -26,7 +26,6 @@ import org.autonlab.activesearch.DataConnectionRest;
 import org.cytoscape.model.CyEdge.Type;
 import org.cytoscape.application.CyApplicationManager;
 
-import org.jblas.DoubleMatrix;
 import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 
 public class FilterMenuDialog extends JDialog implements ActionListener {

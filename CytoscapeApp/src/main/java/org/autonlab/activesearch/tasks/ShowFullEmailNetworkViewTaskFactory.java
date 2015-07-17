@@ -9,8 +9,6 @@ import org.cytoscape.view.model.CyNetworkView;
 import org.cytoscape.view.model.View;
 import org.cytoscape.work.TaskIterator;
 
-import org.jblas.DoubleMatrix;
-
 public class ShowFullEmailNetworkViewTaskFactory extends AbstractNetworkViewTaskFactory {
 
     CySwingAppAdapter adapter;

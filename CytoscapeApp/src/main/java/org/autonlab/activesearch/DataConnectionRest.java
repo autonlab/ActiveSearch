@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
-import org.jblas.*;
 import org.autonlab.activesearch.ActiveSearchConstants;
 
 import java.net.URI;

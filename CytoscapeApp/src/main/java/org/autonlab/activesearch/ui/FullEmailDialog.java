@@ -29,7 +29,6 @@ import java.util.Collection;
 import java.awt.Color;
 import java.awt.Paint;
 
-import org.jblas.DoubleMatrix;
 import org.cytoscape.view.presentation.property.BasicVisualLexicon;
 import org.autonlab.activesearch.tasks.ShowFullEmailEdgeViewTask;
 import org.autonlab.activesearch.ui.StatisticsDialog;
@@ -634,53 +633,4 @@ public class FullEmailDialog extends JDialog implements ActionListener{
 	netView.updateView();
     }
 
-    public DoubleMatrix readFile(String filename, int rows, int isVector) {
-	BufferedReader br = null;
-	DoubleMatrix tempMatrix = null;
-	int count = 0;
-
-	if (isVector > 0) {
-	    tempMatrix = new DoubleMatrix(rows);
-	    System.out.println("File has 1 column");
-	}
-
-	try {
-	    int i;
- 	    String sCurrentLine;
-	    String[] sParts;
-	    br = new BufferedReader(new FileReader(filename));
-	    System.out.print("Importing matrix ");
-	    while ((sCurrentLine = br.readLine()) != null) {
-
-		if (count % 2000 == 0) {
-		    System.out.print(".");
-		}
-
-		if (isVector == 0) {
-		    sParts = sCurrentLine.split(" ");
-		    if (tempMatrix == null) {
-			System.out.println("File has " + sParts.length + " columns");
-			tempMatrix = new DoubleMatrix(rows, sParts.length);
-		    }
-		    for (i = 0; i < sParts.length; i++) {
-			tempMatrix.put(count, i, Double.parseDouble(sParts[i]));
-		    }
-		}
-		else {
-		    tempMatrix.put(count, Double.parseDouble(sCurrentLine));
-		}
-		count++;
-	    }
-	    System.out.println("");
-	} catch (IOException e) {
-	    e.printStackTrace();
-	} finally {
-	    try {
-		if (br != null)br.close();
-	    } catch (IOException ex) {
-		ex.printStackTrace();
-	    }
-	}
-	return tempMatrix;
-    }
 }
