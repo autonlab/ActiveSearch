@@ -40,7 +40,6 @@ import org.autonlab.activesearch.ui.FullEmailDialog;
 import org.cytoscape.view.model.CyNetworkView;
 import org.cytoscape.application.CyApplicationManager;
 
-import com.sun.jersey.api.client.Client;
 public class ActiveSearch extends AbstractCySwingApp {
 
     public ActiveSearch(CySwingAppAdapter adapter)
@@ -49,7 +48,6 @@ public class ActiveSearch extends AbstractCySwingApp {
 	System.out.println("RUNNING HERE");
 
 	final CyServiceRegistrar registrar = adapter.getCyServiceRegistrar();
-	Client client = Client.create();
 	System.out.println("aaaa");
 	Properties prop_show_email = new Properties();
 	prop_show_email.setProperty(PREFERRED_MENU, "ActiveSearch[25]");
