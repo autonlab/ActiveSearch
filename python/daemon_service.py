@@ -233,7 +233,7 @@ def getMessagesByKeywordSubject(word):
 def getMessageRecipientsByMessage(message):
     # this returns an array of entries so we have to concatenate them into a big string
     ret_arr = []
-    ret_arr.append(dataConn.getRecipientsByMessage(message))
+    ret_arr += dataConn.getRecipientsByMessage(message)
 
     mystr = ""
     for row in ret_arr:

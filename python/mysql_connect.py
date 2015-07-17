@@ -594,7 +594,7 @@ class mysqlDataConnect (generalDataConnect):
 		data = []
 
 		for row in cur.fetchall():
-			data.append(row[0])
+			data.append(int(row[0]))
 
 		return data
 
