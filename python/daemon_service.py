@@ -7,6 +7,7 @@ import activeSearchInterface as asI
 import argparse
 import sys
 import multiprocessing
+import re
 
 ##
 # To run this, make sure the permissions are right:
@@ -125,11 +126,14 @@ def setLabelCurrent(value):
 
 # input is [index, value [,index, value etc]]
 @app.route('/setLabelBulk/<csv>')
-def setLabeLBulk(csv):
+def setLabelBulk(csv):
     idxs = []
     lbls = []
     offset = 0
-    for row in csv:
+    csv_split = re.split(",", csv)
+
+    for row in csv_split:
+
         if (offset == 0):
             offset = 1
             idxs.append(int(row))
