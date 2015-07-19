@@ -154,7 +154,7 @@ class generalDataConnect():
 	# Gettfidfsimilarity retrieves the pre-processed similarity from the database. Building the database
 	# is slow. This function builds the TFIDF in memory here which is about 5x faster but has to be done
 	# every time the daemon is started
-	def getTFIDFSimilarityFromMessage(self, tfidf_wordlimit, number_of_threads, skip_stemmer, message_count):
+	def getTFIDFSimilarityFromMessage(self, tfidf_wordlimit, number_of_threads, skip_stemmer, message_count, out_to_database):
 		if (number_of_threads > message_count):
 			print "ERROR: number of messages, ",message_count,", is fewer than number of threads, ",number_of_threads,". Not supported"
 			raise NotImplementedError()
@@ -162,7 +162,7 @@ class generalDataConnect():
 		# This code can remove words seen in more than some % of the messages
 		# It turns out this is not very useful in the datasets that we have so 
 		# the functionality hasn't been implemented in the Perl import code yet
-		stopword_threshold = 0.95
+		stopword_threshold = 0.10
 
 		total_words = 0
 
@@ -260,6 +260,9 @@ class generalDataConnect():
 		ret_col = []
 		ret_data = []
 
+                if (out_to_database):
+                        self.clearTFIDFToDatabase()
+
 		for messageid in range(message_count):
 			for word in emailwords[messageid].keys():
 				if (word not in wordcount):
@@ -272,10 +275,15 @@ class generalDataConnect():
 					word_id = word_id_next
 					word_id_list[word] = word_id
 					word_id_next += 1
+                                        if (out_to_database):
+                                                self.setTFIDFWordIDToDatabase(word, word_id)
 
 				ret_row.append(word_id)
 				ret_col.append(messageid)
 				ret_data.append(emailwords[messageid][word])
+                                if (out_to_database):
+                                        self.setTFIDFToDatabase(word_id, messageid, emailwords[messageid][word])
+
 
 		ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(len(wordcount), message_count))
 		return ret_matrix
@@ -328,14 +336,16 @@ class generalDataConnect():
 		return ret_matrix
 
 	# generalDataConnect
-	def getWordMatrix(self, tfidf_wordlimit, skip_stemmer, num_threads, message_count):
+	def getWordMatrix(self, tfidf_wordlimit, skip_stemmer, num_threads, message_count, out_to_database, in_from_database):
 		similarity_data = None
 
 		t1 = time.time()
-		similarity_data = self.getTFIDFSimilarityFromMessage(tfidf_wordlimit, num_threads, skip_stemmer, message_count)
+                if (in_from_database) :
+                        similarity_data = self.getTFIDFFromDatabase(message_count)
+                else :
+                        similarity_data = self.getTFIDFSimilarityFromMessage(tfidf_wordlimit, num_threads, skip_stemmer, message_count, out_to_database)
 		print("Time for importing data ", time.time() - t1)
 
-		print "one"
 		s = 1./(np.sqrt((similarity_data.multiply(similarity_data)).sum(1)))
 	#	print s.shape
 	#	print similarity_data.shape
@@ -352,10 +362,10 @@ class generalDataConnect():
 		return similarity_data
 
 	# generalDataConnect
-	def getFinalFeatureMatrix (self, tfidf_wordlimit, skip_stemmer, num_threads, message_count, tc=1.0, sc=1.0):
+	def getFinalFeatureMatrix (self, tfidf_wordlimit, skip_stemmer, num_threads, message_count, out_to_database, in_from_database, tc=1.0, sc=1.0):
 		# if not using any of these matrices, remove them from the calculation to save computation of zeros
 
-		wMat = self.getWordMatrix(tfidf_wordlimit, skip_stemmer, num_threads, message_count)
+		wMat = self.getWordMatrix(tfidf_wordlimit, skip_stemmer, num_threads, message_count, out_to_database, in_from_database)
 
 		if (tc > 0):
 			tMat = self.getTimeSimMatrix ()
@@ -374,10 +384,10 @@ class generalDataConnect():
 		return wMat
 
 	# generalDataConnect
-	def getAffinityMatrix (self, tfidf_wordlimit, skip_stemmer, num_threads, message_count, tc=1.0, sc=1.0):
+	def getAffinityMatrix (self, tfidf_wordlimit, skip_stemmer, num_threads, message_count, out_to_database, in_from_database, tc=1.0, sc=1.0):
 		# if not using any of these matrices, remove them from the calculation to save computation of zeros
 
-		wMat = self.getFinalFeatureMatrix(tfidf_wordlimit, skip_stemmer, num_threads, message_count, tc, sc)
+		wMat = self.getFinalFeatureMatrix(tfidf_wordlimit, skip_stemmer, num_threads, message_count, out_to_database, in_from_database, tc, sc)
 		return wMat.T.dot(wMat)
 
 	# generalDataConnect
@@ -557,6 +567,7 @@ class mysqlDataConnect (generalDataConnect):
 	#mysqlDataConnect
 	def __init__ (self):
 		self.db = None
+                self.word_id_cache = None
 		generalDataConnect.__init__ (self)
  
 	#mysqlDataConnect
@@ -606,7 +617,7 @@ class mysqlDataConnect (generalDataConnect):
 
 		cur = self.db.cursor()
 		cur.execute("SELECT messages.messageid, messages.messagedt, messages.subject"
-					+ " FROM messages WHERE subject LIKE '%" + word + "%' ORDER BY messagedt")
+					+ " FROM messages WHERE subject LIKE '%" + word + "%' ORDER BY messageid")
 		data = []
 
 		for row in cur.fetchall():
@@ -750,3 +761,44 @@ class mysqlDataConnect (generalDataConnect):
 
 		return messages_data
 
+        # mysqlDataConnect
+        # return sparse matrix
+	def getTFIDFFromDatabase(self, message_count):
+                ret_row = []
+		ret_col = []
+		ret_data = []
+
+                cur = self.db.cursor()
+		cur.execute("SELECT * FROM tf_idf_dictionary")
+                word_ids = {}
+                for tfidf_row in cur.fetchall():
+                        ret_row.append(tfidf_row[0]) #word_id
+                        ret_col.append(tfidf_row[1]) #message_id
+                        ret_data.append(tfidf_row[2]) #count
+                        word_ids[tfidf_row[0]] = 1
+
+		ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(len(word_ids), message_count))
+                return ret_matrix
+
+        # mysqlDataConnect
+        # save tfidf data to database
+        def clearTFIDFToDatabase(self):
+                cur = self.db.cursor()
+		cur.execute("DROP TABLE IF EXISTS tf_idf_dictionary")
+		cur.execute("DROP TABLE IF EXISTS tf_idf_wordmap")
+
+                cur.execute("CREATE TABLE tf_idf_dictionary (word int(10), messageid int(10), count int(10), INDEX(word), INDEX(messageid), INDEX(count)) ENGINE=MyISAM")
+                cur.execute("CREATE TABLE tf_idf_wordmap (word_id int(10), word varchar(255), PRIMARY KEY(word_id), UNIQUE(word)) ENGINE=MyISAM ;")
+
+
+        # mysqlDataConnect
+        # save one row to the database
+        def setTFIDFToDatabase(self, word_id, messageid, count):
+                cur = self.db.cursor()
+                cur.execute("INSERT INTO tf_idf_dictionary VALUES(" + str(word_id) + ", " + str(messageid) + ", " + str(count) + ")")
+
+        # mysqlDataConnect
+        # save one word_id to the database
+        def setTFIDFWordIDToDatabase(self, word, word_id):
+                 cur = self.db.cursor()
+                 cur.execute("INSERT INTO tf_idf_wordmap VALUES(" + str(word_id) + ", \"" + word + "\")")

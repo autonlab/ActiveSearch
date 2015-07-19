@@ -29,6 +29,8 @@ parser.add_argument('-d', '--database', default='jebbush', help='database name')
 parser.add_argument('-u', '--database_user', default='root', help='database user')
 parser.add_argument('-p', '--database_pass', default='', help='database pass')
 parser.add_argument('-n', '--database_hostname', default='', help='database hostname')
+parser.add_argument('-o', '--out_to_database', default=False, action='store_true', help='write tfidf info out to database')
+parser.add_argument('-i', '--in_from_database', default=False, action='store_true', help='read tfidf info from database')
 parser.add_argument('-j', '--JSON_path', default='', help='path to file or directory with JSON flat file twitter data')
 parser.add_argument('-z', '--num_cpus', default=cpu_count, type=int, help='number of cpus for tfidf - physical cores only. Default is ' + str(cpu_count))
 parser.add_argument('-s', '--skip_stemmer', default=False, action='store_true', help='skip a slow part of tfidf. Drops result quality but improves speed. Save time when testing code')
@@ -53,19 +55,19 @@ first_run = True
 if (args.method == "kernel"):
     print "Using kernelAS"
     activeSearch = asI.kernelAS()
-    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, 0,0)
+    wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, args.out_to_database, args.in_from_database, 0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)
 elif (args.method == "shari"):
     print "Using shariAS"
     activeSearch = asI.shariAS()   
-    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, 0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, args.out_to_database, args.in_from_database, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 elif (args.method == "naiveshari"):
     print "Using naieveShariAS"
     activeSearch = asI.naiveShariAS()   
-    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, 0,0)
+    A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, args.out_to_database, args.in_from_database, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
 else:
