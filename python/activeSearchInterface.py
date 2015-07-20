@@ -198,9 +198,11 @@ class kernelAS (genericAS):
 
 		if self.iter >= 0:
 			print("First message has already been set. Treating this as a positive.")
+                        self.resetLabel(idx, 1)
 		else:
-			self.start_point = idx
-		self.setLabel(idx, 1)
+                        self.setLabel(idx, 1)
+
+                self.start_point = idx
 
 	def interestingMessage(self):
 		if self.next_message is None:
@@ -247,7 +249,11 @@ class kernelAS (genericAS):
 			self.start_point = idx
 		self.iter += 1
 		self.labels[idx] = lbl
-		self.unlabeled_idxs.remove(idx)
+                try:
+                        self.unlabeled_idxs.remove(idx)
+                except ValueError:
+                        print "Could not remove index ", idx, " from unlabeled list. This probably means you called setLabel on an index that has already been labeled. Either this is a mistake or you want to call resetLabel\n"
+                        raise
 
 		# Updating various parameters to calculate next C inverse and f
 		if self.params.sparse:
