@@ -248,6 +248,7 @@ class generalDataConnect():
 			while (len(wordcount) > tfidf_wordlimit):
 				if (wordcount_threshold % 10 == 0):
 					sys.stdout.write('.')
+                                        sys.stdout.flush()
 				for word in wordcount.keys():
 					if (wordcount[word] < wordcount_threshold):
 						del wordcount[word]
@@ -261,8 +262,11 @@ class generalDataConnect():
 		ret_data = []
 
                 if (out_to_database):
+                        print "\nWriting tfidf information to database\n"
                         self.clearTFIDFToDatabase()
 
+                database_inserts = 0
+                
 		for messageid in range(message_count):
 			for word in emailwords[messageid].keys():
 				if (word not in wordcount):
@@ -282,9 +286,13 @@ class generalDataConnect():
 				ret_col.append(messageid)
 				ret_data.append(emailwords[messageid][word])
                                 if (out_to_database):
+                                        if (database_inserts % 10000 == 0):
+                                                sys.stdout.write('.')
+                                                sys.stdout.flush()
                                         self.setTFIDFToDatabase(word_id, messageid, emailwords[messageid][word])
+                                        database_inserts += 1
 
-
+                print "\n"
 		ret_matrix = ss.csr_matrix((ret_data, (ret_row, ret_col)), shape=(len(wordcount), message_count))
 		return ret_matrix
 
