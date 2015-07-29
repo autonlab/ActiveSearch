@@ -3,6 +3,8 @@ import time
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
 import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
 
+import sklearn.linear_model as slm
+
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 """
@@ -482,6 +484,174 @@ def shari_activesearch_probs_naive(A, labels, pi, num_eval, w0=None, eta=None, i
 				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1],(i+num_initial+1), elapsed)
 			print '%d %d %f %d\n'%(i, hits[i+1], elapsed, selected[i+num_initial])
 
+	if all_fs:
+		return f, hits, selected, fs
+	return f, hits, selected
+
+
+def LinearKernel (x,y):
+	return np.squeeze(np.array(x)).dot(np.squeeze(np.array(y)))
+
+def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc=LinearKernel):
+	"""
+	Xf: 		feature vectors (r x n) where r is the number of features and n is the number of data points
+	labels:		known labels -- doesn't need to be all of the points
+	C:			inverse of regularization parameter for l1/l2 regularizer
+	sfunc:		similarity function between points
+
+	Fits a logistic regressor such that g(sfunc(xi.T, xj)) > 0 if i,j is in same class and < 0 otherwise.
+	"""
+	if sfunc != LinearKernel:
+		raise NotImplementedError('Only linear kernel works for now')
+
+	Xf = Xf
+	r,n = Xf.shape
+	nl = len(labels)
+	keys = labels.keys()
+	
+	Xf_labeled = Xf[:,keys]
+	Xf_unlabeled = Xf[:,list(set(xrange(n)) - set(keys))]
+
+	lvals = np.atleast_2d(labels.values())
+	Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
+	Yf_unlabeled = [1]*(n-nl)
+
+	inputX = []
+	inputY = Yf_labeled + Yf_unlabeled
+
+	if sfunc == LinearKernel:
+		Af_labeled = Xf_labeled.T.dot(Xf_labeled)[np.triu_indices(nl)].tolist()
+		Af_unlabeled = (Xf_unlabeled**2).sum(0).tolist()
+
+		inputX = Af_labeled + Af_unlabeled
+
+	# Train the regressor
+	if logit is None:
+		logit = slm.LogisticRegression (penalty=reg, C=C)
+
+	inputX = np.atleast_2d(inputX).T
+	# import IPython
+	# IPython.embed()
+	logit.fit(inputX, inputY)
+
+	return logit
+
+
+def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5, C=1.0, init_pt=None, verbose=True, all_fs=False, sparse=False):
+	"""
+	X 			--> r x n matrix of feature values for each point.
+	labels 		--> true labels for each point.
+	pi 			--> prior target probability
+	num_eval 	--> number of points to be investigated
+	"""
+	#X = np.array(X)
+	r,n = X.shape
+	labels = np.array(labels)
+
+	# Random start node
+	true_positives = (np.array(labels)==1).nonzero()[0]
+	true_negatives = (np.array(labels)==0).nonzero()[0]
+	# %%% Randomly pick 1 target point as the first point
+	idxs = [true_positives[nr.randint(len(true_positives))], true_negatives[nr.randint(len(true_negatives))]]
+	unlabeled_idxs = [i for i in range(n) if i not in idxs]
+
+	num_initial = 2
+	
+	if w0 is None: w0 = 1/n
+	C = 1.0
+
+	f = np.zeros(n)
+
+	known_labels = {idx:{0:-1,1:1}[labels[idx]] for idx in idxs}
+
+	bval = eta/(1-eta)
+	beta = 1 - w0/bval
+
+	logit = None
+
+	hits = np.zeros((num_eval+num_initial,1))
+	hits[0] = 1
+	hits[1] = 1
+	selected = [ix for ix in idxs]
+	# Number of true targets
+	true_n = sum(labels==1)
+	found_n = 1
+
+	if all_fs:
+		fs = [f]
+
+
+	# Modifying the element 
+	for i in range(num_eval):
+
+		# import IPython
+		# IPython.embed()
+		t1 = time.time()
+
+		# assert len(unlabeled_idxs) == n - num_initial - i
+		# if len(unlabeled_idxs) != len(np.unique(unlabeled_idxs)):
+		# 	print "ERROR: NOT ALL UNLABELED IDXS ARE UNIQUE"
+
+		# Find next index to investigate
+		uidx = np.argmax(f[unlabeled_idxs])
+		idx = unlabeled_idxs[uidx]
+
+		known_labels[idx] = {0:-1,1:1}[labels[idx]]
+
+		del unlabeled_idxs[uidx]
+
+		# assert idx not in unlabeled_idxs
+
+		found_n += labels[idx]
+		if found_n==true_n:
+			if verbose:
+				print "Found all", found_n, "targets. Breaking out."
+			break
+
+		# import IPython
+		# IPython.embed()
+		logit = fit_regressor(X, known_labels, logit=logit, C=C, reg='l2', sfunc=LinearKernel)
+		# Update relevant matrices
+		x_i = np.atleast_2d(X.T.dot(X[:,i])).T
+
+		delta_f = logit.predict(x_i)
+
+
+		c = ((labels[idx] - pi) + beta*(pi - f[idx]))*bval*sum(x_i)[0]
+
+		f = f + {0:-1,1:1}[labels[idx]]*delta_f
+
+		# t0 = time.time()
+		# d9 = t0 - t9
+
+		if all_fs:
+			fs.append(f)
+
+		# import IPython
+		# IPython.embed()
+
+		elapsed = time.time() - t1
+		selected.append(idx)
+		hits[i+1] = found_n
+
+		## temp ##
+		# B2[idx] = l/(l+1)
+		# yp[idx] = float(labels[idx])
+		# Ap = np.diag(B2).dot(dinvA)
+		# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
+		# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
+		# print nlg.norm(f-f2)
+		## temp ##
+
+		if verbose:
+			if (i%1)==0 or i==1:
+				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1], (i+num_initial+1), elapsed)
+			print '%d %d %f %d\n'%(i, hits[i+1]/true_n, elapsed, selected[i+num_initial])
+
+
+	# Ap = np.diag(B2).dot(dinvA)
+	# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
+	# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
 	if all_fs:
 		return f, hits, selected, fs
 	return f, hits, selected

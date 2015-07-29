@@ -132,8 +132,11 @@ class kernelAS (genericAS):
 		# B[self.labeled_idxs] = self.l/(1+self.l)
 		D = np.squeeze(Xf.T.dot(Xf.dot(np.ones((self.n,1)))))
 		if self.params.remove_self_degree:
-			Ds = matrix_squeeze((Xf**2).sum(0))
+			Ds = matrix_squeeze((Xf.multiply(Xf)).sum(0))
 			D = D - Ds
+			import IPython
+			IPython.embed()
+
 
 		self.Dinv = 1./D
 
@@ -288,6 +291,10 @@ class kernelAS (genericAS):
 		# Now that a new message has been selected, mark it as unseen
 		self.seen_next = False 
 
+		import IPython
+		IPython.embed()
+
+
 		if self.params.verbose:
 			elapsed = time.time() - t1
 			print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
@@ -406,7 +413,10 @@ class shariAS (genericAS):
 		#B = np.ones(self.n)/(1 + self.params.w0) ##
 		D = matrix_squeeze(self.A.sum(1)) ##
 		if self.params.remove_self_degree:
-			D -= A.diagagonal()
+			if self.params.verbose:
+				"Removing diagonal elements."
+			D -= A.diagonal()
+			self.A = self.A - np.diag(matrix_squeeze(A.diagonal()))
 		self.Dinv = 1./D
 
 		# import IPython
