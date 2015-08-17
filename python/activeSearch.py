@@ -16,6 +16,9 @@ Update inverse operation.
 Update f after this inverse is computed.
 
 """
+def matrix_squeeze(X):
+	# converts into numpy.array and squeezes out singular dimensions
+	return np.squeeze(np.asarray(X))
 
 
 def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
@@ -492,7 +495,14 @@ def shari_activesearch_probs_naive(A, labels, pi, num_eval, w0=None, eta=None, i
 def LinearKernel (x,y):
 	return np.squeeze(np.array(x)).dot(np.squeeze(np.array(y)))
 
-def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc=LinearKernel):
+def AbsDifference (x,y):
+	return np.squeeze(np.abs(np.array(x)-np.array(y)))
+
+def PointWiseMultiply (x,y):
+	return np.squeeze(matrix_squeeze(x)*matrix_squeeze(y))
+
+
+def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc='LinearKernel'):
 	"""
 	Xf: 		feature vectors (r x n) where r is the number of features and n is the number of data points
 	labels:		known labels -- doesn't need to be all of the points
@@ -501,8 +511,8 @@ def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc=LinearKernel):
 
 	Fits a logistic regressor such that g(sfunc(xi.T, xj)) > 0 if i,j is in same class and < 0 otherwise.
 	"""
-	if sfunc != LinearKernel:
-		raise NotImplementedError('Only linear kernel works for now')
+	# if sfunc != LinearKernel:
+	# 	raise NotImplementedError('Only linear kernel works for now')
 
 	Xf = Xf
 	r,n = Xf.shape
@@ -513,31 +523,54 @@ def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc=LinearKernel):
 	Xf_unlabeled = Xf[:,list(set(xrange(n)) - set(keys))]
 
 	lvals = np.atleast_2d(labels.values())
-	Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
-	Yf_unlabeled = [1]*(n-nl)
 
 	inputX = []
-	inputY = Yf_labeled + Yf_unlabeled
+	inputY = []
 
-	if sfunc == LinearKernel:
+	if sfunc == 'LinearKernel':
 		Af_labeled = Xf_labeled.T.dot(Xf_labeled)[np.triu_indices(nl)].tolist()
 		Af_unlabeled = (Xf_unlabeled**2).sum(0).tolist()
+		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
+		Yf_unlabeled = [1]*(n-nl)
 
 		inputX = Af_labeled + Af_unlabeled
+		inputY = Yf_labeled + Yf_unlabeled
+		inputX = np.atleast_2d(inputX).T
+
+	elif sfunc == 'AbsDifference':
+		Af_labeled = []
+		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl,1)].tolist()
+		for i,j in zip(*np.triu_indices(nl,1)):
+			Af_labeled.append(AbsDifference(Xf_labeled[:,i],Xf_labeled[:,j]))
+		Af_unlabeled = [np.zeros(r)]
+		Yf_unlabeled = [1]
+
+		inputX = Af_labeled + Af_unlabeled
+		inputY = Yf_labeled + Yf_unlabeled
+
+	elif sfunc == 'PointWiseMultiply':
+		Af_labeled = []
+		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
+		for i,j in zip(*np.triu_indices(nl)):
+			Af_labeled.append(PointWiseMultiply(Xf_labeled[:,i],Xf_labeled[:,j]))
+		Af_unlabeled = (Xf_unlabeled.T**2).tolist()
+		Yf_unlabeled = [1]*(n-nl)
+
+		inputX = Af_labeled + Af_unlabeled
+		inputY = Yf_labeled + Yf_unlabeled
 
 	# Train the regressor
 	if logit is None:
 		logit = slm.LogisticRegression (penalty=reg, C=C)
 
-	inputX = np.atleast_2d(inputX).T
-	# import IPython
-	# IPython.embed()
+	inputX = np.asarray(inputX)
 	logit.fit(inputX, inputY)
 
 	return logit
 
+use_prob = True
 
-def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5, C=1.0, init_pt=None, verbose=True, all_fs=False, sparse=False):
+def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5, sfunc='LinearKernel', C=1.0, init_pt=None, verbose=True, all_fs=False, sparse=False):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -608,16 +641,22 @@ def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5
 				print "Found all", found_n, "targets. Breaking out."
 			break
 
-		# import IPython
-		# IPython.embed()
-		logit = fit_regressor(X, known_labels, logit=logit, C=C, reg='l2', sfunc=LinearKernel)
+		logit = fit_regressor(X, known_labels, logit=logit, C=C, reg='l2', sfunc=sfunc)
 		# Update relevant matrices
-		x_i = np.atleast_2d(X.T.dot(X[:,i])).T
+		if sfunc =='LinearKernel':
+			x_i = np.atleast_2d(X.T.dot(X[:,idx])).T
+		elif sfunc == 'AbsDifference':
+			x_i = np.abs(X.T-X[:,idx])
+		elif sfunc == 'PointWiseMultiply':
+			x_i = X.T*	X[:,idx]
 
-		delta_f = logit.predict(x_i)
+		if use_prob:
+			delta_f = logit.predict_proba(x_i).dot([1,-1])
+		else:
+			delta_f = logit.predict(x_i)
 
 
-		c = ((labels[idx] - pi) + beta*(pi - f[idx]))*bval*sum(x_i)[0]
+		c  = ((labels[idx] - pi) + beta*(pi - f[idx]))*bval*sum(x_i)[0]
 
 		f = f + {0:-1,1:1}[labels[idx]]*delta_f
 
@@ -653,5 +692,5 @@ def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5
 	# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
 	# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
 	if all_fs:
-		return f, hits, selected, fs
-	return f, hits, selected
+		return f, hits, selected, fs, logit
+	return f, hits, selected, logit

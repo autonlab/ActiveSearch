@@ -86,16 +86,16 @@ $K'$ \= $:=I - X\overline{B}'X^T$\\
 Here, $\gamma = -(\frac{\lambda}{1+\lambda}-\frac{1}{1+w0})\inv{D_ii}$.
 
 Woodbury's Matrix inversion formula: 
-$$\inv{(A+UCV)} = \inv{A} 0 \inv{A}U\inv{(\inv{C}+V\inv{A}U)}V\inv{A}$$
+$$\inv{(A+UCV)} = \inv{A} - \inv{A}U\inv{(\inv{C}+V\inv{A}U)}V\inv{A}$$
 
 Using this, we have:
 \begin{tabbing}
 $\inv{K'}$\= $= \inv{K} - \inv{K}(\gamma x_i)\inv{(1+ \gamma x_i^T\inv{K}x_i)}x_i^T\inv{K}$\\
-\>$=\inv{K} - \frac{\gamma\inv{K}x_i x_i^T\inv{K}}{1+\gamma x_i^T \inv{K} x_i}$\\
-\>$=\inv{K} - \frac{\gamma(\inv{K}x_i) (\inv{K}x_i)^T}{1+\gamma x_i^T \inv{K} x_i}$
+\>$=\inv{K} - \dfrac{\gamma\inv{K}x_i x_i^T\inv{K}}{1+\gamma x_i^T \inv{K} x_i}$\\
+\>$=\inv{K} - \dfrac{\gamma(\inv{K}x_i) (\inv{K}x_i)^T}{1+\gamma x_i^T \inv{K} x_i}$
 \end{tabbing}
 
-Further, one element in $q$ changes. $q'_i = y_i \frac{1}{1+\lambda}$
+Further, one element in $q$ changes. $q'_i = y_i \dfrac{1}{1+\lambda}$
 
 Thus, with the update to the inverse, $f* = q' + \overline{B}'X^T\inv{K'}Xq'$.
 This takes $O(rn)$.

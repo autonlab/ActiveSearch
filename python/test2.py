@@ -2,7 +2,9 @@ from __future__ import division
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy as sp, scipy.linalg as slg, scipy.io as sio
 import scipy.sparse as ss, scipy.sparse.linalg as ssl
+from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
+
 import time
 
 import os, os.path as osp
@@ -142,12 +144,27 @@ def test_20ng ():
 
 	X = vectorizer.fit_transform(fng.data).T
 	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	
+	pfrac = 0.1
+	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	nneg = sum(labels==0)
+	npos = int(pfrac*nneg/(1-pfrac))
+
+	ninds = (labels==0).nonzero()[0]
+	pinds = labels.nonzero()[0]
+	nr.shuffle(pinds)
+	pinds = pinds[:npos]
+
+	inds = np.r_[pinds,ninds]
+	nr.shuffle(inds)
+
 	Xf = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	Xf = Xf[:,inds]
+	labels = labels[inds]
 
 	# import IPython
 	# IPython.embed()
-	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
-
+	
 	A = Xf.T.dot(Xf)
 
 	num_eval = 500
@@ -199,13 +216,30 @@ def test_20ng_2 ():
 	fng = fetch_20newsgroups(subset='all',remove=('headers', 'footers', 'quotes'),categories=['alt.atheism','comp.graphics'])
 	vectorizer = CountVectorizer( stop_words='english', ngram_range=(1, 1), analyzer=u'word', max_df=0.5, min_df=0.01, binary=True)
 
+
 	X = vectorizer.fit_transform(fng.data).T
 	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
-	Xf = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
 
-	# import IPython
-	# IPython.embed()
+	pfrac = 0.1
 	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	nneg = sum(labels==0)
+	npos = int(pfrac*nneg/(1-pfrac))
+
+	ninds = (labels==0).nonzero()[0]
+	pinds = labels.nonzero()[0]
+	nr.shuffle(pinds)
+	pinds = pinds[:npos]
+
+	inds = np.r_[pinds,ninds]
+	nr.shuffle(inds)
+
+	Xf = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	Xf = Xf[:,inds]
+	labels = labels[inds]
+
+	import IPython
+	IPython.embed()
+
 
 	A = Xf.T.dot(Xf)
 
@@ -254,17 +288,37 @@ def test_20ng_2 ():
 def test_logistic_reg ():
 	from sklearn.datasets import fetch_20newsgroups
 	from sklearn.feature_extraction.text import CountVectorizer
+
+
 	# newsgroups_train = fetch_20newsgroups(subset='train',remove=('headers', 'footers', 'quotes'))
 	fng = fetch_20newsgroups(subset='all',remove=('headers', 'footers', 'quotes'),categories=['alt.atheism','comp.graphics'])
 	vectorizer = CountVectorizer( stop_words='english', ngram_range=(1, 1), analyzer=u'word', max_df=0.5, min_df=0.01, binary=True)
 
 	X = vectorizer.fit_transform(fng.data).T
 	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
-	Xf = matrix_squeeze(X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))].todense())
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
 
+	pfrac = 0.1
+	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	nneg = sum(labels==0)
+	npos = int(pfrac*nneg/(1-pfrac))
+
+	ninds = (labels==0).nonzero()[0]
+	pinds = labels.nonzero()[0]
+	nr.shuffle(pinds)
+	pinds = pinds[:npos]
+
+	inds = np.r_[pinds,ninds]
+	nr.shuffle(inds)
+
+	Xf = matrix_squeeze(X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))].todense())
+	Xf = Xf[:,inds]
+	labels = labels[inds]
+	
 	# import IPython
 	# IPython.embed()
-	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+
 
 	num_eval = 100
 	all_fs = True
@@ -276,11 +330,16 @@ def test_logistic_reg ():
 	verbose = True
 	remove_self_degree = False
 
-	f, hits, selected, fs =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, C=C, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
+	#sfunc='PointWiseMultiply'
+	sfunc='AbsDifference'
+	#sfunc='LinearKernel'
+
+	f, hits, selected, fs, logit =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, C=C, sfunc=sfunc, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
 
 	q = np.percentile(f,pi*100)
 	found_l = (f>q).astype(int)
-	
+	v = sum([i==j for i,j in zip(found_l,labels)])/Xf.shape[1]
+
 	import IPython
 	IPython.embed()
 
@@ -291,5 +350,5 @@ if __name__ == '__main__':
 	# test_vals()
 	# test_wikipedia_dataset()
 	# test_20ng ()
-	# test_20ng_2 ()
+	#test_20ng_2 ()
 	test_logistic_reg ()

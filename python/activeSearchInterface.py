@@ -134,8 +134,8 @@ class kernelAS (genericAS):
 		if self.params.remove_self_degree:
 			Ds = matrix_squeeze((Xf.multiply(Xf)).sum(0))
 			D = D - Ds
-			import IPython
-			IPython.embed()
+			# import IPython
+			# IPython.embed()
 
 
 		self.Dinv = 1./D
@@ -291,8 +291,8 @@ class kernelAS (genericAS):
 		# Now that a new message has been selected, mark it as unseen
 		self.seen_next = False 
 
-		import IPython
-		IPython.embed()
+		# import IPython
+		# IPython.embed()
 
 
 		if self.params.verbose:

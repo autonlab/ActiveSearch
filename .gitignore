@@ -8,7 +8,9 @@
 *.npz
 *.orig
 *timings/
-*notes/
+*.aux
+*.log
+*.out
 
 *~
 
