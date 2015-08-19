@@ -180,11 +180,11 @@ def test_20ng ():
 	kAS = ASI.kernelAS(prms1)
 	kAS.initialize(Xf)
 
-	# sAS = ASI.shariAS(prms2)
-	# sAS.initialize(A.todense().A)
+	sAS = ASI.shariAS(prms2)
+	sAS.initialize(A.todense().A)
 
 	kAS.firstMessage(init_pt)
-	# sAS.firstMessage(init_pt)
+	sAS.firstMessage(init_pt)
 
 	# import IPython
 	# IPython.embed()
@@ -192,18 +192,21 @@ def test_20ng ():
 	for i in range(num_eval):
 		idx1 = kAS.getNextMessage()
 		kAS.setLabelCurrent(int(labels[idx1]))
-		# idx2 = sAS.getNextMessage()
-		# sAS.setLabelCurrent(int(labels[idx2]))
+		idx2 = sAS.getNextMessage()
+		sAS.setLabelCurrent(int(labels[idx2]))
 		# import IPython
 		# IPython.embed()
 
-	import IPython
-	IPython.embed()
+	fpr1, tpr1, thresh1 = roc_curve(labels, kAS.f)
+	fpr2, tpr2, thresh2 = roc_curve(labels, sAS.f)
 
-	tt = sum(labels)
-	tremaining = [tt-i for i in kAS.hits]
-	plt.plot(tremaining)
-	plt.show()
+	plt.plot(fpr1, tpr1, label='kernel', color='r')
+	plt.plot(fpr2, tpr2, label='sherry', color='b')
+
+	plt.xlabel('False Positive Rate')
+	plt.ylabel('True Positive Rate')
+	plt.title('Receiver operating characteristic for kernel AS')
+	plt.legend(loc="lower right")
 
 	import IPython
 	IPython.embed()
@@ -330,15 +333,35 @@ def test_logistic_reg ():
 	verbose = True
 	remove_self_degree = False
 
-	#sfunc='PointWiseMultiply'
-	sfunc='AbsDifference'
-	#sfunc='LinearKernel'
+	alpha = 0.5
+	sfunc1='PointWiseMultiply'
+	sfunc2='AbsDifference'
+	sfunc3='LinearKernel'
 
-	f, hits, selected, fs, logit =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, C=C, sfunc=sfunc, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
+	f1, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc1, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
+	f2, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc2, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
+	f3, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc3, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
 
-	q = np.percentile(f,pi*100)
-	found_l = (f>q).astype(int)
-	v = sum([i==j for i,j in zip(found_l,labels)])/Xf.shape[1]
+	q1 = np.percentile(f1,pi*100)
+	q2 = np.percentile(f2,pi*100)
+	q3 = np.percentile(f3,pi*100)
+	found_l1 = (f1>q1).astype(int)
+	found_l2 = (f2>q2).astype(int)
+	found_l3 = (f3>q3).astype(int)
+	# v = sum([i==j for i,j in zip(found_l,labels)])/Xf.shape[1]
+
+	fpr1, tpr1, thresh1 = roc_curve(labels, f1)
+	fpr2, tpr2, thresh2 = roc_curve(labels, f2)
+	fpr3, tpr3, thresh3 = roc_curve(labels, f3)
+
+	plt.plot(fpr1, tpr1, label='AbsDiff', color='r')
+	plt.plot(fpr2, tpr2, label='Ptwise', color='b')
+	plt.plot(fpr3, tpr3, label='Linear', color='g')
+
+	plt.xlabel('False Positive Rate')
+	plt.ylabel('True Positive Rate')
+	plt.title('Receiver operating characteristic, alpha = %f'%alpha)
+	plt.legend(loc="lower right")
 
 	import IPython
 	IPython.embed()
@@ -349,6 +372,6 @@ if __name__ == '__main__':
 
 	# test_vals()
 	# test_wikipedia_dataset()
-	# test_20ng ()
+	test_20ng ()
 	#test_20ng_2 ()
-	test_logistic_reg ()
+	#test_logistic_reg ()

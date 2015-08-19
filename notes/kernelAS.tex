@@ -1,6 +1,16 @@
 \documentclass[12pt]{article}
 
 \usepackage{amsmath,amssymb,hyperref,listings,graphicx,bbold}
+\usepackage{titling}
+\usepackage[utf8]{inputenc}
+
+\setlength{\droptitle}{-2em}   % This is your set screw
+
+\addtolength{\oddsidemargin}{-.75in}
+\addtolength{\evensidemargin}{-.75in}
+\addtolength{\textwidth}{1.5in}
+\addtolength{\topmargin}{-.75in}
+\addtolength{\textheight}{1.5in}
 
 \setlength{\parindent}{0pt}
 \renewcommand{\L}{\mathcal{L}}
@@ -11,97 +21,220 @@
 \date{\vspace{-10ex}}
 
 \begin{document}
-\maketitle
+	\maketitle
 
-\section{Introducing AS on graphs}
+	\section{Introducing AS on graphs}
 
-Here is the energy function used for AS:
-$$E(f) = \sum\limits_{i \in \L} (y_i-f_i)^2 D_{ii} + \lambda w_0 \sum\limits_{i \in \U} (f_i-\pi)^2 D_{ii} + \sum\limits_{i,j} (f_i-f_j)^2 A_{ii}$$
+		Here is the energy function used for AS:
+		\begin{equation}
+			E(f) = \sum\limits_{i \in \L} (y_i-f_i)^2 D_{ii} + \lambda w_0 \sum\limits_{i \in \U} (f_i-\pi)^2 D_{ii} + \sum\limits_{i,j} (f_i-f_j)^2 A_{ii}
+		\end{equation}
 
-Here is the energy function rewritten using matrices, where $f_L$ and $f_U$ are the $f$-vector portions belonging to the labeled and unlabeled portions respectively (they have been rearranged WLOG):
+		Here is the energy function rewritten using matrices, where $f_L$ and $f_U$ are the $f$-vector portions belonging to the labeled and unlabeled portions respectively (they have been rearranged WLOG):
 
-$$E(f) = \left[\begin{matrix} f_L \\ f_U \\ y \\ \pi \end{matrix}\right]^T \
-		 \left[\begin{array}{c|c}
-		 	\left[\begin{matrix} D_L & 0 \\ 0&\lambda w_0 D_U\end{matrix}\right] + \lambda(D-A) & 
-		 	\left[\begin{matrix} -D_L & 0 \\ 0&-\lambda w_0 D_U\end{matrix}\right] 
-		 	\\\\ \hline \\ 
-		 	\left[\begin{matrix} -D_L & 0 \\ 0&-\lambda w_0 D_U\end{matrix}\right] & 
-		 	0
-		 	\end{array}\right] 
-		 \left[\begin{matrix} f_L \\ f_U \\ y \\ \pi \end{matrix}\right]
-$$
+		$$E(f) = \left[\begin{matrix} f_\L \\ f_\U \\ y \\ \pi \end{matrix}\right]^T \
+				 \left[\begin{array}{c|c}
+				 	\left[\begin{matrix} D_\L & 0 \\ 0&\lambda w_0 D_\U\end{matrix}\right] + \lambda(D-A) & 
+				 	\left[\begin{matrix} -D_\L & 0 \\ 0&-\lambda w_0 D_\U\end{matrix}\right] 
+				 	\\\\ \hline \\ 
+				 	\left[\begin{matrix} -D_\L & 0 \\ 0&-\lambda w_0 D_\U\end{matrix}\right] & 
+				 	0
+				 	\end{array}\right] 
+				 \left[\begin{matrix} f_\L \\ f_\U \\ y \\ \pi \end{matrix}\right]
+		$$
 
-The minimizer is as follows (not proven here): $$f^* = \inv{(I-A')} D' y'$$
-where 
-$$A' = \left[\begin{matrix} \frac{\lambda}{1+\lambda}I_L & 0 \\ 0 & \frac{1}{1+w_0}I_U \end{matrix}\right] \inv{D} A,\hspace{5mm}
-  D' = \left[\begin{matrix} \frac{1}{1+\lambda}I_L & 0 \\ 0 & \frac{w_0}{1+w_0}I_U \end{matrix}\right],\hspace{5mm}
-  y' = \left[\begin{matrix} y_L \\ \pi \end{matrix} \right]
-$$
+		The minimizer is as follows (not proved here): 
+		\begin{equation}
+			f^* = \inv{(I-A')} D' y'
+		\end{equation}
+		where 
+		$$A' = \left[\begin{matrix} \frac{\lambda}{1+\lambda}I_\L & 0 \\ 0 & \frac{1}{1+w_0}I_\U \end{matrix}\right] \inv{D} A,\hspace{5mm}
+		  D' = \left[\begin{matrix} \frac{1}{1+\lambda}I_\L & 0 \\ 0 & \frac{w_0}{1+w_0}I_\U \end{matrix}\right],\hspace{5mm}
+		  y' = \left[\begin{matrix} y_\L \\ \pi \end{matrix} \right]
+		$$
 
-If we set $B = \left[\begin{matrix} \frac{\lambda}{1+\lambda}I_L & 0 \\ 0 & \frac{1}{1+w_0}I_U \end{matrix}\right]$, we have that $A' = B\inv D A, \hspace{5mm} D' = I-B$
+		If we set $B = \left[\begin{matrix} \frac{\lambda}{1+\lambda}I_\L & 0 \\ 0 & \frac{1}{1+w_0}I_\U \end{matrix}\right]$, we have that $A' = B\inv D A, \hspace{5mm} D' = I-B$
 
-Thus, we have our optimal solution: $$f^* = \inv{(I - B\inv D A)}(I-B)y'$$
+		Thus, we have our optimal solution: 
+		\begin{equation}
+			f^* = \inv{(I - B\inv D A)}(I-B)y'
+		\end{equation}
 
-\section{Kernel AS -- Linear Kernel as similarity}
+	\section{Kernel AS -- Linear Kernel as similarity}
 
-Say $A = X^T X$ where $X = [F(x_1) \hdots F(x_n)]$, with $n$ data points and $r$ features.
+		Say $A = X^T X$ where $X = [x_1 \hdots x_n]$, with $n$ data points and $r$ features.
 
-Then $D = diag (X^T X \mathbb{1})$. (Precomputed in $O(nr)$).\\
+		Then $D = diag (X^T X \mathbb{1})$. (Precomputed in $O(nr)$).\\
 
-Thus, $$f^* = \inv{(I - \overline{B} X^TX)}q$$
+		Thus, 
+		\begin{equation}
+			f^* = \inv{(I - \overline{B} X^TX)}q
+		\end{equation}
 
-where $\overline{B} = B \inv{D}, q = (I-B)y'$.
+		where $\overline{B} = B \inv{D}, q = (I-B)y'$.
 
-Here, we use the Kailath variant of the matrix inverse lemma:
-$$\inv{(A+BC)} = \inv{A} -  \inv{A}B\inv{(I+C\inv{A}B)}C\inv{A}$$
+		Here, we use the Kailath variant of the matrix inverse lemma:
+		$$\inv{(A+BC)} = \inv{A} -  \inv{A}B\inv{(I+C\inv{A}B)}C\inv{A}$$
 
-We have: 
-\begin{tabbing}
-$f^* $ \= $= \inv{(I - \overline{B} X^TX)}q$\\
-\> $=(I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)q$\\
-\>$=q + \overline{B}X^T\inv{(I-X\overline{B}X^T)}Xq$
-\end{tabbing}
+		We have: 
+		$$f^* = \inv{(I - \overline{B} X^TX)}q =(I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)q$$
+		Thus,
+		\begin{equation}
+			f^* = q + \overline{B}X^T\inv{(I-X\overline{B}X^T)}Xq
+		\end{equation}
 
-The inverse can precomputed in $O(r^2n + r^3)$. 
-So the entire precomputation is in $O(r^2n)$ assuming $n > r$.
+		The main power obtained from this representation is that the inverse is now over an $r \times r$ matrix as opposed to an $n \times n$ matrix.
+		The inverse can precomputed in $O(r^2n + r^3)$. 
+		So the entire precomputation is in $O(r^2n)$ assuming $n > r$.
 
-We want to compute the updates in $O(r^2 + nr)$.
+		We want to compute the updates in $O(r^2 + nr)$.
 
-\subsection{Updates to $f$}
+		\subsection{Updates to $f$}
 
-We have precomputed $\inv{(I-X\overline{B}X^T)}$. One element in $\overline{B}$ changes.
+			We have precomputed $\inv{(I-X\overline{B}X^T)}$. One element in $\overline{B}$ changes.
 
-$$\overline{B}' = \overline{B} -\gamma e_i e_i^T$$
-where $e_i$ is the $i^{th}$ standard basis vector.
+			$$\overline{B}' = \overline{B} -\gamma e_i e_i^T$$
+			where $e_i$ is the $i^{th}$ standard basis vector.
 
-Let $K = (I-X\overline{B}X^T)$.
+			Let $K = (I-X\overline{B}X^T)$.
 
-Then,
-\begin{tabbing} 
-$K'$ \= $:=I - X\overline{B}'X^T$\\
-\>$= K + \gamma X e_i e_i^T X^T$\\
-\>$= K + \gamma x_i x_i^T$
-\end{tabbing}
+			Then,
+			\begin{tabbing} 
+				$K'$ \= $:=I - X\overline{B}'X^T$\\\\
+				\>$= K + \gamma X e_i e_i^T X^T$\\\\
+				\>$= K + \gamma x_i x_i^T$
+			\end{tabbing}
+			Here, $\gamma = -\left(\dfrac{\lambda}{1+\lambda}-\dfrac{1}{1+w0}\right)\inv{D_{ii}}$.\\
 
-Here, $\gamma = -(\frac{\lambda}{1+\lambda}-\frac{1}{1+w0})\inv{D_ii}$.
+			Woodbury's Matrix inversion formula: 
+			$$\inv{(A+UCV)} = \inv{A} - \inv{A}U\inv{(\inv{C}+V\inv{A}U)}V\inv{A}$$
 
-Woodbury's Matrix inversion formula: 
-$$\inv{(A+UCV)} = \inv{A} - \inv{A}U\inv{(\inv{C}+V\inv{A}U)}V\inv{A}$$
+			Using this, we have:
+			\begin{tabbing}
+				$\inv{K'}$\= $= \inv{K} - \inv{K}(\gamma x_i)\inv{(1+ \gamma x_i^T\inv{K}x_i)}x_i^T\inv{K}$\\\\
+				\>$=\inv{K} - \dfrac{\gamma\inv{K}x_i x_i^T\inv{K}}{1+\gamma x_i^T \inv{K} x_i}$
+			\end{tabbing}
+			Thus,
+			\begin{equation}
+				\inv{K'} = \inv{K} - \dfrac{\gamma(\inv{K}x_i) (\inv{K}x_i)^T}{1+\gamma x_i^T \inv{K} x_i}
+			\end{equation}
 
-Using this, we have:
-\begin{tabbing}
-$\inv{K'}$\= $= \inv{K} - \inv{K}(\gamma x_i)\inv{(1+ \gamma x_i^T\inv{K}x_i)}x_i^T\inv{K}$\\
-\>$=\inv{K} - \dfrac{\gamma\inv{K}x_i x_i^T\inv{K}}{1+\gamma x_i^T \inv{K} x_i}$\\
-\>$=\inv{K} - \dfrac{\gamma(\inv{K}x_i) (\inv{K}x_i)^T}{1+\gamma x_i^T \inv{K} x_i}$
-\end{tabbing}
+			Further, only one element in $q$ changes. $q'_i = y_i \dfrac{1}{1+\lambda}$
 
-Further, one element in $q$ changes. $q'_i = y_i \dfrac{1}{1+\lambda}$
+			Thus, with the update to the inverse, $f^* = q' + \overline{B}'X^T\inv{K'}Xq'$.
+			This takes $O(rn)$.
 
-Thus, with the update to the inverse, $f* = q' + \overline{B}'X^T\inv{K'}Xq'$.
-This takes $O(rn)$.
+		\subsection{Impact factor computation}
 
-\subsection{Impact factor computation}
+			This is a continuation of Kyle's notes on computing the Impact Factor (IM).
+
+			A few points to note: I use the variable $P = SD$ where Kyle uses $B = SD$. $S$ is some diagonal matrix which defines the relative weights of the edges to pseudo-nodes from labeled or unalebed nodes.
+
+			From Kyle's notes, we have the change in $f$ given node $i$ is chosen to be labeled:
+			\begin{equation}
+				\Delta f(i) = [(y_i-\pi)P_{i,i}^k + \delta P(y_i-f_i^{k+1})] \inv{M}_{.,i}
+			\end{equation}
+			where $M = D + P^k - A$, $\delta P = P_{i,i}^{k+1}- P_{i,i}^{k}$.
+
+			Fixing $y_i = 1$ to compute the IM, we have:
+			\begin{tabbing}
+				$\Delta \widetilde{f}(i) $ \= $= [P_{i,i}^k - \pi P_{i,i}^k + \delta P - \delta P\widetilde{f}_i^{k+1}]\inv{M}_{.,i}$\\\\
+				\>$=[P_{i,i}^{k+1} - \pi P_{i,i}^k - \delta P\widetilde{f}_i^{k+1}]\inv{M}_{.,i}$
+			\end{tabbing}
+			After solving for $f_i^{k+1}$ and subtracting out $f_i^k$, we have that the $i^{th}$ element of $\Delta \widetilde{f}(i)$ is:
+			\begin{equation}\label{eq:dfi_tilde}
+				\Delta \widetilde{f}_i(i) = \dfrac{(P_{i,i}^{k+1} - \pi P_{i,i}^k - \delta P f_i^k)\inv{M}_{i,i}}{1 + \delta P\inv{M}_{i,i}}
+			\end{equation}
+
+			Now, in order to compute the IM, we need, for each unlabeled node $i$,\\ $\Delta F_i = \sum\limits_{i\in \U} \Delta \widetilde{f}_j$ where the label of $i$ is now set to 1. In order to compute that, we first need the following:
+			$$\Delta \widetilde{f} = \left[\begin{matrix}\Delta \widetilde{f}_1(1)\\ \vdots \\ \Delta\widetilde{f}_{n}(n)\end{matrix}\right]$$
+			Given that, we can find 
+			\begin{equation}
+				\Delta F = \left[\overrightarrow{L} - \pi\overrightarrow{U} - (\overrightarrow{L}-\overrightarrow{U})\circ(f^k + \Delta \widetilde{f})\right] \circ \inv{M} u
+			\end{equation}
+			where the $\overrightarrow{L} = \frac{1}{\lambda}D$, $\overrightarrow{U} = w_0 D$. We can use these because each element of $\Delta F$ assumes that we are labelling that index as positive. Thus, the $P_{i,i}^{k+1}$ value will always be that of a labeled node in this  calculation. $u$ is the vector whose entry $i$ is 1 if it is unlabeled and 0 otherwise.
+
+			Then, since the IM is computed as a sum over all changes in the unlabeled node EXCEPT the node currently picked as a potential positive, we have that the final IM is:
+			\begin{equation}
+				IM^k = f^k \circ (\Delta F - \Delta \widetilde{f})
+			\end{equation}
+
+		\subsubsection{Rewriting $\inv{M}$}
+			We first show that $\inv{M} = \inv{(I - B\inv{D}A)}(I-B)\inv{P}$.
+
+			We know that $P=SD$ where 
+			$S = \left[\begin{matrix}\dfrac{1}{\lambda} I_\L&0 \\ 0&w_0 I_\U\end{matrix}\right]$ (since $\lambda = \frac{1-\eta}{\eta}$).
+
+			Now, consider the following:
+			\begin{tabbing}
+				$\inv{M}$ \= $= \inv{(D + P - A)}$\\\\
+				\>$=\inv{(D(I+S)-A)}$\\\\
+				\>$=\inv{((I+S)-\inv{D}A)}\inv{D}$\\\\
+				\>$=\inv{(I-\inv{(I+S)}\inv{D}A)}\inv{(I+S)}\inv{D}$\\\\
+				\>$=\inv{(I-B\inv{D}A)}B\inv{D}$ \hspace{5mm}(It can be easily verified that $\inv{B} = I+S$)\\\\
+				\>$=\inv{(I-B\inv{D}A)}(I-B)\inv{S}\inv{D}$ \hspace{5mm} (It can be easily verified that $S = \inv{B}(I-B))$)\\\\
+				\>$=\inv{(I-B\inv{D}A)}(I-B)\inv{P}$
+			\end{tabbing}
+
+			Making use of $A = X^TX$, we have that:
+			\begin{equation}
+				\inv{M}=(I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)(I-B)\inv{P}
+			\end{equation}
+			Most of this is already being computed in our updates.
+
+		\subsubsection{Computing $\Delta F$ given $\Delta \widetilde{f}$}
+			Given $\Delta \widetilde{f}$, we can compute $\left[\overrightarrow{L} - \pi\overrightarrow{U} - (\overrightarrow{L}-\overrightarrow{U})\circ(f^k + \Delta \widetilde{f})\right]$ in $O(n)$ time as it is just sums or element-wise multiplications.
+
+			Further, $\inv{M}u$ can be computed as $f$ is.
+			\begin{itemize}
+				\item $z = (I-B)\inv{P}u$ changes only one element each iteration and can be updated.
+				\item $(I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)z$ can then be computed in $O(rn)$ time by cascading the matrix-vector multiplication in. There is never an $\Omega(n^2)$ operation done here.
+			\end{itemize}
+
+			Thus, these operations are still within the time constraints of the original algorithm.
+
+		\subsubsection{Computing $\Delta \widetilde{f}$ via updates}
+			We want to compute:
+			$$\Delta \widetilde{f} = \left[\begin{matrix}\Delta \widetilde{f}_1(1)\\ \vdots \\ \Delta\widetilde{f}_{n}(n)\end{matrix}\right]$$
+			where each element is given by equation \ref{eq:dfi_tilde}. This can be written as:
+			\begin{equation}
+				\Delta \widetilde{f} = \left[\overrightarrow{L} - \pi\overrightarrow{U} - (\overrightarrow{L}-\overrightarrow{U})\circ f^k\right] \circ diag(\inv{M}) \circ diag\left(\dfrac{1}{1+(\overrightarrow{L}-\overrightarrow{U})\inv{M}}\right)
+			\end{equation}
+			After computing $diag(\inv{M})$, we can compute the rest of this in $O(n)$ time.
+			Consider the following for $diag(\inv{M})$:
+			\begin{tabbing}
+				$diag(\inv{M})$ \= $=diag ((I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)(I-B)\inv{P})$\\\\
+				\>$=diag (I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)\circ diag((I-B)\inv{P})$\\\\
+				\>$=(1+diag ((\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X))\circ diag((I-B)\inv{P})$
+			\end{tabbing}
+			Thus,
+			\begin{equation}
+				diag(\inv{M}) =(1+diag (\overline{B}) \circ diag (X^T\inv{(I-X\overline{B}X^T)}X))\circ diag((I-B)\inv{P})
+			\end{equation}
+
+			This tells us that what we need to do is store and update \\$J = diag (X^T\inv{(I-X\overline{B}X^T)}X)$ every iteration. The rest of the operations are either sums or point-wise multiplications which take $O(n)$ each iteration.
+
+			Here's how we update it:
+
+			\begin{itemize}
+				\item Initialize $j_i= x_i^T \inv{K} x_i$ and then $J = \left[\begin{matrix}j_1\\ \vdots \\ j_n\end{matrix}\right]$ where $K=(I-X\overline{B}X^T)$ as defined before. This computation takes $O(nr^2)$ time.
+				\item Then, as we update $K$, we can also update $J$. Here, $t$ is the index of the point to be labeled. 
+				\begin{tabbing}
+					$j_i'$\= $= x_i^T \inv{K'} x_i$\\\\
+					\>$= x_i^T\left(\inv{K} - \dfrac{\gamma(\inv{K}x_t) (\inv{K}x_t)^T}{1+\gamma x_t^T \inv{K} x_t}\right)x_i^T$
+				\end{tabbing}
+				Therefore,
+				\begin{equation}
+					j_i' = j_i - c\cdot (x_i^T(\inv{K}x_t))^2	
+				\end{equation}
+				where $c = \dfrac{\gamma}{1+\gamma x_t^T \inv{K} x_t}$ (computed in the updates to $f$). Since $(\inv{K}x_t)$ is also computed while updating $f$, updating each element $j_i$ only takes $O(r)$ time. 
+
+			\end{itemize}
+			Thus, computing the entire $J$ vector only takes $O(nr)$ per iteration. Once we have $J$, we can compute $diag (\inv{M})$ in $O(n)$ time.
 
 
+
+		\subsubsection{Computing IM after having both $\Delta F$ and $\Delta \widetilde{f}$}
+			This is just a point-wise multiply or difference between vectors and takes $O(n)$ time every iteration. Thus, the entire procedure of computing the IM is within the time constraints of the original algorithm.
 
 \end{document}

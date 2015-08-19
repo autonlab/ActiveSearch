@@ -21,7 +21,7 @@ def matrix_squeeze(X):
 	return np.squeeze(np.asarray(X))
 
 
-def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
+def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, alpha=0.2, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -127,16 +127,38 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	else:
 		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
+	# Computations for the impact factor:
+	
+	# 0. Some useful variables 
+	S = w0*np.ones(n)
+	S[idxs] = 1/(1+l)
+	I_BPinv = np.squeeze(I_B*(1/(S*D))) #(I-B)*Pinv
+	dP = (1./l-w0)*D # L - U
+	dPpi = (1./l-pi*w0)*D # L - pi*U
+	
+	# 1. Df_tilde
+	# First, we need J = diag (X^T * Cinv * X): each element of J is x_i^T*Cinv*x_i
+	J = np.squeeze(((Cinv.dot(X))*X).sum(0))
+	# Now we compute the entire diag
+	diagM = (1+BDinv*J)*I_BPinv
+	# Finally, Df_tilde
+	dpf = (dPpi - dP*f)
+	Df_tilde = dpf*diagM/(1 + dP*diagM)
+
+	# 2. DF
+	# z = (I-B)Pinv*u (these are defined in Kernel AS notes)
+	z = I_BPinv.copy()
+	z[idxs] = 0
+	Minv_u = z + BDinv*((X.T.dot(Cinv.dot(X.dot(z)))))
+	DF = (dpf - dP*Df_tilde)*Minv_u
+
+	# 3. IM
+	IM = f*(DF-Df_tilde)
+
 	# Number of true targets
 	true_n = sum(labels==1)
 	found_n = num_initial
 
-	#temp
-	# dinvA = (np.diag(Dinv)).dot(X.T.dot(X))
-	# B2 = np.ones(n)*1/(1+w0)
-	# B2[idxs] = l/(1+l)
-	# yp = np.ones(n)*pi
-	# yp[idxs] = labels[idxs]
 	if all_fs:
 		fs = [f]
 
@@ -152,7 +174,7 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		# 	print "ERROR: NOT ALL UNLABELED IDXS ARE UNIQUE"
 
 		# Find next index to investigate
-		uidx = np.argmax(f[unlabeled_idxs])
+		uidx = np.argmax((f+alpha*IM)[unlabeled_idxs])
 		idx = unlabeled_idxs[uidx]
 		# if idx == n:
 		# 	print "ERROR: SELECTING SELECTED PT", idx
@@ -188,9 +210,10 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		# import IPython
 		# IPython.embed()
 		if sparse:
-			Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + (gamma*Xi.T.dot(Cif))[0,0])
+			c =  gamma/(1 + (gamma*Xi.T.dot(Cif))[0,0])
 		else:
-			Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
+			c =  gamma/(1 + gamma*Xi.T.dot(Cif))
+		Cinv = Cinv - c*(Cif.dot(Cif.T))
 		
 		# t9 = time.time()
 		# d8 = t9 - t8
@@ -200,8 +223,18 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		else:
 			f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
-		# t0 = time.time()
-		# d9 = t0 - t9
+		# Updating IM
+		z[idx] = 0
+		Minv_u = z + BDinv*((X.T.dot(Cinv.dot(X.dot(z)))))
+		dpf = (dPpi - dP*f)*Minv_u
+		# Updating Df_tilde
+		J = J - c*[(X.T*Cif)**2]
+		diagM = (1+BDinv*J)*I_BPinv
+		Df_tilde = dpf*diagM/(1 + dP*diagM)
+		# Updating DF
+		DF = (dpf - dP*Df_tilde)*Minv_u
+		# Computing IM
+		IM = f*(DF-Df_tilde)
 
 		if all_fs:
 			fs.append(f)
@@ -570,7 +603,7 @@ def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc='LinearKernel'):
 
 use_prob = True
 
-def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5, sfunc='LinearKernel', C=1.0, init_pt=None, verbose=True, all_fs=False, sparse=False):
+def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5, alpha=1.0, sfunc='LinearKernel', C=1.0, init_pt=None, verbose=True, all_fs=False, sparse=False):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -658,7 +691,7 @@ def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5
 
 		c  = ((labels[idx] - pi) + beta*(pi - f[idx]))*bval*sum(x_i)[0]
 
-		f = f + {0:-1,1:1}[labels[idx]]*delta_f
+		f = f + {0:-1,1:1}[labels[idx]]*delta_f*alpha
 
 		# t0 = time.time()
 		# d9 = t0 - t9
