@@ -137,14 +137,12 @@ class kernelAS (genericAS):
 			# import IPython
 			# IPython.embed()
 
-
 		self.Dinv = 1./D
 
+		self.BDinv = np.squeeze(B*self.Dinv)
 		if self.params.sparse:
-			self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
-		else:
-			self.BDinv = np.squeeze(B*self.Dinv)
-
+			self.BDinv_ss = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
+		
 		self.q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
 		#self.q[self.labeled_idxs] *= np.array(init_labels.values())/self.params.pi
 
@@ -153,7 +151,7 @@ class kernelAS (genericAS):
 			print("Constructing C")
 			t1 = time.time()
 		if self.params.sparse:
-			C = (self.Ir - self.Xf.dot(self.BDinv.dot(self.Xf.T)))	
+			C = (self.Ir - self.Xf.dot(self.BDinv_ss.dot(self.Xf.T)))	
 		else:
 			C = (self.Ir - self.Xf.dot(self.BDinv[:,None]*self.Xf.T))
 		if self.params.verbose:
@@ -170,9 +168,39 @@ class kernelAS (genericAS):
 
 		# Just keeping this around. Don't really need it.
 		if self.params.sparse:
-			self.f = self.q + self.BDinv.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
+			self.f = self.q + self.BDinv_ss.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
 		else:
 			self.f = self.q + self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q)))))
+
+		# Impact factor calculations
+	
+		# 0. Some useful variables
+		self.dP = (1./self.l-self.params.w0)*D # L - U
+		self.dPpi = (1./self.l-self.params.pi*self.params.w0)*D # L - pi*U
+	
+		# 1. Df_tilde
+		# First, we need J = diag (X^T * Cinv * X): each element of J is x_i^T*Cinv*x_i
+		if self.params.sparse:
+			self.J = matrix_squeeze(((self.Cinv.dot(self.Xf)).multiply(self.X)).sum(0))
+		else:
+			self.J = np.squeeze(((self.Cinv.dot(self.X))*self.X).sum(0))
+		# Now we compute the entire diag
+		diagMi = (1+self.BDinv*self.J)*self.BDinv
+		# Finally, Df_tilde
+		dpf = (self.dPpi - self.dP*self.f)
+		Df_tilde = dpf*diagMi/(1 + self.dP*diagMi)
+
+		# 2. DF
+		# z = (I-B)Pinv*u = B*Dinv*u (these are defined in Kernel AS notes)
+		self.z = np.where(self.labels==-1, self.BDinv, 0)
+		if self.params.sparse:
+			Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+		else:
+			Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+		
+		DF = (dpf - self.dP*Df_tilde)*Minv_u
+		# 3. IM
+		self.IM = self.f*(DF-Df_tilde)
 
 		# Setting iter/start_point
 		# If batch initialization is done, then start_point is everything given
@@ -182,7 +210,7 @@ class kernelAS (genericAS):
 			else:
 				self.start_point = [eid for eid in self.labeled_idxs]
 			# Finding the next message to show -- get the current max element
-			uidx = np.argmax(self.f[self.unlabeled_idxs])
+			uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
 			self.next_message = self.unlabeled_idxs[uidx]
 			# Now that a new message has been selected, mark it as unseen
 			self.seen_next = False 
@@ -257,10 +285,9 @@ class kernelAS (genericAS):
 		self.unlabeled_idxs.remove(idx)
 
 		# Updating various parameters to calculate next C inverse and f
+		self.BDinv[idx] = self.l/(1+self.l) * self.Dinv[idx]
 		if self.params.sparse:
-			self.BDinv[idx,idx] = self.l/(1+self.l) * self.Dinv[idx]
-		else:
-			self.BDinv[idx] = self.l/(1+self.l) * self.Dinv[idx]
+			self.BDinv_ss[idx,idx] = self.l/(1+self.l) * self.Dinv[idx]
 
 		self.q[idx] = lbl*1/(1+self.l)
 		gamma = -(self.l/(1+self.l)-1/(1+self.params.w0))*self.Dinv[idx]
@@ -269,14 +296,34 @@ class kernelAS (genericAS):
 		Cif = self.Cinv.dot(Xi)
 
 		if self.params.sparse:
-			self.Cinv = self.Cinv - gamma*(Cif.dot(Cif.T))/(1 + (gamma*Xi.T.dot(Cif))[0,0])
+			c =  np.squeeze(gamma/(1 + (gamma*Xi.T.dot(Cif))[0,0]))
 		else:
-			self.Cinv = self.Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
+			c =  np.squeeze(gamma/(1 + gamma*Xi.T.dot(Cif)))
+		self.Cinv = self.Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
 	
 		if self.params.sparse:
-			self.f = self.q + self.BDinv.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
+			self.f = self.q + self.BDinv_ss.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
 		else:
 			self.f = self.q + self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q)))))
+
+		# Updating IM
+		self.z[idx] = 0
+		if self.params.sparse:
+			Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+		else:
+			Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+		dpf = (dPpi - dP*self.f)
+		# Updating Df_tilde
+		if self.params.sparse:
+			self.J = self.J - c*(matrix_squeeze((self.Xf.T.dot(Cif)).todense())**2)
+		else:
+			self.J = self.J - c*(np.squeeze(self.Xf.T.dot(Cif))**2)
+		diagMi = (1+self.BDinv*self.J)*self.BDinv
+		Df_tilde = dpf*diagMi/(1 + self.dP*diagMi)
+		# Updating DF
+		DF = (dpf - self.dP*Df_tilde)*Minv_u
+		# Computing IM
+		self.IM = self.f*(DF-Df_tilde)
 
 		# Some more book-keeping
 		self.labeled_idxs.append(idx)
@@ -286,14 +333,10 @@ class kernelAS (genericAS):
 			self.hits.append(self.hits[-1] + lbl)
 
 		# Finding the next message to show -- get the current max element
-		uidx = np.argmax(self.f[self.unlabeled_idxs])
+		uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
 		self.next_message = self.unlabeled_idxs[uidx]
 		# Now that a new message has been selected, mark it as unseen
 		self.seen_next = False 
-
-		# import IPython
-		# IPython.embed()
-
 
 		if self.params.verbose:
 			elapsed = time.time() - t1
@@ -338,7 +381,7 @@ class kernelAS (genericAS):
 	
 		# f = q + Aq + gamma*(ei + Aei)
 		if self.params.sparse:
-			self.f = self.f + gamma*self.BDinv.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(ei))))))
+			self.f = self.f + gamma*self.BDinv_ss.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(ei))))))
 		else:
 			self.f = self.f + gamma*self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(ei)))))
 		self.f[idx] += gamma

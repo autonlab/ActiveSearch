@@ -20,6 +20,15 @@ def matrix_squeeze(X):
 	# converts into numpy.array and squeezes out singular dimensions
 	return np.squeeze(np.asarray(X))
 
+def plot_heatmap (M,title):
+	import matplotlib.pyplot as plt
+	M = np.array(M)
+	M = (M-np.min(M))/(np.max(M)-np.min(M))
+	plt.pcolor(M)
+	plt.colorbar()
+	plt.title(title)
+	plt.show()
+
 
 def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, alpha=0.2, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
 	"""
@@ -60,6 +69,7 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 
 	if sparse:
 		Ir = ss.eye(r)
+		In = ss.eye(n)
 	else:
 		Ir = np.eye(r)
 
@@ -102,14 +112,11 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	if verbose:
 		print time.time() - t1
 
-	# import IPython
-	# IPython.embed()
-
 	if verbose:
 		print "Inverting"
 	t1 = time.time()
 	if sparse:
-		Cinv = ssl.inv(C.tocsc()) # Need to update Cinv every iteration
+		Cinv = ss.csr_matrix(nlg.inv(C.todense())) # Need to update Cinv every iteration
 	else:
 		Cinv = nlg.inv(C)
 
@@ -128,33 +135,35 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
 	# Computations for the impact factor:
-	
-	# 0. Some useful variables 
-	S = w0*np.ones(n)
-	S[idxs] = 1/(1+l)
-	I_BPinv = np.squeeze(I_B*(1/(S*D))) #(I-B)*Pinv
+	# 0. Some useful variables
 	dP = (1./l-w0)*D # L - U
 	dPpi = (1./l-pi*w0)*D # L - pi*U
 	
 	# 1. Df_tilde
 	# First, we need J = diag (X^T * Cinv * X): each element of J is x_i^T*Cinv*x_i
-	J = np.squeeze(((Cinv.dot(X))*X).sum(0))
+	if sparse:
+		J = matrix_squeeze(((Cinv.dot(X)).multiply(X)).sum(0))
+	else:
+		J = np.squeeze(((Cinv.dot(X))*X).sum(0))
 	# Now we compute the entire diag
-	diagM = (1+BDinv*J)*I_BPinv
+	diagMi = (1+BDinv*J)*BDinv
 	# Finally, Df_tilde
 	dpf = (dPpi - dP*f)
-	Df_tilde = dpf*diagM/(1 + dP*diagM)
+	Df_tilde = dpf*diagMi/(1 + dP*diagMi)
 
 	# 2. DF
 	# z = (I-B)Pinv*u (these are defined in Kernel AS notes)
-	z = I_BPinv.copy()
+	z = BDinv.copy()
 	z[idxs] = 0
-	Minv_u = z + BDinv*((X.T.dot(Cinv.dot(X.dot(z)))))
+	if sparse:
+		Minv_u = z + BDinv_ss.dot(X.T.dot(Cinv.dot(X.dot(z))))
+	else:
+		Minv_u = z + BDinv*(X.T.dot(Cinv.dot(X.dot(z))))
+	
 	DF = (dpf - dP*Df_tilde)*Minv_u
-
 	# 3. IM
 	IM = f*(DF-Df_tilde)
-
+	
 	# Number of true targets
 	true_n = sum(labels==1)
 	found_n = num_initial
@@ -192,45 +201,43 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 			break
 
 		# Update relevant matrices
-
+		BDinv[idx] *= (1+w0)*l/(1+l) 
 		if sparse:
-			BDinv_ss[idx,idx] *= (1+w0)*l/(1+l) 
-		else:
-			BDinv[idx] *= (1+w0)*l/(1+l) 
+			BDinv_ss[idx,idx] *= (1+w0)*l/(1+l) 	
 
 		q[idx] = labels[idx]*1/(1+l)
 		gamma = -(l/(1+l)-1/(1+w0))*Dinv[idx]
 
 		Xi = X[:,[idx]] # ith feature vector
 
-		# t7 = time.time()
 		Cif = Cinv.dot(Xi)
-		# t8 = time.time()
-		# d7 = t8 - t7
-		# import IPython
-		# IPython.embed()
+
 		if sparse:
-			c =  gamma/(1 + (gamma*Xi.T.dot(Cif))[0,0])
+			c =  np.squeeze(gamma/(1 + (gamma*Xi.T.dot(Cif))[0,0]))
 		else:
-			c =  gamma/(1 + gamma*Xi.T.dot(Cif))
+			c =  np.squeeze(gamma/(1 + gamma*Xi.T.dot(Cif)))
 		Cinv = Cinv - c*(Cif.dot(Cif.T))
-		
-		# t9 = time.time()
-		# d8 = t9 - t8
 
 		if sparse:
 			f = q + BDinv_ss.dot(((X.T.dot(Cinv.dot(X.dot(q))))))
 		else:
-			f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
+			f = q + BDinv*(X.T.dot(Cinv.dot(X.dot(q))))
+
 
 		# Updating IM
 		z[idx] = 0
-		Minv_u = z + BDinv*((X.T.dot(Cinv.dot(X.dot(z)))))
-		dpf = (dPpi - dP*f)*Minv_u
+		if sparse:
+			Minv_u = z + BDinv_ss.dot(X.T.dot(Cinv.dot(X.dot(z))))
+		else:
+			Minv_u = z + BDinv*(X.T.dot(Cinv.dot(X.dot(z))))
+		dpf = (dPpi - dP*f)
 		# Updating Df_tilde
-		J = J - c*[(X.T*Cif)**2]
-		diagM = (1+BDinv*J)*I_BPinv
-		Df_tilde = dpf*diagM/(1 + dP*diagM)
+		if sparse:
+			J = J - c*(matrix_squeeze((X.T.dot(Cif)).todense())**2)
+		else:
+			J = J - c*(np.squeeze(X.T.dot(Cif))**2)
+		diagMi = (1+BDinv*J)*BDinv
+		Df_tilde = dpf*diagMi/(1 + dP*diagMi)
 		# Updating DF
 		DF = (dpf - dP*Df_tilde)*Minv_u
 		# Computing IM
@@ -239,31 +246,24 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		if all_fs:
 			fs.append(f)
 
-		# import IPython
-		# IPython.embed()
-
 		elapsed = time.time() - t1
 		selected.append(idx)
 		hits[i+1] = found_n
-
-		## temp ##
-		# B2[idx] = l/(l+1)
-		# yp[idx] = float(labels[idx])
-		# Ap = np.diag(B2).dot(dinvA)
-		# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
-		# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
-		# print nlg.norm(f-f2)
-		## temp ##
 
 		if verbose:
 			if (i%1)==0 or i==1:
 				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1], (i+num_initial+1), elapsed)
 			print '%d %d %f %d\n'%(i, hits[i+1]/true_n, elapsed, selected[i+num_initial])
 
+	# import IPython
+	# IPython.embed()
+	# S = 1/l*np.ones(n)
+	# S[unlabeled_idxs] = w0
+	# P = S*D
+	# M = np.array(np.diag(D+P)-X.T.dot(X))
+	# Mi = nlg.inv(M)
+	# plot_heatmap(Mi, 'kernelAS')
 
-	# Ap = np.diag(B2).dot(dinvA)
-	# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
-	# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
 	if all_fs:
 		if tinv: return f, hits, selected, fs, dtinv
 		return f, hits, selected, fs
@@ -575,6 +575,73 @@ def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc='LinearKernel'):
 		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl,1)].tolist()
 		for i,j in zip(*np.triu_indices(nl,1)):
 			Af_labeled.append(AbsDifference(Xf_labeled[:,i],Xf_labeled[:,j]))
+		Af_unlabeled = [np.zeros(r)]*(n-nl) # not sure if this is right
+		Yf_unlabeled = [1]*(n-nl)
+
+		inputX = Af_labeled + Af_unlabeled
+		inputY = Yf_labeled + Yf_unlabeled
+
+	elif sfunc == 'PointWiseMultiply':
+		Af_labeled = []
+		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
+		for i,j in zip(*np.triu_indices(nl)):
+			Af_labeled.append(PointWiseMultiply(Xf_labeled[:,i],Xf_labeled[:,j]))
+		Af_unlabeled = (Xf_unlabeled.T**2).tolist()
+		Yf_unlabeled = [1]*(n-nl)
+
+		inputX = Af_labeled + Af_unlabeled
+		inputY = Yf_labeled + Yf_unlabeled
+
+	# Train the regressor
+	if logit is None:
+		logit = slm.LogisticRegression (penalty=reg, C=C)
+
+	inputX = np.asarray(inputX)
+	# import IPython
+	# IPython.embed()
+	logit.fit(inputX, inputY)
+
+	return logit
+
+def fit_semi_supervised (Xf, labels, ssclassifier=None, sfunc='LinearKernel'):
+	"""
+	Xf: 		feature vectors (r x n) where r is the number of features and n is the number of data points
+	labels:		known labels -- doesn't need to be all of the points
+	sfunc:		similarity function between points
+
+	Fits a logistic regressor such that g(sfunc(xi.T, xj)) > 0 if i,j is in same class and < 0 otherwise.
+	"""
+	# if sfunc != LinearKernel:
+	# 	raise NotImplementedError('Only linear kernel works for now')
+
+	Xf = Xf
+	r,n = Xf.shape
+	nl = len(labels)
+	keys = labels.keys()
+	
+	Xf_labeled = Xf[:,keys]
+	Xf_unlabeled = Xf[:,list(set(xrange(n)) - set(keys))]
+
+	lvals = np.atleast_2d(labels.values())
+
+	inputX = []
+	inputY = []
+
+	if sfunc == 'LinearKernel':
+		Af_labeled = Xf_labeled.T.dot(Xf_labeled)[np.triu_indices(nl)].tolist()
+		Af_unlabeled = (Xf_unlabeled**2).sum(0).tolist()
+		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
+		Yf_unlabeled = [1]*(n-nl)
+
+		inputX = Af_labeled + Af_unlabeled
+		inputY = Yf_labeled + Yf_unlabeled
+		inputX = np.atleast_2d(inputX).T
+
+	elif sfunc == 'AbsDifference':
+		Af_labeled = []
+		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl,1)].tolist()
+		for i,j in zip(*np.triu_indices(nl,1)):
+			Af_labeled.append(AbsDifference(Xf_labeled[:,i],Xf_labeled[:,j]))
 		Af_unlabeled = [np.zeros(r)]
 		Yf_unlabeled = [1]
 
@@ -706,24 +773,34 @@ def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5
 		selected.append(idx)
 		hits[i+1] = found_n
 
-		## temp ##
-		# B2[idx] = l/(l+1)
-		# yp[idx] = float(labels[idx])
-		# Ap = np.diag(B2).dot(dinvA)
-		# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
-		# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
-		# print nlg.norm(f-f2)
-		## temp ##
-
 		if verbose:
 			if (i%1)==0 or i==1:
 				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1], (i+num_initial+1), elapsed)
 			print '%d %d %f %d\n'%(i, hits[i+1]/true_n, elapsed, selected[i+num_initial])
 
 
-	# Ap = np.diag(B2).dot(dinvA)
-	# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
-	# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
+	M = np.zeros((n,n))
+
+	posidx = (labels==1).nonzero()[0].tolist()
+	negidx = (labels==0).nonzero()[0].tolist()
+	X2 = X[:,posidx+negidx]
+	# import IPython
+	# IPython.embed()
+	for i in posidx + negidx:
+		print i
+		if sfunc =='LinearKernel':
+			x_i = np.atleast_2d(X2.T.dot(X2[:,i])).T
+		elif sfunc == 'AbsDifference':
+			x_i = np.abs(X2.T-X2[:,i])
+		elif sfunc == 'PointWiseMultiply':
+			x_i = X2.T*	X2[:,i]
+		M[:,i]= logit.predict_proba(x_i).dot([1,-1])
+
+	# Mi = nlg.inv(M)
+	plot_heatmap(M,title=sfunc)
+	import IPython
+	IPython.embed()
+
 	if all_fs:
 		return f, hits, selected, fs, logit
 	return f, hits, selected, logit

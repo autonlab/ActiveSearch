@@ -146,7 +146,7 @@
 				\Delta \widetilde{f}_i(i) = \dfrac{(P_{i,i}^{k+1} - \pi P_{i,i}^k - \delta P f_i^k)\inv{M}_{i,i}}{1 + \delta P\inv{M}_{i,i}}
 			\end{equation}
 
-			Now, in order to compute the IM, we need, for each unlabeled node $i$,\\ $\Delta F_i = \sum\limits_{i\in \U} \Delta \widetilde{f}_j$ where the label of $i$ is now set to 1. In order to compute that, we first need the following:
+			Now, in order to compute the IM, we need, for each unlabeled node $i$,\\ $\Delta F_i = \sum\limits_{i\in \U} \Delta \widetilde{f}_j(i)$ where the label of $i$ is now set to 1. In order to compute that, we first need the following:
 			$$\Delta \widetilde{f} = \left[\begin{matrix}\Delta \widetilde{f}_1(1)\\ \vdots \\ \Delta\widetilde{f}_{n}(n)\end{matrix}\right]$$
 			Given that, we can find 
 			\begin{equation}
@@ -160,7 +160,7 @@
 			\end{equation}
 
 		\subsubsection{Rewriting $\inv{M}$}
-			We first show that $\inv{M} = \inv{(I - B\inv{D}A)}(I-B)\inv{P}$.
+			We first show that $\inv{M} = \inv{(I - B\inv{D}A)}B\inv{D}$.
 
 			We know that $P=SD$ where 
 			$S = \left[\begin{matrix}\dfrac{1}{\lambda} I_\L&0 \\ 0&w_0 I_\U\end{matrix}\right]$ (since $\lambda = \frac{1-\eta}{\eta}$).
@@ -171,14 +171,14 @@
 				\>$=\inv{(D(I+S)-A)}$\\\\
 				\>$=\inv{((I+S)-\inv{D}A)}\inv{D}$\\\\
 				\>$=\inv{(I-\inv{(I+S)}\inv{D}A)}\inv{(I+S)}\inv{D}$\\\\
-				\>$=\inv{(I-B\inv{D}A)}B\inv{D}$ \hspace{5mm}(It can be easily verified that $\inv{B} = I+S$)\\\\
-				\>$=\inv{(I-B\inv{D}A)}(I-B)\inv{S}\inv{D}$ \hspace{5mm} (It can be easily verified that $S = \inv{B}(I-B))$)\\\\
-				\>$=\inv{(I-B\inv{D}A)}(I-B)\inv{P}$
+				\>$=\inv{(I-B\inv{D}A)}B\inv{D}$ \hspace{5mm}(It can be easily verified that $\inv{B} = I+S$)
+				% \>$=\inv{(I-B\inv{D}A)}(I-B)\inv{S}\inv{D}$ \hspace{5mm} (It can be easily verified that $S = \inv{B}(I-B))$)\\\\
+				% \>$=\inv{(I-B\inv{D}A)}(I-B)\inv{P}$
 			\end{tabbing}
 
 			Making use of $A = X^TX$, we have that:
 			\begin{equation}
-				\inv{M}=(I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)(I-B)\inv{P}
+				\inv{M}=(I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)\overline{B}
 			\end{equation}
 			Most of this is already being computed in our updates.
 
@@ -187,7 +187,7 @@
 
 			Further, $\inv{M}u$ can be computed as $f$ is.
 			\begin{itemize}
-				\item $z = (I-B)\inv{P}u$ changes only one element each iteration and can be updated.
+				\item $z = \overline{B}u$ changes only one element each iteration and can be updated.
 				\item $(I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)z$ can then be computed in $O(rn)$ time by cascading the matrix-vector multiplication in. There is never an $\Omega(n^2)$ operation done here.
 			\end{itemize}
 
@@ -203,13 +203,13 @@
 			After computing $diag(\inv{M})$, we can compute the rest of this in $O(n)$ time.
 			Consider the following for $diag(\inv{M})$:
 			\begin{tabbing}
-				$diag(\inv{M})$ \= $=diag ((I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)(I-B)\inv{P})$\\\\
-				\>$=diag (I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)\circ diag((I-B)\inv{P})$\\\\
-				\>$=(1+diag ((\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X))\circ diag((I-B)\inv{P})$
+				$diag(\inv{M})$ \= $=diag ((I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)\overline{B})$\\\\
+				\>$=diag (I+(\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X)\circ diag(\overline{B})$\\\\
+				\>$=(1+diag ((\overline{B}X^T)\inv{(I-X\overline{B}X^T)}X))\circ diag(\overline{B})$
 			\end{tabbing}
 			Thus,
 			\begin{equation}
-				diag(\inv{M}) =(1+diag (\overline{B}) \circ diag (X^T\inv{(I-X\overline{B}X^T)}X))\circ diag((I-B)\inv{P})
+				diag(\inv{M}) =(1+diag (\overline{B}) \circ diag (X^T\inv{(I-X\overline{B}X^T)}X))\circ diag(\overline{B})
 			\end{equation}
 
 			This tells us that what we need to do is store and update \\$J = diag (X^T\inv{(I-X\overline{B}X^T)}X)$ every iteration. The rest of the operations are either sums or point-wise multiplications which take $O(n)$ each iteration.
@@ -221,7 +221,7 @@
 				\item Then, as we update $K$, we can also update $J$. Here, $t$ is the index of the point to be labeled. 
 				\begin{tabbing}
 					$j_i'$\= $= x_i^T \inv{K'} x_i$\\\\
-					\>$= x_i^T\left(\inv{K} - \dfrac{\gamma(\inv{K}x_t) (\inv{K}x_t)^T}{1+\gamma x_t^T \inv{K} x_t}\right)x_i^T$
+					\>$= x_i^T\left(\inv{K} - \dfrac{\gamma(\inv{K}x_t) (\inv{K}x_t)^T}{1+\gamma x_t^T \inv{K} x_t}\right)x_i$
 				\end{tabbing}
 				Therefore,
 				\begin{equation}

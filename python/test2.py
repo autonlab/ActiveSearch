@@ -338,25 +338,25 @@ def test_logistic_reg ():
 	sfunc2='AbsDifference'
 	sfunc3='LinearKernel'
 
-	f1, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc1, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
+	# f1, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc1, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
 	f2, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc2, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
-	f3, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc3, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
+	# f3, _, _, _, _ =	AS.regression_active_search (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha, C=C, sfunc=sfunc3, init_pt=init_pt, verbose=verbose, all_fs=all_fs)
 
-	q1 = np.percentile(f1,pi*100)
+	# q1 = np.percentile(f1,pi*100)
 	q2 = np.percentile(f2,pi*100)
-	q3 = np.percentile(f3,pi*100)
-	found_l1 = (f1>q1).astype(int)
+	# q3 = np.percentile(f3,pi*100)
+	# found_l1 = (f1>q1).astype(int)
 	found_l2 = (f2>q2).astype(int)
-	found_l3 = (f3>q3).astype(int)
+	# found_l3 = (f3>q3).astype(int)
 	# v = sum([i==j for i,j in zip(found_l,labels)])/Xf.shape[1]
 
-	fpr1, tpr1, thresh1 = roc_curve(labels, f1)
+	# fpr1, tpr1, thresh1 = roc_curve(labels, f1)
 	fpr2, tpr2, thresh2 = roc_curve(labels, f2)
-	fpr3, tpr3, thresh3 = roc_curve(labels, f3)
+	# fpr3, tpr3, thresh3 = roc_curve(labels, f3)
 
-	plt.plot(fpr1, tpr1, label='AbsDiff', color='r')
+	# plt.plot(fpr1, tpr1, label='AbsDiff', color='r')
 	plt.plot(fpr2, tpr2, label='Ptwise', color='b')
-	plt.plot(fpr3, tpr3, label='Linear', color='g')
+	# plt.plot(fpr3, tpr3, label='Linear', color='g')
 
 	plt.xlabel('False Positive Rate')
 	plt.ylabel('True Positive Rate')
@@ -367,11 +367,91 @@ def test_logistic_reg ():
 	IPython.embed()
 
 
+def test_20_ng_IM ():
+	from sklearn.datasets import fetch_20newsgroups
+	from sklearn.feature_extraction.text import CountVectorizer
+
+
+	# newsgroups_train = fetch_20newsgroups(subset='train',remove=('headers', 'footers', 'quotes'))
+	fng = fetch_20newsgroups(subset='all',remove=('headers', 'footers', 'quotes'),categories=['alt.atheism','comp.graphics'])
+	vectorizer = CountVectorizer( stop_words='english', ngram_range=(1, 1), analyzer=u'word', max_df=0.5, min_df=0.01, binary=True)
+
+	X = vectorizer.fit_transform(fng.data).T
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+
+	pfrac = 0.1
+	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	nneg = sum(labels==0)
+	npos = int(pfrac*nneg/(1-pfrac))
+
+	ninds = (labels==0).nonzero()[0]
+	pinds = labels.nonzero()[0]
+	nr.shuffle(pinds)
+	pinds = pinds[:npos]
+
+	inds = np.r_[pinds,ninds]
+	nr.shuffle(inds)
+
+	# Xf = matrix_squeeze(X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))].todense())
+	# Xf = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	Xf = X[:,inds]
+	labels = labels[inds]
+	
+	# import IPython
+	# IPython.embed()
+
+
+	num_eval = 100
+	all_fs = True
+	C = .03
+
+	pi = sum(labels)/len(labels)
+	init_pt = labels.nonzero()[0][nr.randint(len(labels.nonzero()[0]))]
+
+	verbose = True
+	remove_self_degree = False
+	sparse = True
+	alpha1 = 0.00
+	alpha2 = 0.1
+	alpha3 = 0.2
+	alpha4 = 0.5
+
+
+	f1, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha1, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f2, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f3, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha3, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f4, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha4, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+
+	# q1 = np.percentile(f1,pi*100)
+	# found_l1 = (f1>q1).astype(int)
+
+	fpr1, tpr1, thresh1 = roc_curve(labels, f1)
+	fpr2, tpr2, thresh2 = roc_curve(labels, f2)
+	fpr3, tpr3, thresh3 = roc_curve(labels, f3)
+	fpr4, tpr4, thresh4 = roc_curve(labels, f4)
+
+	plt.plot(fpr1, tpr1, label='alpha=%f'%alpha1, color='r')
+	plt.plot(fpr2, tpr2, label='alpha=%f'%alpha2, color='g')
+	plt.plot(fpr3, tpr3, label='alpha=%f'%alpha3, color='b')
+	plt.plot(fpr4, tpr4, label='alpha=%f'%alpha4, color='k')
+
+
+	plt.xlabel('False Positive Rate')
+	plt.ylabel('True Positive Rate')
+	plt.title('Receiver operating characteristic')#, alpha = %f'%alpha)
+	plt.legend(loc="lower right")
+
+	import IPython
+	IPython.embed()
+
 
 if __name__ == '__main__':
 
 	# test_vals()
 	# test_wikipedia_dataset()
-	test_20ng ()
+	# test_20ng ()
 	#test_20ng_2 ()
-	#test_logistic_reg ()
+	# test_logistic_reg ()
+		test_20_ng_IM ()
