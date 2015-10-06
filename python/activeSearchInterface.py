@@ -11,7 +11,7 @@ def matrix_squeeze(X):
 
 class Parameters:
 
-	def __init__ (self, pi=0.05, eta=0.5, w0=None, sparse=True, verbose=True, remove_self_degree=True):
+	def __init__ (self, pi=0.05, eta=0.5, w0=None, alpha=0, sparse=True, verbose=True, remove_self_degree=False):
 		"""
 		pi 			--> prior target probability
 		eta 		--> jump probability
@@ -25,7 +25,7 @@ class Parameters:
 
 		self.verbose = verbose
 
-		self.alpha = 0  #not being used
+		self.alpha = alpha
 
 ## For more on how these functions operate, see their analogs in daemon_service.py
 class genericAS:
@@ -181,9 +181,9 @@ class kernelAS (genericAS):
 		# 1. Df_tilde
 		# First, we need J = diag (X^T * Cinv * X): each element of J is x_i^T*Cinv*x_i
 		if self.params.sparse:
-			self.J = matrix_squeeze(((self.Cinv.dot(self.Xf)).multiply(self.X)).sum(0))
+			self.J = matrix_squeeze(((self.Cinv.dot(self.Xf)).multiply(self.Xf)).sum(0))
 		else:
-			self.J = np.squeeze(((self.Cinv.dot(self.X))*self.X).sum(0))
+			self.J = np.squeeze(((self.Cinv.dot(self.Xf))*self.Xf).sum(0))
 		# Now we compute the entire diag
 		diagMi = (1+self.BDinv*self.J)*self.BDinv
 		# Finally, Df_tilde
@@ -299,7 +299,7 @@ class kernelAS (genericAS):
 			c =  np.squeeze(gamma/(1 + (gamma*Xi.T.dot(Cif))[0,0]))
 		else:
 			c =  np.squeeze(gamma/(1 + gamma*Xi.T.dot(Cif)))
-		self.Cinv = self.Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
+		self.Cinv = self.Cinv - c*(Cif.dot(Cif.T))
 	
 		if self.params.sparse:
 			self.f = self.q + self.BDinv_ss.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
@@ -312,7 +312,7 @@ class kernelAS (genericAS):
 			Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
 		else:
 			Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
-		dpf = (dPpi - dP*self.f)
+		dpf = (self.dPpi - self.dP*self.f)
 		# Updating Df_tilde
 		if self.params.sparse:
 			self.J = self.J - c*(matrix_squeeze((self.Xf.T.dot(Cif)).todense())**2)

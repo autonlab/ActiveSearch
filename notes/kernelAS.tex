@@ -27,7 +27,7 @@
 
 		Here is the energy function used for AS:
 		\begin{equation}
-			E(f) = \sum\limits_{i \in \L} (y_i-f_i)^2 D_{ii} + \lambda w_0 \sum\limits_{i \in \U} (f_i-\pi)^2 D_{ii} + \sum\limits_{i,j} (f_i-f_j)^2 A_{ii}
+			E(f) = \sum\limits_{i \in \L} (y_i-f_i)^2 D_{ii} + \lambda \left(w_0 \sum\limits_{i \in \U} (f_i-\pi)^2 D_{ii} + \sum\limits_{i,j} (f_i-f_j)^2 A_{ij}\right)
 		\end{equation}
 
 		Here is the energy function rewritten using matrices, where $f_L$ and $f_U$ are the $f$-vector portions belonging to the labeled and unlabeled portions respectively (they have been rearranged WLOG):

@@ -446,6 +446,117 @@ def test_20_ng_IM ():
 	import IPython
 	IPython.embed()
 
+def test_20_ng_IM_ASI ():
+	from sklearn.datasets import fetch_20newsgroups
+	from sklearn.feature_extraction.text import CountVectorizer
+
+
+	# newsgroups_train = fetch_20newsgroups(subset='train',remove=('headers', 'footers', 'quotes'))
+	fng = fetch_20newsgroups(subset='all',remove=('headers', 'footers', 'quotes'),categories=['alt.atheism','comp.graphics'])
+	vectorizer = CountVectorizer( stop_words='english', ngram_range=(1, 1), analyzer=u'word', max_df=0.5, min_df=0.01, binary=True)
+
+	X = vectorizer.fit_transform(fng.data).T
+	X = X[np.squeeze(np.array(np.nonzero(X.sum(axis=1))[0])),:]
+	X = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+
+	pfrac = 0.1
+	labels = fng.target[np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	nneg = sum(labels==0)
+	npos = int(pfrac*nneg/(1-pfrac))
+
+	ninds = (labels==0).nonzero()[0]
+	pinds = labels.nonzero()[0]
+	nr.shuffle(pinds)
+	pinds = pinds[:npos]
+
+	inds = np.r_[pinds,ninds]
+	nr.shuffle(inds)
+
+	Xf = matrix_squeeze(X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))].todense())
+	# Xf = X[:,np.squeeze(np.array(np.nonzero(X.sum(axis=0))[1]))]
+	# Xf = X[:,inds]
+	# labels = labels[inds]
+	
+	# import IPython
+	# IPython.embed()
+
+
+	num_eval = 100
+	all_fs = True
+	C = .03
+
+	pi = sum(labels)/len(labels)
+	init_pt = labels.nonzero()[0][nr.randint(len(labels.nonzero()[0]))]
+
+	verbose = True
+	remove_self_degree = False
+	sparse = False
+	alpha1 = 0.00
+	alpha2 = 0.1
+	alpha3 = 0.2
+	alpha4 = 0.5
+
+	prms1 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha1, verbose=verbose)	
+	prms2 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha2, verbose=verbose)	
+	prms3 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha3, verbose=verbose)	
+	prms4 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha4, verbose=verbose)	
+
+	kAS1 = ASI.kernelAS(prms1)
+	kAS1.initialize(Xf)
+	kAS1.firstMessage(init_pt)
+
+	f1, _, _, fs1 =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha1, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	
+	assert np.allclose(kAS1.f,fs1[0])
+	# import IPython
+	# IPython.embed()
+	
+	for i in range(num_eval):
+		idx1 = kAS1.getNextMessage()
+		kAS1.setLabelCurrent(labels[idx1])
+
+		assert np.allclose(kAS1.f,fs1[i+1])
+
+		# init_lbls[idx1] = Y[idx1]
+		# idx2 = sAS.getNextMessage()
+		# sAS.setLabelCurrent(Y[idx2])
+
+		# import IPython
+		# IPython.embed()
+
+		# print('NEXT')
+		# print idx1==idx2
+		# print nac(kAS.f, sAS.f)
+		# fs2.append(kAS.f)
+		# fs3.append(sAS.f)
+
+	# f2, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	# f3, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha3, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	# f4, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha4, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+
+	# q1 = np.percentile(f1,pi*100)
+	# found_l1 = (f1>q1).astype(int)
+
+	# fpr1, tpr1, thresh1 = roc_curve(labels, f1)
+	# fpr2, tpr2, thresh2 = roc_curve(labels, f2)
+	# fpr3, tpr3, thresh3 = roc_curve(labels, f3)
+	# fpr4, tpr4, thresh4 = roc_curve(labels, f4)
+
+	# plt.plot(fpr1, tpr1, label='alpha=%f'%alpha1, color='r')
+	# plt.plot(fpr2, tpr2, label='alpha=%f'%alpha2, color='g')
+	# plt.plot(fpr3, tpr3, label='alpha=%f'%alpha3, color='b')
+	# plt.plot(fpr4, tpr4, label='alpha=%f'%alpha4, color='k')
+
+
+	# plt.xlabel('False Positive Rate')
+	# plt.ylabel('True Positive Rate')
+	# plt.title('Receiver operating characteristic')#, alpha = %f'%alpha)
+	# plt.legend(loc="lower right")
+
+	# import IPython
+	# IPython.embed()
+
 
 if __name__ == '__main__':
 
@@ -454,4 +565,5 @@ if __name__ == '__main__':
 	# test_20ng ()
 	#test_20ng_2 ()
 	# test_logistic_reg ()
-		test_20_ng_IM ()
+	# test_20_ng_IM ()
+	test_20_ng_IM_ASI ()
