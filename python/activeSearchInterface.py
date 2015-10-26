@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import time
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
 import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
@@ -166,6 +166,9 @@ class kernelAS (genericAS):
 		else:
 			self.Cinv = nlg.inv(C)
 
+		if self.params.verbose:	
+			print("Time for inverse:", time.time() - t1)
+
 		# Just keeping this around. Don't really need it.
 		if self.params.sparse:
 			self.f = self.q + self.BDinv_ss.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q))))))
@@ -173,34 +176,34 @@ class kernelAS (genericAS):
 			self.f = self.q + self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q)))))
 
 		# Impact factor calculations
-	
-		# 0. Some useful variables
-		self.dP = (1./self.l-self.params.w0)*D # L - U
-		self.dPpi = (1./self.l-self.params.pi*self.params.w0)*D # L - pi*U
-	
-		# 1. Df_tilde
-		# First, we need J = diag (X^T * Cinv * X): each element of J is x_i^T*Cinv*x_i
-		if self.params.sparse:
-			self.J = matrix_squeeze(((self.Cinv.dot(self.Xf)).multiply(self.Xf)).sum(0))
-		else:
-			self.J = np.squeeze(((self.Cinv.dot(self.Xf))*self.Xf).sum(0))
-		# Now we compute the entire diag
-		diagMi = (1+self.BDinv*self.J)*self.BDinv
-		# Finally, Df_tilde
-		dpf = (self.dPpi - self.dP*self.f)
-		Df_tilde = dpf*diagMi/(1 + self.dP*diagMi)
-
-		# 2. DF
-		# z = (I-B)Pinv*u = B*Dinv*u (these are defined in Kernel AS notes)
-		self.z = np.where(self.labels==-1, self.BDinv, 0)
-		if self.params.sparse:
-			Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
-		else:
-			Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+		if self.params.alpha > 0:
+			# 0. Some useful variables
+			self.dP = (1./self.l-self.params.w0)*D # L - U
+			self.dPpi = (1./self.l-self.params.pi*self.params.w0)*D # L - pi*U
 		
-		DF = (dpf - self.dP*Df_tilde)*Minv_u
-		# 3. IM
-		self.IM = self.f*(DF-Df_tilde)
+			# 1. Df_tilde
+			# First, we need J = diag (X^T * Cinv * X): each element of J is x_i^T*Cinv*x_i
+			if self.params.sparse:
+				self.J = matrix_squeeze(((self.Cinv.dot(self.Xf)).multiply(self.Xf)).sum(0))
+			else:
+				self.J = np.squeeze(((self.Cinv.dot(self.Xf))*self.Xf).sum(0))
+			# Now we compute the entire diag
+			diagMi = (1+self.BDinv*self.J)*self.BDinv
+			# Finally, Df_tilde
+			dpf = (self.dPpi - self.dP*self.f)
+			Df_tilde = dpf*diagMi/(1 + self.dP*diagMi)
+
+			# 2. DF
+			# z = (I-B)Pinv*u = B*Dinv*u (these are defined in Kernel AS notes)
+			self.z = np.where(self.labels==-1, self.BDinv, 0)
+			if self.params.sparse:
+				Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+			else:
+				Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+			
+			DF = (dpf - self.dP*Df_tilde)*Minv_u
+			# 3. IM
+			self.IM = self.f*(DF-Df_tilde)
 
 		# Setting iter/start_point
 		# If batch initialization is done, then start_point is everything given
@@ -219,7 +222,6 @@ class kernelAS (genericAS):
 			self.hits = [sum(init_labels.values())]
 
 		if self.params.verbose:
-			print("Time for inverse:", time.time() - t1)
 			print("Done with the initialization.")
 
 		self.initialized = True
@@ -307,23 +309,24 @@ class kernelAS (genericAS):
 			self.f = self.q + self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.q)))))
 
 		# Updating IM
-		self.z[idx] = 0
-		if self.params.sparse:
-			Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
-		else:
-			Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
-		dpf = (self.dPpi - self.dP*self.f)
-		# Updating Df_tilde
-		if self.params.sparse:
-			self.J = self.J - c*(matrix_squeeze((self.Xf.T.dot(Cif)).todense())**2)
-		else:
-			self.J = self.J - c*(np.squeeze(self.Xf.T.dot(Cif))**2)
-		diagMi = (1+self.BDinv*self.J)*self.BDinv
-		Df_tilde = dpf*diagMi/(1 + self.dP*diagMi)
-		# Updating DF
-		DF = (dpf - self.dP*Df_tilde)*Minv_u
-		# Computing IM
-		self.IM = self.f*(DF-Df_tilde)
+		if self.params.alpha > 0:
+			self.z[idx] = 0
+			if self.params.sparse:
+				Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+			else:
+				Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+			dpf = (self.dPpi - self.dP*self.f)
+			# Updating Df_tilde
+			if self.params.sparse:
+				self.J = self.J - c*(matrix_squeeze((self.Xf.T.dot(Cif)).todense())**2)
+			else:
+				self.J = self.J - c*(np.squeeze(self.Xf.T.dot(Cif))**2)
+			diagMi = (1+self.BDinv*self.J)*self.BDinv
+			Df_tilde = dpf*diagMi/(1 + self.dP*diagMi)
+			# Updating DF
+			DF = (dpf - self.dP*Df_tilde)*Minv_u
+			# Computing IM
+			self.IM = self.f*(DF-Df_tilde)
 
 		# Some more book-keeping
 		self.labeled_idxs.append(idx)
@@ -333,14 +336,17 @@ class kernelAS (genericAS):
 			self.hits.append(self.hits[-1] + lbl)
 
 		# Finding the next message to show -- get the current max element
-		uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
+		if self.params.alpha > 0:
+			uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
+		else:
+			uidx = np.argmax(self.f[self.unlabeled_idxs])
 		self.next_message = self.unlabeled_idxs[uidx]
 		# Now that a new message has been selected, mark it as unseen
 		self.seen_next = False 
 
 		if self.params.verbose:
 			elapsed = time.time() - t1
-			print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
+			print( 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 			
 	def getStartPoint (self):
 		if self.start_point is None:
@@ -387,11 +393,43 @@ class kernelAS (genericAS):
 		self.f[idx] += gamma
 		self.q[idx] += gamma
 
+		# Updating IM
+		if self.params.alpha > 0:
+			Xi = self.Xf[:,[idx]] # ith feature vector
+			Cif = self.Cinv.dot(Xi)
+
+			gamma2 = -(self.l/(1+self.l)-1/(1+self.params.w0))*self.Dinv[idx]
+			if self.params.sparse:
+				c =  np.squeeze(gamma2/(1 + (gamma2*Xi.T.dot(Cif))[0,0]))
+			else:
+				c =  np.squeeze(gamma2/(1 + gamma2*Xi.T.dot(Cif)))
+
+			self.z[idx] = 0
+			if self.params.sparse:
+				Minv_u = self.z + self.BDinv_ss.dot(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+			else:
+				Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
+			dpf = (self.dPpi - self.dP*self.f)
+			# Updating Df_tilde
+			if self.params.sparse:
+				self.J = self.J - c*(matrix_squeeze((self.Xf.T.dot(Cif)).todense())**2)
+			else:
+				self.J = self.J - c*(np.squeeze(self.Xf.T.dot(Cif))**2)
+			diagMi = (1+self.BDinv*self.J)*self.BDinv
+			Df_tilde = dpf*diagMi/(1 + self.dP*diagMi)
+			# Updating DF
+			DF = (dpf - self.dP*Df_tilde)*Minv_u
+			# Computing IM
+			self.IM = self.f*(DF-Df_tilde)
+
 		# Some more book-keeping
 		self.hits.append(self.hits[-1] + (-1 if lbl == 0 else 1))
 
 		# Finding the next message to show -- get the current max element
-		uidx = np.argmax(self.f[self.unlabeled_idxs])
+		if self.params.alpha > 0:
+			uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
+		else:
+			uidx = np.argmax(self.f[self.unlabeled_idxs])
 		self.next_message = self.unlabeled_idxs[uidx]
 		# Now that a new message has been selected, mark it as unseen
 		self.seen_next = False 
@@ -399,7 +437,7 @@ class kernelAS (genericAS):
 
 		if self.params.verbose:
 			elapsed = time.time() - t1
-			print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
+			print('Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 
 		return ret
 
@@ -457,7 +495,7 @@ class shariAS (genericAS):
 		D = matrix_squeeze(self.A.sum(1)) ##
 		if self.params.remove_self_degree:
 			if self.params.verbose:
-				"Removing diagonal elements."
+				print("Removing diagonal elements.")
 			D -= A.diagonal()
 			self.A = self.A - np.diag(matrix_squeeze(A.diagonal()))
 		self.Dinv = 1./D
@@ -611,7 +649,7 @@ class shariAS (genericAS):
 
 		if self.params.verbose:
 			elapsed = time.time() - t1
-			print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
+			print('Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 			
 	def getStartPoint (self):
 		if self.start_point is None:
@@ -840,7 +878,7 @@ class naiveShariAS (genericAS):
 
 		if self.params.verbose:
 			elapsed = time.time() - t1
-			print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
+			print('Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 			
 	def getStartPoint (self):
 		if self.start_point is None:

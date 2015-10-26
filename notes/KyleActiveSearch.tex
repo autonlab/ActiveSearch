@@ -1,0 +1,131 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+
+\begin{document}
+%\maketitle
+
+\section{Active Search - quick derivation}
+Given some similarity function $Sim(\cdot,\cdot):~OxO\rightarrow [0,1]$ that accepts a pair of observations, we can define a pairwise similarity matrix $A$ as
+\begin{equation}
+   A_{i,j} = Sim(o_i,o_j).
+\end{equation}
+Typically, we assume $A$ to be symmetric. We consider $A$ to be the weight matrix for an undirected graph over observations. Next we consider the vector $f$ that satisfies
+\begin{equation}
+  f = D^{-1}Af,
+\end{equation}
+where $D = {\rm diag}(A\vec{1})$. It is clear that $D^{-1}A$ is the transpose of the transition probability matrix, and thus $f$ can be interpreted as follows. Let element $f_i$ represent the likelihood of some event determined by a random walk starting at node $i$, i.e. $f_i = P(\cdot|{\rm start}=i)$. Then it must be true that 
+\begin{equation}
+  f_i = P(\cdot|{\rm start}=i) = \sum_j P_{i,j} P(\cdot|{\rm start}=j).
+\end{equation}
+Thus, $f$ must satisfy $f = D^{-1}Af$. From this, we have $(D-A)f=0$ and $f^{T}(D-A)f=0$. $D-A$ is the graph laplacian, and is symmetric positive-semidefinite. Note, $f^{T}(D-A)f = \sum_{i,j} A_{i,j}(f_i-f_j)^2$. It may also be of interest to note that $f^{T}(D-A)f$ is the cost of a graph cut if we restrict $f_i \in \lbrace 0,1 \rbrace$.
+
+Now, suppose we augment the graph by adding a pseudonode attached to each node and fix the likelihood of the target event at these pseudonodes. Then, we slightly abuse notation on $A$ and write the augmented system as
+\begin{equation}
+ \left(\left[ \begin{array}{cc} D_u & 0\\ 0 & \cdot \end{array} \right] - \left[ \begin{array}{cc} A & B \\ B & \cdot \end{array}\right]\right)\left[ \begin{array}{c} f \\ y \end{array}\right] = 0, \label{aug}
+\end{equation}
+where $D_u = D_A+B$ (here $D_A={\rm diag}(A\vec{1})$), $B$ is some diagonal matrix with non-negative entries, and $y$ encodes the grounded probability values. Specifically, $y=\left<1,\dots,1,\pi,\dots,\pi,0,\dots,0\right>$ where $y_i=1$ encodes a `positive' observation, $y_i=0$ encodes a `negative', and $\pi$ is a prior given to all unlabeled observations. We have assumed without loss of generality that the observations are ordered positives preceeding negatives.
+
+The first row of equation~\ref{aug} gives us
+\begin{equation}
+  (D_A+B-A)f = By.
+\end{equation}
+
+\section{On the Behavior of Active Search}
+
+\subsection{via one step update}
+The design choice of $B$ that has been used includes observation specific constants that depend on wether or not an observation has been labeled. Similarly, $y$ depends on accumulated labels. Therefore, we write $y^k$ and $B^k$ to denote the value of these terms after having accumulated $k$ labels. Thus, $f^k$ satisfies $(D_A+B^k-A)f^k = B^ky^k$. We can relate $y^k$ and $B^k$ to $y^{k+1}$ and $B^{k+1}$ as follows
+\begin{eqnarray}
+   y^{k+1}-y^k &=& (y_i-\pi)\vec{i}, \\~B^{k+1}&=&B^k+(B^{k+1}_{i,i}-B^k_{i,i})\vec{i}\vec{i}^T = B^k+\Delta B,
+\end{eqnarray}
+where $i$ is the index of the observation that received a label at iteration $k+1$ and $\vec{i}$ is the vector of zeros with a 1 in the $i^{\rm th}$ position. We can now write
+\begin{eqnarray}
+(D_A+B^{k+1}-\Delta B-A)f^k &=& (B^{k+1}-\Delta B)y^k, \\
+(D_A+B^{k+1}-A)f^{k+1} &=& B^{k+1}y^{k+1}.
+\end{eqnarray}
+Subtracting these equations gives
+\begin{eqnarray}
+  (D_A+B^{k+1}-A)(f^{k+1}-f^k) &=& B^{k+1}(y^{k+1}-y^k) + \Delta B (y^k - f^k) \nonumber \\ &=& \left[y_i-\pi+\beta (\pi - f^k_i)\right]B^{k+1}\vec{i}, \label{delta}
+\end{eqnarray}
+where $\beta = 1- \tfrac{B^k_{i,i}}{B^{k+1}_{i,i}}$.
+
+For practical purposes $0<\beta<1$, $0<\pi<1$, $0 \leq f_i \leq 1$, and $y_i \in \lbrace 0,1\rbrace$. We can therefore conclude that 
+\begin{equation}
+  sign\left(y_i-\pi+\beta (\pi - f^k_i)\right) = \left\lbrace \begin{array}{ll} +1 & y_i=1, \\ -1 & {\rm otherwise.} \end{array} \right.
+\end{equation}
+Let $M = D_A+B^{k+1}-A$. Since $B^{k+1}_{i,i}>0$, $M$ is a Stieltjes matrix, i.e. real symmetric positive definite matrix with nonpositive off-diagonal entries. Note that $M$ is also strictly diagonal dominant. Therefore, $M^{-1}$ is symmetric and nonnegative, i.e. $M^{-1}_{i,j} \ge 0$. Further, equation~\ref{delta} implies that $f^{k+1}-f^k$ is a scalar multiple ($\left[y_i-\pi+\beta (\pi - f^k_i)\right]B^{k+1}_{i,i}$) of the $i^{\rm th}$ column of $M^{-1}$. Since $M^{-1}$ is nonnegative, it is clear that the desirable structure of $M^{-1}$ is that
+\begin{equation}
+  M^{-1}_{i,j} > M^{-1}_{l,m},
+\end{equation}
+whenever observations $i$ and $j$ are of the same class and observations $l$ and $m$ are not. Such a condition will cause the $f$ values of the positive observations to be strictly greater than the $f$ values of the negative observations, effecting perfect separation with a few as one labeled observation. If this relationship is reversed however, though perfect separation will still result, every labeled observation will serve to decrease the $f$ values of the positive observations relative to the negative observations. Thus, burying the postives. Finally, if the structure of relative magnitudes of $M^{-1}$ are random relative to the underlying label structure, active search will give random behavior.  
+
+From this analysis, we can also see that using currently collected labels $\mathcal{L}$ we can both check and possibly improve the expected behavior of active search by the condition
+\begin{equation}
+  \forall i,j,l,m \in \mathcal{L},~M^{-1}_{i,j} > M^{-1}_{l,m}~i,j~{\rm have~the~same~class,}~l,m~{\rm do~not.}
+\end{equation}
+
+\subsection{The impact factor}
+The above analysis uses iteration $k+1$ as the reference from which to describe the update $f^{k+1}-f^k$. Here we repeate the above analysis from the point of view of the $k^{\rm th}$ iteration. In this way we derive a usable formula for the impact factor. Active Search includes an impact factor (IM), which encodes the likelihood that one will find more positive observations if one labels a given observation. Candidates for labeling can be sorted by $f+\alpha {\rm IM}$ as opposed to $f$, where $\alpha$ controls exploration vs exploitation trade-off. Formally,
+\begin{equation}
+  {\rm IM}^{k}_i = f_i \sum_{j \in \mathcal{U} \setminus i} \Delta \tilde{f}_j,
+\end{equation}
+for which $\Delta \tilde{f}$ is the change in $f$ that would ensue if observation $i$ is positive.
+
+Recall, $\Delta B = (B^{k+1}_{i,i}-B^k_{i,i})\vec{i}\vec{i}^T$. Then, 
+\begin{eqnarray}
+(D_A+B^{k}-A)f^k &=& B^{k} y^k, \label{fk} \\
+(D_A+B^{k}+\Delta B -A)f^{k+1} &=& (B^{k}+\Delta B)y^{k+1}.
+\end{eqnarray}
+Subtracting gives
+\begin{eqnarray}
+  (D_A+B^{k}-A)(f^{k+1}-f^k) &=& B^k(y^{k+1}-y^k)+\Delta B(y^{k+1}-f^{k+1}) \\
+                             &=& \left[(y_i-\pi)B^k_{i,i} + \delta B (y_i-f^{k+1}_i)\right] \vec{i},
+\end{eqnarray}
+where $\delta B= B^{k+1}_{i,i} - B^k_{i,i} $. If we let $M=D_A+B^k-A$, we can write
+\begin{equation}
+  \Delta f = \left[ (y_i-\pi)B^k_{i,i} + \delta B (y_i-f^{k+1}_i) \right] M^{-1}_{\cdot,i}.
+\end{equation}
+To calculate the impact factor, we solve for $\Delta \tilde{f}$ by fixing $y_i=1$. Then,
+\begin{equation}
+  \Delta \tilde{f} = \left[B^{k+1}_{i,i}-\pi B^k_{i,i} - \delta B \tilde{f}^{k+1}_i \right] M^{-1}_{\cdot,i},
+\end{equation}
+from which we can solve for $\tilde{f}^{k+1}_i$ and derive a usable expression. We observe that $\Delta \tilde{f}_i = \tilde{f}^{k+1}_i - f^k_i$ so
+\begin{equation}
+  \tilde{f}^{k+1}_i - f^k_i= \left[B^{k+1}_{i,i}-\pi B^k_{i,i} - \delta B \tilde{f}^{k+1}_i \right] M^{-1}_{i,i}.
+\end{equation}
+It then follows that 
+\begin{equation}
+  \Delta \tilde{f}_i = \frac{\left(B^{k+1}_{i,i}-\pi B^k_{i,i} -\delta B f^k_i \right) M^{-1}_{i,i}}{1+\delta B M^{-1}_{i,i}}. \label{deltaftilde}
+\end{equation}
+
+Let $\Delta F_i = \sum_{j\in \mathcal{U}} \Delta \tilde{f}_j$ when observation $i$ is supposed to be positive, and $u$ be an indicator vector with $u_i=1$ if observation $i$ is unlabeled and $0$ otherwise. Then
+\begin{equation}
+  \Delta F = \left[\vec{B}^{k+1}-\pi \vec{B}^k - \delta \vec{B}(f^k+\Delta \tilde{f}) \right]\circ {M^{-1}}^T u, \label{DF}
+\end{equation}
+where $\circ$ is the entry-wise product, $\vec{B}^k = {\rm diag}(B^k)$, and $\delta \vec{B} = {\rm diag}(B^{k+1}-B^k)$. This gives us
+\begin{equation}
+   {\rm IM}^k = f^k \circ (\Delta F-\Delta \tilde{f}).
+\end{equation}
+If the base similarity matrix $A$ can be written as $XX^T$ where $X$ is $n\times m$ ($n$ observations, $m$ features), then the matrix inversion lemma can be used to calculate $f^k$~(\ref{fk}), $\Delta \tilde{f}$~(\ref{deltaftilde}), and $\Delta F$~(\ref{DF}) each in $O(nm)$ time (all without explicitly calculation $M^{-1}$). Thus, the impact factor can also be calculated in $O(nm)$ time.
+
+\subsection{via landmark space interpretation}
+We can consider $M^{-1}B$ itself as the results of a similarity function ($K(\cdot,\cdot)$) in which similarity is measured as the likelihood a random walk beginning at a node arrives at positively labeled node as opposed to a negatively labeled one (pseudo-nodes actually). We can then conceive of active search as a weighted sum of similarities to labeled observations as follows. Recall that $\left[D_A+B^k-A\right]f^k = B^k y^k$, where $y=\left<1,\dots,1,\pi,\dots,\pi,0,\dots,0\right>$. Further, we can easily see that $\left[D_A+B^k-A\right]\vec{1} = B^k \vec{1}$. We write $y=\Delta y + \vec{1}\pi$. Then, active search can be written as
+\begin{eqnarray}
+   \left[D_A+B^k-A\right]f^k &=& B^k \left( \Delta y +\vec{1}\pi \right) \\
+   \implies f^k &=& \left[D_A+B^k-A\right]^{-1} B^k \Delta y + \vec{1} \pi.
+\end{eqnarray}
+Since $\Delta y$ is zero for all unlabeled observations, we can write 
+\begin{equation}
+  f^k_i-\pi = \sum_{j\in \mathcal{L}} K(o_i,o_j)(y_j-\pi)=(1-\pi)\sum_{j\in \mathcal{L}^+} K(o_i,o_j)-\pi\sum_{j\in \mathcal{L}^-} K(o_i,o_j),
+\end{equation}
+where $K(o_i,o_j)= \left(\left[D_A+B^k-A\right]^{-1} B^k\right)_{i,j}$. Thus, the $f$ score can be viewed as a weighted sum of network based similarities.
+
+Active search will perform well if $f^k_+>f^k_-$ (i.e. $f$ is larger for an arbitrary positive than an arbitrary negative), with high likelihood. $f^k_+>f^k_-$ occurs if 
+\begin{equation}
+   (1-\pi)\sum_{\mathcal{L}^+} K_{+,+}-K_{+,-} +\pi\sum_{\mathcal{L}^-} K_{-,-}-K_{-,+} > 0. \label{cond}
+\end{equation}
+Which is to say, a postive observation will score higher than a negative if on balance ($\pi$) the observations are more similar to their own labeled examples than to their opposities. What are the necessary and sufficient conditions for this to happen with high likelihood? What can be said about the recall vs iterations of Active Search? How does the iterative process of selecting labeled examples impact this?
+
+Conjecture: $Sim(o_i,o_j)$ has to be monotonic increasing in the probability that $o_i$ and $o_j$ have the same class to guarentee~(\ref{cond}) with high likelihood.
+
+
+\end{document}

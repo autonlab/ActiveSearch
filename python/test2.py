@@ -502,11 +502,11 @@ def test_20_ng_IM_ASI ():
 	prms3 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha3, verbose=verbose)	
 	prms4 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha4, verbose=verbose)	
 
-	kAS1 = ASI.kernelAS(prms1)
+	kAS1 = ASI.kernelAS(prms2)
 	kAS1.initialize(Xf)
 	kAS1.firstMessage(init_pt)
 
-	f1, _, _, fs1 =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha1, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f1, _, _, fs1 =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
 	
 	assert np.allclose(kAS1.f,fs1[0])
 	# import IPython
@@ -517,6 +517,7 @@ def test_20_ng_IM_ASI ():
 		kAS1.setLabelCurrent(labels[idx1])
 
 		assert np.allclose(kAS1.f,fs1[i+1])
+		print "works"
 
 		# init_lbls[idx1] = Y[idx1]
 		# idx2 = sAS.getNextMessage()
