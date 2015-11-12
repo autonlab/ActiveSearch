@@ -5,14 +5,14 @@ import numpy as np, numpy.linalg as nlg, numpy.random as nr
 import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
 
 import activeSearchInterface as ASI
-import similarity learning as SL
+import similarityLearning as SL
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 def matrix_sqrt (W):
 	# Given PSD W, Finds PSD Q such that W = Q*Q.
 	S,U = nlg.eigh(W)
-	return U.dot(np.diag(n.sqrt(S)).dot(U.T)
+	return U.dot(np.diag(np.sqrt(S))).dot(U.T)
 
 class adaptiveKernelAS (ASI.genericAS):
 
@@ -25,7 +25,7 @@ class adaptiveKernelAS (ASI.genericAS):
 		self.spsdSL = SL.SPSD(SLparams) # will learn this when given data.
 
 		self.W = W0
-		self.sqrtW = matrix_sqrt(W)
+		self.sqrtW = matrix_sqrt(self.W)
 		self.T = T
 
 		self.epoch_itr = 0
@@ -33,10 +33,15 @@ class adaptiveKernelAS (ASI.genericAS):
 
 		self.initialized = False
 		self.start_point = None
+		self.Xf = None
 
-	def initialize(Xf, init_labels = {}):
+	def initialize(self, Xf, init_labels = {}):
 		# Reset self.kAS
+		if self.Xf is None:
+			self.Xf = Xf
 		if not np.allclose (self.sqrtW, np.eye(self.W.shape[0])):
+			import IPython
+			IPython.embed()
 			Xf = self.sqrtW.dot(Xf)
 
 		self.kAS = ASI.kernelAS(self.ASparams)
@@ -48,8 +53,8 @@ class adaptiveKernelAS (ASI.genericAS):
 
 	def relearnSimilarity (self, params=None):
 
-		init_labels = {i:kAS.labels[i] for i in kAS.labeled_idxs}
-		L = [(np.squeeze(Xf[:,i]), l) for i,l in init_labels.items()]
+		init_labels = {i:self.kAS.labels[i] for i in self.kAS.labeled_idxs}
+		L = [(self.Xf[:,i], l) for i,l in init_labels.items()]
 
 		print("Running SPSD for relearning similarity.")
 
@@ -63,7 +68,7 @@ class adaptiveKernelAS (ASI.genericAS):
 
 		print("Reinitializing Active Search.")
 
-		self.initialize(kAS.Xf, init_labels)
+		self.initialize(self.Xf, init_labels)
 
 	def firstMessage(self,idx):
 		if self.kAS is None:
@@ -85,7 +90,7 @@ class adaptiveKernelAS (ASI.genericAS):
 	def setLabelCurrent(self, value):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
-		self.kAS.setLabel(self.next_message, value)
+		self.setLabel(self.kAS.next_message, value)
 
 	def setLabel (self, idx, lbl):
 		# THIS IS WHERE WE RELEARN WHEN WE NEED TO
@@ -109,12 +114,12 @@ class adaptiveKernelAS (ASI.genericAS):
 	def resetLabel (self, idx, lbl):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
-		self.kAS.resetLabel(idx, lbl)
+		return self.kAS.resetLabel(idx, lbl)
 
 	def getNextMessage (self):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
-		self.kAS.getNextMessage()
+		return self.kAS.getNextMessage()
 
 	def setLabelBulk (self, idxs, lbls):
 		for idx,lbl in zip(idxs,lbls):
@@ -123,9 +128,9 @@ class adaptiveKernelAS (ASI.genericAS):
 	def pickRandomLabelMessage (self):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
-		self.kAS.pickRandomLabelMessage()
+		return self.kAS.pickRandomLabelMessage()
 
 	def getLabel (self,idx):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
-		self.kAS.getLabel(idx)
+		return self.kAS.getLabel(idx)

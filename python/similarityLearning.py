@@ -12,7 +12,7 @@ def matrix_squeeze(X):
 
 class SPSDParameters:
 	# Parameters for SPSD
-	self.__init__(self, alpha=1, C=1, gamma=1, margin=None, sampleR=-1, epochs=1):
+	def __init__(self, alpha=1, C=1, gamma=1, margin=None, sampleR=-1, epochs=1, verbose=True, sparse=False):
 		
 		self.alpha = alpha
 		self.C = C
@@ -20,6 +20,8 @@ class SPSDParameters:
 		self.margin = 1 if margin is None else margin
 		self.sampleR = sampleR
 		self.epochs = epochs # Currently unused -- number of times to run through same data
+		self.verbose = verbose
+		self.sparse = sparse
 
 
 class SPSD:
@@ -44,11 +46,11 @@ class SPSD:
 
 	def generateR (self):
 		# Generate set of triplets for hinge loss
-		P = [np.asarray(xy[0]) for xy in self.L if xy[1]==1]
-		N = [np.asarray(xy[0]) for xy in self.L if xy[1]==0]
+		P = [np.asarray(xy[0].todense()).squeeze() for xy in self.L if xy[1]==1]
+		N = [np.asarray(xy[0].todense()).squeeze() for xy in self.L if xy[1]==0]
 
-		if self.sampleR == -1:
-			self.R = [(p[0],p[1]),n) for p in itertools.permutations(P,2) for n in N]
+		if self.params.sampleR == -1:
+			self.R = [(p[0],p[1],n) for p in itertools.permutations(P,2) for n in N]
 			nr.shuffle(self.R)
 		else:
 			# Naive version just for now:
@@ -71,7 +73,7 @@ class SPSD:
 	def evalL(self, W, r, margin=None):
 		# Evalute an element of the loss at 
 		if margin is None: margin = self.params.margin
-		return np.max(0, margin - r[0].T.dot(W),dot(r[1]) + r[0].T.dot(W),dot(r[2]))
+		return np.max([0, margin - r[0].T.dot(W).dot(r[1]) + r[0].T.dot(W).dot(r[2])])
 
 	def subgradG(self, W, r, nR=None, C=None, margin=None):
 		# Evaluate the sub-gradient of smooth part of loss function:
@@ -85,7 +87,7 @@ class SPSD:
 		x1,x2,x3 = [np.atleast_2d(x).T for x in r]
 		dl = 0 if (self.evalL(W,r,margin) == 0) else x1.dot(x3.T-x2.T)
 
-		return (1/nR) * (W-W0) + C*dl
+		return (1/nR) * (W-self.W0) + C*dl
 
 	def runSPSD (self):
 		# Run the SPSD
@@ -94,8 +96,12 @@ class SPSD:
 		else: alphas = self.params.alpha
 
 		W = self.W0 # or maybe I?
+		itr = 0
 		for r,alpha in zip(self.R,alphas):
 			W = self.prox(W - alpha*self.subgradG(W,r))
+			if self.params.verbose:
+				print ("Iteration %i of SPSD.\n"%itr)
+			itr += 1
 
 		self.W = W
 
@@ -111,5 +117,5 @@ class SPSD:
 			raise Exception ("SPSD has not been run yet.")
 		if self.sqrtW is None:
 			S,U = nlg.eigh(self.W)
-			self.sqrtW = U.dot(np.diag(n.sqrt(S)).dot(U.T)
+			self.sqrtW = U.dot(np.diag(np.sqrt(S))).dot(U.T)
 		return self.sqrtW

@@ -126,7 +126,6 @@ class kernelAS (genericAS):
 		if self.params.w0 is None:
 			self.params.w0 = 1/self.n
 
-
 		# Set up some of the initial values of some matrices needed to compute D, BDinv, q and f
 		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
 		# B[self.labeled_idxs] = self.l/(1+self.l)
@@ -213,7 +212,10 @@ class kernelAS (genericAS):
 			else:
 				self.start_point = [eid for eid in self.labeled_idxs]
 			# Finding the next message to show -- get the current max element
-			uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
+			if self.params.alpha > 0:
+				uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
+			else:
+				uidx = np.argmax(self.f[self.unlabeled_idxs])
 			self.next_message = self.unlabeled_idxs[uidx]
 			# Now that a new message has been selected, mark it as unseen
 			self.seen_next = False 
