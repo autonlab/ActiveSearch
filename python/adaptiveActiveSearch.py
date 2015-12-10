@@ -11,7 +11,7 @@ np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 def matrix_sqrt (W):
 	# Given PSD W, Finds PSD Q such that W = Q*Q.
-	S,U = nlg.eigh(W)
+	S,U = nlg.eigh(W) 
 	return U.dot(np.diag(np.sqrt(S))).dot(U.T)
 
 class adaptiveKernelAS (ASI.genericAS):
@@ -40,9 +40,9 @@ class adaptiveKernelAS (ASI.genericAS):
 		if self.Xf is None:
 			self.Xf = Xf
 		if not np.allclose (self.sqrtW, np.eye(self.W.shape[0])):
-			import IPython
-			IPython.embed()
-			Xf = self.sqrtW.dot(Xf)
+			# import IPython
+			# IPython.embed()
+			Xf = ss.csr_matrix(self.sqrtW).dot(Xf)
 
 		self.kAS = ASI.kernelAS(self.ASparams)
 		self.kAS.initialize (Xf, init_labels)
@@ -96,15 +96,15 @@ class adaptiveKernelAS (ASI.genericAS):
 		# THIS IS WHERE WE RELEARN WHEN WE NEED TO
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
-		self.kAS.setLabel(idx, lbl)
 		self.itr += 1
+		display_iter = self.epoch_itr * self.T + self.itr
+		self.kAS.setLabel(idx, lbl, display_iter)		
 
 		# PERFORM RELEARNING
 		if self.itr > self.T:
 			self.relearnSimilarity()
 			self.itr = 0
 			self.epoch_itr += 1
-
 
 	def getStartPoint(self):
 		if self.start_point is None:

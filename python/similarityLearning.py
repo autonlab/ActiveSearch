@@ -12,8 +12,8 @@ def matrix_squeeze(X):
 
 class SPSDParameters:
 	# Parameters for SPSD
-	def __init__(self, alpha=1, C=1, gamma=1, margin=None, sampleR=-1, epochs=1, verbose=True, sparse=False):
-		
+	def __init__(self, alpha=1, C=1, gamma=1, margin=None, sampleR=-1, 
+				 epochs=1, verbose=True, sparse=False, sqrt_eps=1e-6):
 		self.alpha = alpha
 		self.C = C
 		self.gamma = gamma
@@ -22,6 +22,7 @@ class SPSDParameters:
 		self.epochs = epochs # Currently unused -- number of times to run through same data
 		self.verbose = verbose
 		self.sparse = sparse
+		self.sqrt_eps = sqrt_eps
 
 
 class SPSD:
@@ -59,9 +60,11 @@ class SPSD:
 			self.R = [self.R[i] for i in sample_inds]
 
 		self.nR = len(self.R)
+		if self.params.verbose:
+			print ("Number of triplets: %i\n"%self.nR)
 
 
-	def prox (self, M, l = None):
+	def prox (self, M, l=None):
 		# Evaluate the prox operator for nuclear norm projected onto PSD matrices
 		if l is None: l = self.params.gamma
 
@@ -87,7 +90,8 @@ class SPSD:
 		x1,x2,x3 = [np.atleast_2d(x).T for x in r]
 		dl = 0 if (self.evalL(W,r,margin) == 0) else x1.dot(x3.T-x2.T)
 
-		return (1/nR) * (W-self.W0) + C*dl
+		#return (1/nR) * (W-self.W0) + C*dl
+		return (W-self.W0) + C*dl
 
 	def runSPSD (self):
 		# Run the SPSD
@@ -98,11 +102,10 @@ class SPSD:
 		W = self.W0 # or maybe I?
 		itr = 0
 		for r,alpha in zip(self.R,alphas):
-			W = self.prox(W - alpha*self.subgradG(W,r))
-			if self.params.verbose:
-				print ("Iteration %i of SPSD.\n"%itr)
+			W = self.prox(W - alpha*self.subgradG(W,r), l = alpha*self.params.gamma)
+			# if self.params.verbose:
+			# 	print ("Iteration %i of SPSD.\n"%itr)
 			itr += 1
-
 		self.W = W
 
 	def getW (self):
@@ -117,5 +120,8 @@ class SPSD:
 			raise Exception ("SPSD has not been run yet.")
 		if self.sqrtW is None:
 			S,U = nlg.eigh(self.W)
+			if not np.allclose(self.W, self.W.T) or np.any(S < - self.params.sqrt_eps):
+				raise Exception ("Matrix Squareroot did not get PSD matrix.")
+			S = np.where (np.abs(S) < self.params.sqrt_eps, 0, S)
 			self.sqrtW = U.dot(np.diag(np.sqrt(S))).dot(U.T)
 		return self.sqrtW

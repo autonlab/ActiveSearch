@@ -59,38 +59,39 @@ def load_covertype (pos=4, sparse=False):
 
 def test_covtype ():
 
+	nr.seed(0)
+
 	verbose = True
 	sparse = True
 	pi = 0.5
 	eta = 0.7
-	K = 200
+	K = 1000
 	T = 20
 
-	sl_alpha = 1.
-	sl_C = 0.005
-	sl_gamma = 1.
+	sl_alpha = 0.001
+	sl_C = 1e-10
+	sl_gamma = 1e-10
 	sl_margin = 1.
+	sl_sampleR = 5000
 
 	X,Y = load_covertype(sparse=sparse)
+	import IPython
+	IPython.embed()
+
 	d,n = X.shape
 
 	W0 = np.eye(d)
 	
 	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),2,replace=False)]
 
-	prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta)
-	slprms = SL.SPSDParameters(sl_alpha, sl_C, sl_gamma, sl_margin)
+	prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
+	slprms = SL.SPSDParameters(alpha=sl_alpha, C=sl_C, gamma=sl_gamma, margin=sl_margin, sampleR=sl_sampleR)
 
 	kAS = ASI.kernelAS (prms)
-	print 1
 	aAS = AAS.adaptiveKernelAS(W0, T, prms, slprms)
-	print 2
 
 	# kAS.initialize(X,init_labels={init_pt:1})
-	# import IPython
-	# IPython.embed()
 	aAS.initialize(X,init_labels={p:1 for p in init_pt})
-	print 3
 
 	hits1 = [1]
 	hits2 = [1]
