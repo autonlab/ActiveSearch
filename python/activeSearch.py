@@ -3,8 +3,6 @@ import time
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
 import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
 
-import sklearn.linear_model as slm
-
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 """
@@ -16,21 +14,9 @@ Update inverse operation.
 Update f after this inverse is computed.
 
 """
-def matrix_squeeze(X):
-	# converts into numpy.array and squeezes out singular dimensions
-	return np.squeeze(np.asarray(X))
-
-def plot_heatmap (M,title):
-	import matplotlib.pyplot as plt
-	M = np.array(M)
-	M = (M-np.min(M))/(np.max(M)-np.min(M))
-	plt.pcolor(M)
-	plt.colorbar()
-	plt.title(title)
-	plt.show()
 
 
-def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, alpha=0.2, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
+def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -69,7 +55,6 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 
 	if sparse:
 		Ir = ss.eye(r)
-		In = ss.eye(n)
 	else:
 		Ir = np.eye(r)
 
@@ -112,11 +97,14 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	if verbose:
 		print time.time() - t1
 
+	# import IPython
+	# IPython.embed()
+
 	if verbose:
 		print "Inverting"
 	t1 = time.time()
 	if sparse:
-		Cinv = ss.csr_matrix(nlg.inv(C.todense())) # Need to update Cinv every iteration
+		Cinv = ssl.inv(C.tocsc()) # Need to update Cinv every iteration
 	else:
 		Cinv = nlg.inv(C)
 
@@ -134,40 +122,16 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	else:
 		f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
-	# Computations for the impact factor:
-	# 0. Some useful variables
-	dP = (1./l-w0)*D # L - U
-	dPpi = (1./l-pi*w0)*D # L - pi*U
-	
-	# 1. Df_tilde
-	# First, we need J = diag (X^T * Cinv * X): each element of J is x_i^T*Cinv*x_i
-	if sparse:
-		J = matrix_squeeze(((Cinv.dot(X)).multiply(X)).sum(0))
-	else:
-		J = np.squeeze(((Cinv.dot(X))*X).sum(0))
-	# Now we compute the entire diag
-	diagMi = (1+BDinv*J)*BDinv
-	# Finally, Df_tilde
-	dpf = (dPpi - dP*f)
-	Df_tilde = dpf*diagMi/(1 + dP*diagMi)
-
-	# 2. DF
-	# z = (I-B)Pinv*u (these are defined in Kernel AS notes)
-	z = BDinv.copy()
-	z[idxs] = 0
-	if sparse:
-		Minv_u = z + BDinv_ss.dot(X.T.dot(Cinv.dot(X.dot(z))))
-	else:
-		Minv_u = z + BDinv*(X.T.dot(Cinv.dot(X.dot(z))))
-	
-	DF = (dpf - dP*Df_tilde)*Minv_u
-	# 3. IM
-	IM = f*(DF-Df_tilde)
-	
 	# Number of true targets
 	true_n = sum(labels==1)
 	found_n = num_initial
 
+	#temp
+	# dinvA = (np.diag(Dinv)).dot(X.T.dot(X))
+	# B2 = np.ones(n)*1/(1+w0)
+	# B2[idxs] = l/(1+l)
+	# yp = np.ones(n)*pi
+	# yp[idxs] = labels[idxs]
 	if all_fs:
 		fs = [f]
 
@@ -183,7 +147,7 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 		# 	print "ERROR: NOT ALL UNLABELED IDXS ARE UNIQUE"
 
 		# Find next index to investigate
-		uidx = np.argmax((f+alpha*IM)[unlabeled_idxs])
+		uidx = np.argmax(f[unlabeled_idxs])
 		idx = unlabeled_idxs[uidx]
 		# if idx == n:
 		# 	print "ERROR: SELECTING SELECTED PT", idx
@@ -201,69 +165,67 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 			break
 
 		# Update relevant matrices
-		BDinv[idx] *= (1+w0)*l/(1+l) 
+
 		if sparse:
-			BDinv_ss[idx,idx] *= (1+w0)*l/(1+l) 	
+			BDinv_ss[idx,idx] *= (1+w0)*l/(1+l) 
+		else:
+			BDinv[idx] *= (1+w0)*l/(1+l) 
 
 		q[idx] = labels[idx]*1/(1+l)
 		gamma = -(l/(1+l)-1/(1+w0))*Dinv[idx]
 
 		Xi = X[:,[idx]] # ith feature vector
 
+		# t7 = time.time()
 		Cif = Cinv.dot(Xi)
-
+		# t8 = time.time()
+		# d7 = t8 - t7
+		# import IPython
+		# IPython.embed()
 		if sparse:
-			c =  np.squeeze(gamma/(1 + (gamma*Xi.T.dot(Cif))[0,0]))
+			Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + (gamma*Xi.T.dot(Cif))[0,0])
 		else:
-			c =  np.squeeze(gamma/(1 + gamma*Xi.T.dot(Cif)))
-		Cinv = Cinv - c*(Cif.dot(Cif.T))
+			Cinv = Cinv - gamma*(Cif.dot(Cif.T))/(1 + gamma*Xi.T.dot(Cif))
+		
+		# t9 = time.time()
+		# d8 = t9 - t8
 
 		if sparse:
 			f = q + BDinv_ss.dot(((X.T.dot(Cinv.dot(X.dot(q))))))
 		else:
-			f = q + BDinv*(X.T.dot(Cinv.dot(X.dot(q))))
+			f = q + BDinv*((X.T.dot(Cinv.dot(X.dot(q)))))
 
-
-		# Updating IM
-		z[idx] = 0
-		if sparse:
-			Minv_u = z + BDinv_ss.dot(X.T.dot(Cinv.dot(X.dot(z))))
-		else:
-			Minv_u = z + BDinv*(X.T.dot(Cinv.dot(X.dot(z))))
-		dpf = (dPpi - dP*f)
-		# Updating Df_tilde
-		if sparse:
-			J = J - c*(matrix_squeeze((X.T.dot(Cif)).todense())**2)
-		else:
-			J = J - c*(np.squeeze(X.T.dot(Cif))**2)
-		diagMi = (1+BDinv*J)*BDinv
-		Df_tilde = dpf*diagMi/(1 + dP*diagMi)
-		# Updating DF
-		DF = (dpf - dP*Df_tilde)*Minv_u
-		# Computing IM
-		IM = f*(DF-Df_tilde)
+		# t0 = time.time()
+		# d9 = t0 - t9
 
 		if all_fs:
 			fs.append(f)
 
+		# import IPython
+		# IPython.embed()
+
 		elapsed = time.time() - t1
 		selected.append(idx)
 		hits[i+1] = found_n
+
+		## temp ##
+		# B2[idx] = l/(l+1)
+		# yp[idx] = float(labels[idx])
+		# Ap = np.diag(B2).dot(dinvA)
+		# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
+		# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
+		# print nlg.norm(f-f2)
+		## temp ##
 
 		if verbose:
 			if (i%1)==0 or i==1:
 				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1], (i+num_initial+1), elapsed)
 			print '%d %d %f %d\n'%(i, hits[i+1]/true_n, elapsed, selected[i+num_initial])
 
-	# import IPython
-	# IPython.embed()
-	# S = 1/l*np.ones(n)
-	# S[unlabeled_idxs] = w0
-	# P = S*D
-	# M = np.array(np.diag(D+P)-X.T.dot(X))
-	# Mi = nlg.inv(M)
-	# plot_heatmap(Mi, 'kernelAS')
 
+	# Ap = np.diag(B2).dot(dinvA)
+	# q2 = (np.eye(n) - np.diag(B2)).dot(yp)
+	# f2 = nlg.inv(np.eye(n) - Ap).dot(q2)
 	if all_fs:
 		if tinv: return f, hits, selected, fs, dtinv
 		return f, hits, selected, fs
@@ -523,284 +485,3 @@ def shari_activesearch_probs_naive(A, labels, pi, num_eval, w0=None, eta=None, i
 	if all_fs:
 		return f, hits, selected, fs
 	return f, hits, selected
-
-
-def LinearKernel (x,y):
-	return np.squeeze(np.array(x)).dot(np.squeeze(np.array(y)))
-
-def AbsDifference (x,y):
-	return np.squeeze(np.abs(np.array(x)-np.array(y)))
-
-def PointWiseMultiply (x,y):
-	return np.squeeze(matrix_squeeze(x)*matrix_squeeze(y))
-
-
-def fit_regressor (Xf, labels, logit=None, C=1, reg='l2', sfunc='LinearKernel'):
-	"""
-	Xf: 		feature vectors (r x n) where r is the number of features and n is the number of data points
-	labels:		known labels -- doesn't need to be all of the points
-	C:			inverse of regularization parameter for l1/l2 regularizer
-	sfunc:		similarity function between points
-
-	Fits a logistic regressor such that g(sfunc(xi.T, xj)) > 0 if i,j is in same class and < 0 otherwise.
-	"""
-	# if sfunc != LinearKernel:
-	# 	raise NotImplementedError('Only linear kernel works for now')
-
-	Xf = Xf
-	r,n = Xf.shape
-	nl = len(labels)
-	keys = labels.keys()
-	
-	Xf_labeled = Xf[:,keys]
-	Xf_unlabeled = Xf[:,list(set(xrange(n)) - set(keys))]
-
-	lvals = np.atleast_2d(labels.values())
-
-	inputX = []
-	inputY = []
-
-	if sfunc == 'LinearKernel':
-		Af_labeled = Xf_labeled.T.dot(Xf_labeled)[np.triu_indices(nl)].tolist()
-		Af_unlabeled = (Xf_unlabeled**2).sum(0).tolist()
-		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
-		Yf_unlabeled = [1]*(n-nl)
-
-		inputX = Af_labeled + Af_unlabeled
-		inputY = Yf_labeled + Yf_unlabeled
-		inputX = np.atleast_2d(inputX).T
-
-	elif sfunc == 'AbsDifference':
-		Af_labeled = []
-		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl,1)].tolist()
-		for i,j in zip(*np.triu_indices(nl,1)):
-			Af_labeled.append(AbsDifference(Xf_labeled[:,i],Xf_labeled[:,j]))
-		Af_unlabeled = [np.zeros(r)]*(n-nl) # not sure if this is right
-		Yf_unlabeled = [1]*(n-nl)
-
-		inputX = Af_labeled + Af_unlabeled
-		inputY = Yf_labeled + Yf_unlabeled
-
-	elif sfunc == 'PointWiseMultiply':
-		Af_labeled = []
-		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
-		for i,j in zip(*np.triu_indices(nl)):
-			Af_labeled.append(PointWiseMultiply(Xf_labeled[:,i],Xf_labeled[:,j]))
-		Af_unlabeled = (Xf_unlabeled.T**2).tolist()
-		Yf_unlabeled = [1]*(n-nl)
-
-		inputX = Af_labeled + Af_unlabeled
-		inputY = Yf_labeled + Yf_unlabeled
-
-	# Train the regressor
-	if logit is None:
-		logit = slm.LogisticRegression (penalty=reg, C=C)
-
-	inputX = np.asarray(inputX)
-	# import IPython
-	# IPython.embed()
-	logit.fit(inputX, inputY)
-
-	return logit
-
-def fit_semi_supervised (Xf, labels, ssclassifier=None, sfunc='LinearKernel'):
-	"""
-	Xf: 		feature vectors (r x n) where r is the number of features and n is the number of data points
-	labels:		known labels -- doesn't need to be all of the points
-	sfunc:		similarity function between points
-
-	Fits a logistic regressor such that g(sfunc(xi.T, xj)) > 0 if i,j is in same class and < 0 otherwise.
-	"""
-	# if sfunc != LinearKernel:
-	# 	raise NotImplementedError('Only linear kernel works for now')
-
-	Xf = Xf
-	r,n = Xf.shape
-	nl = len(labels)
-	keys = labels.keys()
-	
-	Xf_labeled = Xf[:,keys]
-	Xf_unlabeled = Xf[:,list(set(xrange(n)) - set(keys))]
-
-	lvals = np.atleast_2d(labels.values())
-
-	inputX = []
-	inputY = []
-
-	if sfunc == 'LinearKernel':
-		Af_labeled = Xf_labeled.T.dot(Xf_labeled)[np.triu_indices(nl)].tolist()
-		Af_unlabeled = (Xf_unlabeled**2).sum(0).tolist()
-		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
-		Yf_unlabeled = [1]*(n-nl)
-
-		inputX = Af_labeled + Af_unlabeled
-		inputY = Yf_labeled + Yf_unlabeled
-		inputX = np.atleast_2d(inputX).T
-
-	elif sfunc == 'AbsDifference':
-		Af_labeled = []
-		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl,1)].tolist()
-		for i,j in zip(*np.triu_indices(nl,1)):
-			Af_labeled.append(AbsDifference(Xf_labeled[:,i],Xf_labeled[:,j]))
-		Af_unlabeled = [np.zeros(r)]
-		Yf_unlabeled = [1]
-
-		inputX = Af_labeled + Af_unlabeled
-		inputY = Yf_labeled + Yf_unlabeled
-
-	elif sfunc == 'PointWiseMultiply':
-		Af_labeled = []
-		Yf_labeled = lvals.T.dot(lvals)[np.triu_indices(nl)].tolist()
-		for i,j in zip(*np.triu_indices(nl)):
-			Af_labeled.append(PointWiseMultiply(Xf_labeled[:,i],Xf_labeled[:,j]))
-		Af_unlabeled = (Xf_unlabeled.T**2).tolist()
-		Yf_unlabeled = [1]*(n-nl)
-
-		inputX = Af_labeled + Af_unlabeled
-		inputY = Yf_labeled + Yf_unlabeled
-
-	# Train the regressor
-	if logit is None:
-		logit = slm.LogisticRegression (penalty=reg, C=C)
-
-	inputX = np.asarray(inputX)
-	logit.fit(inputX, inputY)
-
-	return logit
-
-use_prob = True
-
-def regression_active_search (X, labels, num_eval=100, w0=None, pi=0.05, eta=0.5, alpha=1.0, sfunc='LinearKernel', C=1.0, init_pt=None, verbose=True, all_fs=False, sparse=False):
-	"""
-	X 			--> r x n matrix of feature values for each point.
-	labels 		--> true labels for each point.
-	pi 			--> prior target probability
-	num_eval 	--> number of points to be investigated
-	"""
-	#X = np.array(X)
-	r,n = X.shape
-	labels = np.array(labels)
-
-	# Random start node
-	true_positives = (np.array(labels)==1).nonzero()[0]
-	true_negatives = (np.array(labels)==0).nonzero()[0]
-	# %%% Randomly pick 1 target point as the first point
-	idxs = [true_positives[nr.randint(len(true_positives))], true_negatives[nr.randint(len(true_negatives))]]
-	unlabeled_idxs = [i for i in range(n) if i not in idxs]
-
-	num_initial = 2
-	
-	if w0 is None: w0 = 1/n
-	C = 1.0
-
-	f = np.zeros(n)
-
-	known_labels = {idx:{0:-1,1:1}[labels[idx]] for idx in idxs}
-
-	bval = eta/(1-eta)
-	beta = 1 - w0/bval
-
-	logit = None
-
-	hits = np.zeros((num_eval+num_initial,1))
-	hits[0] = 1
-	hits[1] = 1
-	selected = [ix for ix in idxs]
-	# Number of true targets
-	true_n = sum(labels==1)
-	found_n = 1
-
-	if all_fs:
-		fs = [f]
-
-
-	# Modifying the element 
-	for i in range(num_eval):
-
-		# import IPython
-		# IPython.embed()
-		t1 = time.time()
-
-		# assert len(unlabeled_idxs) == n - num_initial - i
-		# if len(unlabeled_idxs) != len(np.unique(unlabeled_idxs)):
-		# 	print "ERROR: NOT ALL UNLABELED IDXS ARE UNIQUE"
-
-		# Find next index to investigate
-		uidx = np.argmax(f[unlabeled_idxs])
-		idx = unlabeled_idxs[uidx]
-
-		known_labels[idx] = {0:-1,1:1}[labels[idx]]
-
-		del unlabeled_idxs[uidx]
-
-		# assert idx not in unlabeled_idxs
-
-		found_n += labels[idx]
-		if found_n==true_n:
-			if verbose:
-				print "Found all", found_n, "targets. Breaking out."
-			break
-
-		logit = fit_regressor(X, known_labels, logit=logit, C=C, reg='l2', sfunc=sfunc)
-		# Update relevant matrices
-		if sfunc =='LinearKernel':
-			x_i = np.atleast_2d(X.T.dot(X[:,idx])).T
-		elif sfunc == 'AbsDifference':
-			x_i = np.abs(X.T-X[:,idx])
-		elif sfunc == 'PointWiseMultiply':
-			x_i = X.T*	X[:,idx]
-
-		if use_prob:
-			delta_f = logit.predict_proba(x_i).dot([1,-1])
-		else:
-			delta_f = logit.predict(x_i)
-
-
-		c  = ((labels[idx] - pi) + beta*(pi - f[idx]))*bval*sum(x_i)[0]
-
-		f = f + {0:-1,1:1}[labels[idx]]*delta_f*alpha
-
-		# t0 = time.time()
-		# d9 = t0 - t9
-
-		if all_fs:
-			fs.append(f)
-
-		# import IPython
-		# IPython.embed()
-
-		elapsed = time.time() - t1
-		selected.append(idx)
-		hits[i+1] = found_n
-
-		if verbose:
-			if (i%1)==0 or i==1:
-				print 'Iter: %i, Selected: %i, Best f: %f, Hits: %i/%i, Time: %f'%(i,selected[i+num_initial], f[idx], hits[i+1], (i+num_initial+1), elapsed)
-			print '%d %d %f %d\n'%(i, hits[i+1]/true_n, elapsed, selected[i+num_initial])
-
-
-	M = np.zeros((n,n))
-
-	posidx = (labels==1).nonzero()[0].tolist()
-	negidx = (labels==0).nonzero()[0].tolist()
-	X2 = X[:,posidx+negidx]
-	# import IPython
-	# IPython.embed()
-	for i in posidx + negidx:
-		print i
-		if sfunc =='LinearKernel':
-			x_i = np.atleast_2d(X2.T.dot(X2[:,i])).T
-		elif sfunc == 'AbsDifference':
-			x_i = np.abs(X2.T-X2[:,i])
-		elif sfunc == 'PointWiseMultiply':
-			x_i = X2.T*	X2[:,i]
-		M[:,i]= logit.predict_proba(x_i).dot([1,-1])
-
-	# Mi = nlg.inv(M)
-	plot_heatmap(M,title=sfunc)
-	import IPython
-	IPython.embed()
-
-	if all_fs:
-		return f, hits, selected, fs, logit
-	return f, hits, selected, logit
