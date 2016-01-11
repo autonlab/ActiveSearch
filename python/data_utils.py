@@ -21,6 +21,13 @@ np.set_printoptions(suppress=True, precision=5, linewidth=100)
 data_dir = os.getenv('AS_DATA_DIR')
 results_dir = os.getenv('AS_RESULTS_DIR')
 
+def min_sparse(X):
+    if len(X.data) == 0:
+        return 0
+    m = X.data.min()
+    return m if X.getnnz() == X.size else min(m, 0)
+
+
 def load_covertype (sparse=False):
 
 	fname = osp.join(data_dir, 'covtype.data')
@@ -215,14 +222,14 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	T = np.array([Y_train,(1.0-Y_train)]).T
 	L = np.linalg.inv(X_train.dot(X_train.T).todense()).dot(X_train.dot(T))
 	X2 = ss.csr_matrix(L).T.dot(X2)
-	X2 = X2-np.min(X2)
+	X2 = X2.todense().A - min_sparse(X2)
 
 	IPython.embed()
 	
 	if save:
 		if save_file is None:
 			save_file = osp.join(data_dir, 'HIGGS_projected.csv')
-		X2 = X2.todense().A
+		# X2 = X2.todense().A
 		np.savetxt(save_file, np.c_[Y2,X2.T], delimiter=',')
 	else:
 		return X2, Y2
