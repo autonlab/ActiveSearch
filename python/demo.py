@@ -21,6 +21,7 @@ def test_higgs ():
 	sparse = False
 	pi = 0.5
 	eta = 0.7
+	K = 200
 
 	# Stratified sampling
 	strat_frac = 1.0
