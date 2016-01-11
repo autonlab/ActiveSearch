@@ -125,10 +125,10 @@ def load_higgs (sparse=True, fname = None, normalize=False):
 	if normalize:
 		if sparse:
 			X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
-			X = X.dot(ss.spdiags([1/X_norms],[0],n,n)) # Normalization
+			X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
 		else:
 			X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
-			X = X.dot(ss.spdiags([1/X_norms],[0],n,n)) # Normalization
+			X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
 	return X, Y, classes
 
 def load_projected_higgs (sparse=True, fname = None, normalize=False):
