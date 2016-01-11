@@ -25,14 +25,14 @@ def test_higgs ():
 	# Stratified sampling
 	strat_frac = 1.0
 	t1 = time.time()
-	X,Y,classes = load_projected_higgs(sparse=sparse)
+	X,Y,classes = du.load_projected_higgs(sparse=sparse)
 	print ('Time taken to load %.2fs'%(time.time()-t1))
 	if 0.0 < strat_frac and strat_frac < 1.0:
-		X, Y = stratified_sample(X, Y, classes, strat_frac=strat_frac)
+		X, Y = du.stratified_sample(X, Y, classes, strat_frac=strat_frac)
 
 	# Changing prevalence of +
 	prev = 0.05
-	X,Y = change_prev (X,Y,prev=prev)
+	X,Y = du.change_prev (X,Y,prev=prev)
 	d,n = X.shape
 
 	# X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
