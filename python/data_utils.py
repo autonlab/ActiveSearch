@@ -216,6 +216,8 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	L = np.linalg.inv(X_train.dot(X_train.T).todense()).dot(X_train.dot(T))
 	X2 = ss.csr_matrix(L).T.dot(X2)
 	X2 = X2-np.min(X2)
+
+	IPython.embed()
 	
 	if save:
 		if save_file is None:
