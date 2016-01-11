@@ -259,3 +259,8 @@ def return_average_positive_neighbors (X, Y, k):
 	MsimY =	Y[MsimInds]
 
 	return MsimY.sum(axis=None)/(npos*k)
+
+if __name__ == '__main__':
+	X,Y,classes = load_higgs(normalize=True)
+	IPython.embed()
+	project_data (X, Y, save=True)
