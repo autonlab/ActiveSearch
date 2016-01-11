@@ -1,12 +1,12 @@
 from __future__ import division
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import time
 import os, os.path as osp
 import csv
 import cPickle as pick
-import sqlparse as sql
+# import sqlparse as sql
 
 import adaptiveActiveSearch as AAS
 import activeSearchInterface as ASI
@@ -16,8 +16,10 @@ import IPython
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
-data_dir = osp.join('/home/sibiv',  'Research/Data/ActiveSearch/Kyle/data/KernelAS')
-results_dir = osp.join('/home/sibiv',  'Classes/10-725/project/ActiveSearch/results')
+# data_dir = osp.join('/home/sibiv',  'Research/Data/ActiveSearch/Kyle/data/KernelAS')
+# results_dir = osp.join('/home/sibiv',  'Classes/10-725/project/ActiveSearch/results')
+data_dir = os.getenv('AS_DATA_DIR')
+results_dir = os.getenv('AS_RESULTS_DIR')
 
 def load_covertype (sparse=False):
 
