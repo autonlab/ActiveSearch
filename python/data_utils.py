@@ -138,7 +138,7 @@ def load_higgs (sparse=True, fname = None, normalize=False):
 			X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
 	return X, Y, classes
 
-def load_projected_higgs (sparse=True, fname = None, normalize=False):
+def load_projected_higgs (sparse=True, fname = None, normalize=True):
 
 	if fname is None:
 		fname = osp.join(data_dir, 'HIGGS_projected.csv')
@@ -224,7 +224,7 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	X2 = ss.csr_matrix(L).T.dot(X2)
 	X2 = X2.todense().A - min_sparse(X2)
 
-	IPython.embed()
+	# IPython.embed()
 	
 	if save:
 		if save_file is None:
@@ -235,7 +235,7 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 		return X2, Y2
 
 def load_sql (fname):
-
+	# dummy function
 	fn = open(fname,'r')
 	sqlstrm = sql.parsestream(fn)
   	
@@ -243,6 +243,27 @@ def load_sql (fname):
 		IPython.embed()
 
 	fn.close()
+
+def change_prev (X, Y, prev=0.05, save=False, save_file=None):
+	# Changes the prevalence of positves to 0.05
+	pos = Y.nonzero()[0]
+	neg = (Y==0).nonzero()[0]
+
+	npos = len(pos)
+	nneg = len(neg)
+	npos_prev = prev*nneg/(1-prev)#int(round(npos*prev))
+
+	prev_idxs = pos[nr.permutation(npos)[:npos_prev]].tolist() + neg.tolist()
+	nr.shuffle(prev_idxs)
+	
+	X2, Y2 = X[:,prev_idxs], Y[prev_idxs]
+
+	if save:
+		if save_file is None:
+			save_file = osp.join(data_dir, 'HIGGS_projected_prev%.4f.csv'%prev)
+		np.savetxt(save_file, np.c_[Y2,X2.T], delimiter=',')
+
+	return X2, Y2
 
 
 def stratified_sample (X, Y, classes, strat_frac=0.1):
@@ -274,6 +295,7 @@ def return_average_positive_neighbors (X, Y, k):
 	return MsimY.sum(axis=None)/(npos*k)
 
 if __name__ == '__main__':
-	X,Y,classes = load_higgs(normalize=True)
-	IPython.embed()
-	project_data (X, Y, save=True)
+	pass
+	# X,Y,classes = load_higgs(normalize=True)
+	# IPython.embed()
+	# project_data (X, Y, save=True)
