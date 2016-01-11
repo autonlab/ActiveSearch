@@ -203,23 +203,26 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 
 	train_idx = nr.permutation(n)[:num_samples]
 
-	X_train = X[train_idx]
-	Y_train = Y[train_idx]
+	X_train = X[:,train_idx]
+	Y_train = Y[:,train_idx]
+
 	if remove_samples:
-		X = np.delete(X,train_idx,0)
+		X = np.delete(X,train_idx,1)
+		if not X.shape:
+			X = X.item()
 		Y = np.delete(Y,train_idx,0)
 	
 	# Target feature matrix
 	T = np.array([Y_train,(1.0-Y_train)]).T
-	L = np.linalg.inv(X_train.dot(X_train.T)).dot(X_train.dot(T))
-	X2 = L.T.dot(X)
+	L = np.linalg.inv(X_train.dot(X_train.T).todense()).dot(X_train.dot(T))
+	X2 = ss.csr_matrix(L).T.dot(X)
 	X2 = X2-np.min(X2)
 	
 	if save:
 		if save_file is None:
 			save_file = osp.join(data_dir, 'HIGGS_projected.csv')
 		X2 = X2.todense().A
-		np.savetext(save_file, np.c_[Y,X2.T], delimiter=',')
+		np.savetxt(save_file, np.c_[Y,X2.T], delimiter=',')
 	else:
 		return X2, Y
 
