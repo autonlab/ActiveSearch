@@ -207,24 +207,23 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	Y_train = Y[:,train_idx]
 
 	if remove_samples:
-		X = np.delete(X,train_idx,1)
-		if not X.shape:
-			X = X.item()
-		Y = np.delete(Y,train_idx,0)
+		cols_to_keep = np.where(np.logical_not(np.in1d(np.arange(n), train_idx)))[0]
+		X2 = X[:,cols_to_keep]
+		Y2 = np.delete(Y,train_idx,0)
 	
 	# Target feature matrix
 	T = np.array([Y_train,(1.0-Y_train)]).T
 	L = np.linalg.inv(X_train.dot(X_train.T).todense()).dot(X_train.dot(T))
-	X2 = ss.csr_matrix(L).T.dot(X)
+	X2 = ss.csr_matrix(L).T.dot(X2)
 	X2 = X2-np.min(X2)
 	
 	if save:
 		if save_file is None:
 			save_file = osp.join(data_dir, 'HIGGS_projected.csv')
 		X2 = X2.todense().A
-		np.savetxt(save_file, np.c_[Y,X2.T], delimiter=',')
+		np.savetxt(save_file, np.c_[Y2,X2.T], delimiter=',')
 	else:
-		return X2, Y
+		return X2, Y2
 
 def load_sql (fname):
 
