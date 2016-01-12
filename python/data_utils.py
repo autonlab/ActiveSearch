@@ -287,8 +287,15 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	
 	# Target feature matrix
 	T = np.array([Y_train,(1.0-Y_train)]).T
+
 	IPython.embed()
-	L = np.linalg.inv(X_train.dot(X_train.T).todense()).dot(X_train.dot(T))
+	try:
+		L = nlg.inv(X_train.dot(X_train.T).todense()).dot(X_train.dot(T))
+	except:
+		L = nlg.pinv(X_train.todense().T).dot(T)
+		# X2inv = nlg.inv(X_train.dot(X_train.T).todense()+ 0.01*np.random.random((d,d)))
+		# L = X2inv.dot(X_train.dot(T))
+
 	X2 = ss.csr_matrix(L).T.dot(X2)
 	X2 = X2.todense().A - min_sparse(X2)
 
