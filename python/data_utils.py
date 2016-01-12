@@ -77,13 +77,11 @@ def load_covertype (sparse=False):
 	Y = np.asarray(Y)
 	return X, Y, classes
 
-def load_higgs (sparse=True, fname = None, normalize=False):
+def load_higgs (sparse=True, fname=None, normalize=False):
 
 	if fname is None:
 		fname = osp.join(data_dir, 'HIGGS.csv')
-	else:
-		if fname[-3:] == '.cpk':
-			with open(fname,'r') as fh: X,Y = pick.load(fh) 
+
 	fn = open(fname,'r')
 	data = csv.reader(fn)
 
@@ -138,13 +136,74 @@ def load_higgs (sparse=True, fname = None, normalize=False):
 			X = X/X_norms # Normalization
 	return X, Y, classes
 
-def load_projected_higgs (sparse=True, fname = None, normalize=True):
+
+def load_SUSY (sparse=True, fname=None, normalize=False):
+	### SAME AS HIGGS EXCEPT r.
+	### SHOULD COMBINE INTO ONE FUNCTION REALLY
+	if fname is None:
+		fname = osp.join(data_dir, 'SUSY.csv')
+
+	fn = open(fname,'r')
+	data = csv.reader(fn)
+
+	r = 18
+
+	classes = []
+	if sparse:
+		Y = []
+		rows = []
+		cols = []
+		sdat = []
+
+		c = 0
+		for line in data:
+			y = int(float(line[0]))
+			Y.append(y)
+			if y not in classes: classes.append(y)
+
+			xvec = np.array(line[1:]).astype(float)
+			xcol = xvec.nonzero()[0].tolist()
+
+			rows.extend(xcol)
+			cols.extend([c]*len(xcol))
+			sdat.extend(xvec[xcol].tolist())
+
+			c += 1
+		assert len(line) == r-1
+
+		X = ss.csr_matrix((sdat, (rows, cols)), shape=(r, c))
+
+	else:
+
+		X = []
+		Y = []
+		for line in data:
+			X.append(np.asarray(line[1:]).astype(float))
+			y = int(float(line[0]))
+			Y.append(y)
+			if y not in classes: classes.append(y)
+
+		X = np.asarray(X).T
+
+	fn.close()
+
+	Y = np.asarray(Y)
+
+	if normalize:
+		if sparse:
+			X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
+			X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
+		else:
+			X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
+			X = X/X_norms # Normalization
+	return X, Y, classes
+
+
+def load_projected_data (sparse=True, fname=None, normalize=True):
 
 	if fname is None:
-		fname = osp.join(data_dir, 'HIGGS_projected.csv')
-	else:
-		if fname[-3:] == '.cpk':
-			with open(fname,'r') as fh: X,Y = pick.load(fh) 
+		fname = osp.join(data_dir, 'SUSY_projected.csv')
+
 	fn = open(fname,'r')
 	data = csv.reader(fn)
 
@@ -199,6 +258,7 @@ def load_projected_higgs (sparse=True, fname = None, normalize=True):
 			X = X/X_norms # Normalization
 	return X, Y, classes
 
+
 def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=False, save_file=None):
 	"""
 	Project the data onto 2 dimensions.
@@ -228,7 +288,7 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	
 	if save:
 		if save_file is None:
-			save_file = osp.join(data_dir, 'HIGGS_projected.csv')
+			save_file = osp.join(data_dir, 'SUSY_projected.csv')
 		# X2 = X2.todense().A
 		np.savetxt(save_file, np.c_[Y2,X2.T], delimiter=',')
 	else:
@@ -244,8 +304,8 @@ def load_sql (fname):
 
 	fn.close()
 
-def change_prev (X, Y, prev=0.05, save=False, save_file=None):
-	# Changes the prevalence of positves to 0.05
+def change_prev (X, Y, prev=0.005, save=False, save_file=None):
+	# Changes the prevalence of positves to $prev
 	pos = Y.nonzero()[0]
 	neg = (Y==0).nonzero()[0]
 
@@ -260,7 +320,7 @@ def change_prev (X, Y, prev=0.05, save=False, save_file=None):
 
 	if save:
 		if save_file is None:
-			save_file = osp.join(data_dir, 'HIGGS_projected_prev%.4f.csv'%prev)
+			save_file = osp.join(data_dir, 'SUSY_projected_prev%.4f.csv'%prev)
 		np.savetxt(save_file, np.c_[Y2,X2.T], delimiter=',')
 
 	return X2, Y2
@@ -295,7 +355,7 @@ def return_average_positive_neighbors (X, Y, k):
 	return MsimY.sum(axis=None)/(npos*k)
 
 if __name__ == '__main__':
-	pass
-	# X,Y,classes = load_higgs(normalize=True)
-	# IPython.embed()
-	# project_data (X, Y, save=True)
+	# pass
+	X,Y,classes = load_SUSY(normalize=True)
+	IPython.embed()
+	project_data (X, Y, save=True)
