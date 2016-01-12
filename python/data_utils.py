@@ -28,7 +28,7 @@ def min_sparse(X):
     return m if X.getnnz() == X.size else min(m, 0)
 
 
-def load_covertype (sparse=True, normalize=True):
+def load_covertype (target=4, sparse=True, normalize=True):
 
 	fname = osp.join(data_dir, 'covtype.data')
 	fn = open(fname)
@@ -46,7 +46,7 @@ def load_covertype (sparse=True, normalize=True):
 		c = 0
 		for line in data:
 			y = int(line[-1])
-			Y.append(y)
+			Y.append(int(y == target))
 			if y not in classes: classes.append(y)
 
 			xvec = np.array(line[:54]).astype(float)
@@ -67,7 +67,7 @@ def load_covertype (sparse=True, normalize=True):
 		for line in data:
 			X.append(np.asarray(line[:54]).astype(float))
 			y = int(line[-1])
-			Y.append(y)
+			Y.append(int(y == target))
 			if y not in classes: classes.append(y)
 
 		X = np.asarray(X).T
