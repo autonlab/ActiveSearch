@@ -29,13 +29,17 @@ def test_higgs ():
 	strat_frac = 1.0
 	t1 = time.time()
 	X,Y,classes = du.load_projected_data(sparse=sparse,fname=higgs_fname)
-	print ('Time taken to load %.2fs'%(time.time()-t1))
+	print ('Time taken to load: %.2fs'%(time.time()-t1))
 	if 0.0 < strat_frac and strat_frac < 1.0:
+		t1 = time.time()
 		X, Y = du.stratified_sample(X, Y, classes, strat_frac=strat_frac)
+		print ('Time taken to sample: %.2fs'%(time.time()-t1))
 
 	# Changing prevalence of +
 	prev = 0.05
+	t1 = time.time()
 	X,Y = du.change_prev (X,Y,prev=prev)
+	print ('Time taken change prevalence: %.2fs'%(time.time()-t1))
 	d,n = X.shape
 
 	# X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
@@ -43,11 +47,10 @@ def test_higgs ():
 
 	# Run Active Search
 	prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
-
 	kAS = ASI.kernelAS (prms)
 
-	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),1,replace=False)]
-
+	num_init = 1
+	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),num_init,replace=False)]
 	kAS.initialize(X, init_labels={p:1 for p in init_pt})
 
 	hits1 = [len(init_pt)]
@@ -55,7 +58,6 @@ def test_higgs ():
 	for i in xrange(K):
 
 		idx1 = kAS.getNextMessage()
-
 		kAS.setLabelCurrent(Y[idx1])
 
 		hits1.append(hits1[-1]+Y[idx1])
@@ -75,14 +77,18 @@ def test_SUSY ():
 	# Stratified sampling
 	strat_frac = 1.0
 	t1 = time.time()
-	X,Y,classes = du.load_projected_data(sparse=sparse,fname=higgs_fname)
-	print ('Time taken to load %.2fs'%(time.time()-t1))
+	X,Y,classes = du.load_projected_data(sparse=sparse,fname=SUSY_fname)
+	print ('Time taken to load: %.2fs'%(time.time()-t1))
 	if 0.0 < strat_frac and strat_frac < 1.0:
+		t1 = time.time()
 		X, Y = du.stratified_sample(X, Y, classes, strat_frac=strat_frac)
+		print ('Time taken to sample: %.2fs'%(time.time()-t1))
 
 	# Changing prevalence of +
-	prev = 0.05
+	prev = 0.005
+	t1 = time.time()
 	X,Y = du.change_prev (X,Y,prev=prev)
+	print ('Time taken change prevalence: %.2fs'%(time.time()-t1))
 	d,n = X.shape
 
 	# X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
@@ -90,11 +96,10 @@ def test_SUSY ():
 
 	# Run Active Search
 	prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
-
 	kAS = ASI.kernelAS (prms)
 
-	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),1,replace=False)]
-
+	num_init = 1
+	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),num_init,replace=False)]
 	kAS.initialize(X, init_labels={p:1 for p in init_pt})
 
 	hits1 = [len(init_pt)]
@@ -102,7 +107,6 @@ def test_SUSY ():
 	for i in xrange(K):
 
 		idx1 = kAS.getNextMessage()
-
 		kAS.setLabelCurrent(Y[idx1])
 
 		hits1.append(hits1[-1]+Y[idx1])

@@ -169,7 +169,7 @@ def load_SUSY (sparse=True, fname=None, normalize=False):
 			sdat.extend(xvec[xcol].tolist())
 
 			c += 1
-		assert len(line) == r-1
+		assert len(line) == r+1
 
 		X = ss.csr_matrix((sdat, (rows, cols)), shape=(r, c))
 
@@ -356,6 +356,8 @@ def return_average_positive_neighbors (X, Y, k):
 
 if __name__ == '__main__':
 	# pass
+	t1 = time.time()
 	X,Y,classes = load_SUSY(normalize=True)
-	IPython.embed()
+	print('Time taken to load data: %.2f'%(time.time()-t1))
+	# IPython.embed()
 	project_data (X, Y, save=True)
