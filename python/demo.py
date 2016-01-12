@@ -87,7 +87,8 @@ def test_SUSY ():
 	# Changing prevalence of +
 	prev = 0.005
 	t1 = time.time()
-	X,Y = du.change_prev (X,Y,prev=prev)
+	save_file = osp.join(du.data_dir, 'SUSY_projected_prev%.4f.csv'%prev)
+	X,Y = du.change_prev (X,Y,prev=prev, save=True, save_file=save_file)
 	print ('Time taken change prevalence: %.2fs'%(time.time()-t1))
 	d,n = X.shape
 
@@ -116,4 +117,4 @@ def test_SUSY ():
 
 if __name__ == '__main__':
 	
-	test_higgs()
+	test_SUSY()
