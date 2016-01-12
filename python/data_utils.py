@@ -360,4 +360,5 @@ if __name__ == '__main__':
 	X,Y,classes = load_SUSY(normalize=True)
 	print('Time taken to load data: %.2f'%(time.time()-t1))
 	# IPython.embed()
-	project_data (X, Y, save=True)
+	save_file = osp.join(data_dir, 'SUSY_projected.csv')
+	project_data (X, Y, save=True, save_file=save_file)
