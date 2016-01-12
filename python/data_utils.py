@@ -28,7 +28,7 @@ def min_sparse(X):
     return m if X.getnnz() == X.size else min(m, 0)
 
 
-def load_covertype (sparse=False):
+def load_covertype (sparse=True, normalize=True):
 
 	fname = osp.join(data_dir, 'covtype.data')
 	fn = open(fname)
@@ -75,9 +75,16 @@ def load_covertype (sparse=False):
 	fn.close()
 
 	Y = np.asarray(Y)
+	if normalize:
+		if sparse:
+			X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
+			X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
+		else:
+			X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
+			X = X/X_norms # Normalization
 	return X, Y, classes
 
-def load_higgs (sparse=True, fname=None, normalize=False):
+def load_higgs (sparse=True, fname=None, normalize=True):
 
 	if fname is None:
 		fname = osp.join(data_dir, 'HIGGS.csv')
@@ -357,8 +364,8 @@ def return_average_positive_neighbors (X, Y, k):
 if __name__ == '__main__':
 	# pass
 	t1 = time.time()
-	X,Y,classes = load_SUSY(normalize=True)
+	X,Y,classes = load_covertype(sparse=True, normalize=True)
 	print('Time taken to load data: %.2f'%(time.time()-t1))
 	# IPython.embed()
-	save_file = osp.join(data_dir, 'SUSY_projected.csv')
+	save_file = osp.join(data_dir, 'covtype_projected.csv')
 	project_data (X, Y, save=True, save_file=save_file)
