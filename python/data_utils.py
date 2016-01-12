@@ -288,7 +288,6 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	# Target feature matrix
 	T = np.array([Y_train,(1.0-Y_train)]).T
 
-	IPython.embed()
 	try:
 		L = nlg.inv(X_train.dot(X_train.T).todense()).dot(X_train.dot(T))
 	except:
