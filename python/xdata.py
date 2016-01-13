@@ -7,6 +7,7 @@ import os, os.path as osp
 import json, h5py, pandas as pd
 
 import activeSearchInterface as ASI
+import gaussianRandomFeatures as GRF
 
 import IPython
 
@@ -24,7 +25,11 @@ def load_blockgroups_data (field_info, city='seattle'):
 
 	for ipermit in xrange(npermits):
 		permit = city_data.iloc[ipermit]
-		blkg = int(permit.blockgroup)
+		try:
+			blkg = int(permit.blockgroup)
+		except Exception as e:
+			print ("Warning: Found NaN blockgroup. Ignoring...")
+			break
 		if blkg not in blockgroups:
 			blockgroups[blkg] = []
 		blockgroups[blkg].append(permit)
@@ -36,7 +41,7 @@ def load_blockgroups_data (field_info, city='seattle'):
 			for i,fnam in enumerate(np.unique(city_data[f].values)):
 				field_features[f]['mapping'][fnam] = i
 		elif field_info[f] == 'numerical':
-			field_features[f]['grf'] = grf.GaussianRandomFeatures(dim=1, gammak=0.25, rn=50, sine=True)
+			field_features[f]['grf'] = GRF.GaussianRandomFeatures(dim=1, gammak=0.25, rn=50, sine=True)
 
 	return blockgroups, field_features
 
@@ -53,13 +58,13 @@ def featurize_blockgroup (bg_data, field_features):
 		x = []
 		for f in field_features:
 			if field_features[f]['type'] == 'categorical':
-				z = [0]*len(field_features[i]['mapping'])
+				z = [0]*len(field_features[f]['mapping'])
 				z[field_features[f]['mapping'][permit[f]]] = 1
 				x.extend(z)
 			elif field_features[f]['type'] == 'numerical':
 				# Assuming log vautes
-				v = np.max(1.0,float(permit[f])) # killing the zero values 
-				z = grf.computeRandomFeatures([np.log(v)])
+				v = np.max([1.0,float(permit[f])]) # killing the zero values 
+				z = field_features[f]['grf'].computeRandomFeatures([np.log(v)])
 				x.extend(z)
 		X.append(x)
 	X = np.array(X).mean(axis=0)
