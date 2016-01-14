@@ -173,7 +173,7 @@ pi = 0.5
 eta = 0.7
 prms = asI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
 activeSearch = asI.kernelAS(prms)
-activeSearch = activeSearch.initialize(Xf)
+activeSearch.initialize(Xf)
 
 #@app.route(...)
 #def login():
@@ -210,4 +210,4 @@ def boringMessage():
 #    return Response(str(res),  mimetype='text/plain')
 
 if __name__ == '__main__':
-    app.run(debug=False)
+    app.run(debug=True)
