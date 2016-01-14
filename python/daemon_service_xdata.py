@@ -31,6 +31,14 @@ first_run = True
 # track the message ID that we're currently presenting the user for evaluation
 currentMessage = -1 
 
+
+verbose = True
+sparse = False
+pi = 0.5
+eta = 0.7
+prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
+activeSearch = asI.kernelAS(prms)
+
 #@app.route(...)
 #def login():
 #    username = request.args.get('username')
@@ -38,10 +46,10 @@ currentMessage = -1
 
 @app.route('/firstmessage/<start_id>')
 def firstMessage(start_id):
-    res = randint(0,99)
+    #res = randint(0,99)
     #global first_run
     #if (first_run == False and restart_save != None):
-    #    activeSearch.initialize(restart_save)
+    activeSearch.initialize(restart_save)
 
     #first_run = False
     #activeSearch.firstMessage(int(message))
