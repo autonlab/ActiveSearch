@@ -54,6 +54,7 @@ def featurize_blockgroup (bg_data, field_features):
 	Then averages over all these for the blockgroup.
 	"""
 	X = []
+	field_data = {f:[] for f in field_features}
 	for permit in bg_data:
 		x = []
 		for f in field_features:
@@ -61,15 +62,34 @@ def featurize_blockgroup (bg_data, field_features):
 				z = [0]*len(field_features[f]['mapping'])
 				z[field_features[f]['mapping'][permit[f]]] = 1
 				x.extend(z)
+				field_data[f].append(z)
+
 			elif field_features[f]['type'] == 'numerical':
 				# Assuming log vautes
 				v = np.max([1.0,float(permit[f])]) # killing the zero values 
 				z = field_features[f]['grf'].computeRandomFeatures([np.log(v)])
 				x.extend(z)
+				field_data[f].append(v)
 		X.append(x)
+	
 	X = np.array(X).mean(axis=0)
+	field_avg_data = {}
+	for f in field_data:
+		if field_features[f]['type'] == 'categorical':
+			f_dict = {}
+			Xf = np.array(field_data[f]).mean(axis=0).tolist()
+			for c,idx in field_features[f]['mapping'].items():
+				f_dict[c] = Xf[idx]
+			field_avg_data[f] = f_dict
+		elif field_features[f]['type'] == 'numerical':
+			f_dict = {}
+			Xf = field_data[f]
+			f_dict['mean'] = np.mean(Xf)
+			f_dict['median'] = np.median(Xf)
+			f_dict['std'] = np.std(Xf)
+			field_avg_data[f] = f_dict
 
-	return X.tolist()
+	return X.tolist(), field_avg_data
 
 def aggregate_data_into_features (data, field_features, sparse=False):
 	"""
@@ -77,16 +97,33 @@ def aggregate_data_into_features (data, field_features, sparse=False):
 	{id:[... permits ... ] for id in set_of_ids}
 	""" 
 	X = []
-	LabelMap = {}
+	BGMap = {}
 	idx = 0
 	for bg in data:
-		X.append(featurize_blockgroup(data[bg], field_features))
-		LabelMap[idx] = bg
+		Xf, fad = featurize_blockgroup(data[bg], field_features)
+		BGMap[idx] = {'id': bg, 'display_data':fad}
+		X.append(Xf)
 		idx += 1
 
 	X = np.array(X).T
 
-	return X, LabelMap
+	return X, BGMap
+
+def format_dict(d, indent = 0):
+    res = ""
+    for key in d:
+        res += ("   " * indent) + str(key) + ":\n"
+        if not isinstance (d[key], dict):
+            res += ("   " * (indent + 1)) + str(d[key]) + "\n"
+        else:
+            indent += 1
+            res += format_dict(d[key], indent)
+            indent -= 1
+    return res+"\n"
+
+def display_blockgroup(bg_info):
+	print (format_dict(bg_info))
+
 
 def extract_fields (dat, fields):
 	extracted_data = []
@@ -101,8 +138,48 @@ def test_seattle ():
 	field_types = ['categorical','categorical','categorical','categorical','numerical']
 	field_info = {fields[i]:field_types[i] for i in xrange(len(fields))}
 
+	t1 = time.time()
 	blockgroups, field_features = load_blockgroups_data(field_info, city='seattle')
-	X, LabelMap = aggregate_data_into_features(blockgroups, field_features)
+	print ('Time taken to load blockgroup data: %.2fs'%(time.time()-t1))
+	t1 = time.time()
+	X, BGMap = aggregate_data_into_features(blockgroups, field_features)
+	print ('Time taken to generate features: %.2fs'%(time.time() - t1))
+	IPython.embed()
+
+	# Active search with the features
+        verbose = True
+        sparse = False
+        pi = 0.5
+        eta = 0.7
+        K = 50
+
+	d,n = X.shape
+
+        # Run Active Search
+        prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
+        kAS = ASI.kernelAS (prms)
+
+        init_pt = input('Choose initial blockgroup index (1 - %i): '%n)-1
+	display_blockgroup(BGMap[init_pt]['display_data'])
+        kAS.initialize(X, init_labels={init_pt:1})
+
+        hits = [1]
+
+        for i in xrange(K):
+
+                idx = kAS.getNextMessage()
+
+		display_blockgroup(BGMap[idx]['display_data'])
+		yn = raw_input('\nIs this blockgroup of interest to you (y/n)? ')
+		if yn.lower() in  ['q','quit']:
+			print('\n Quitting Active Search loop.')
+			break
+		y = 1 if yn.lower() in ['y','yes'] else 0
+
+                kAS.setLabelCurrent(y)
+
+                hits.append(hits[-1]+y)
+	
 	IPython.embed()
 
 
