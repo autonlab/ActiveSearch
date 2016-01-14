@@ -42,7 +42,7 @@ def load_blockgroups_data (field_info, city, dataframes_file, bg_file):
                 blockgroups[blkg].append(permit)
 
         for f in field_info:
-                field_features[f] = {'type':field_info[f]}
+		field_features[f] = {'type':field_info[f]}
                 if field_info[f] == 'categorical':
                         field_features[f]['mapping'] = {}
                         for i,fnam in enumerate(np.unique(city_data[f].values)):
@@ -161,7 +161,7 @@ fields = ['category', 'permit_type', 'action_type', 'work_type', 'value']
 field_types = ['categorical','categorical','categorical','categorical','numerical']
 field_info = {f:ft for f,ft in zip(fields,field_types)}
 
-blockgroups, field_features = load_blockgroups_data (field_types, city, dataframes_file, bg_file)
+blockgroups, field_features = load_blockgroups_data (field_info, city, dataframes_file, bg_file)
 Xf, BGMap = aggregate_data_into_features (blockgroups, field_features)
 
 BG2IDX = {BGMap[idx]['id']:idx for idx in BGMap}
@@ -171,7 +171,7 @@ verbose = True
 sparse = False
 pi = 0.5
 eta = 0.7
-prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
+prms = asI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
 activeSearch = asI.kernelAS(prms)
 activeSearch = activeSearch.initialize(Xf)
 
