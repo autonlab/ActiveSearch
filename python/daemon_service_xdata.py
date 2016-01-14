@@ -164,6 +164,9 @@ field_info = {f:ft for f,ft in zip(fields,field_types)}
 blockgroups, field_features = load_blockgroups_data (field_types, city, dataframes_file, bg_file)
 Xf, BGMap = aggregate_data_into_features (blockgroups, field_features)
 
+BG2IDX = {BGMap[idx]['id']:idx for idx in BGMap}
+IDX2BG = {idx:BGMap[idx]['id'] for idx in BGMap}
+
 verbose = True
 sparse = False
 pi = 0.5
@@ -182,26 +185,24 @@ def firstMessage(start_id):
     #res = randint(0,99)
     #global first_run
     #if (first_run == False and restart_save != None):
-    activeSearch.initialize(restart_save)
+        #activeSearch.initialize(restart_save)
 
     #first_run = False
-    #activeSearch.firstMessage(int(message))
-    #res = getNextMessage()
-    return Response(str(res),  mimetype='text/plain')
+    activeSearch.firstMessage(BG2IDX[int(start_id)])
+    res = activeSearch.getNextMessage()
+    return Response(str(IDX2BG[res]),  mimetype='text/plain')
     
 @app.route('/messageinteresting')
 def interestingMessage():
-    res = randint(0,99)
-    #activeSearch.interestingMessage()
-    #res = activeSearch.getNextMessage()
-    return Response(str(res),  mimetype='text/plain')
+    activeSearch.interestingMessage()
+    res = activeSearch.getNextMessage()
+    return Response(str(IDX2BG[res]),  mimetype='text/plain')
 
 @app.route('/messageboring')
 def boringMessage():
-    res = randint(0,99)
-    #activeSearch.boringMessage()
-    #res = activeSearch.getNextMessage()
-    return Response(str(res),  mimetype='text/plain')
+    activeSearch.boringMessage()
+    res = activeSearch.getNextMessage()
+    return Response(str(IDX2BG[res]),  mimetype='text/plain')
 
 #@app.route('/getNextMessage')
 #def getNextMessage():
