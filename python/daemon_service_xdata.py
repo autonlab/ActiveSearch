@@ -189,20 +189,23 @@ def firstMessage(start_id):
 
     #first_run = False
     activeSearch.firstMessage(BG2IDX[int(start_id)])
-    res = activeSearch.getNextMessage()
-    return Response(str(IDX2BG[res]),  mimetype='text/plain')
+    res_idx= activeSearch.getNextMessage()
+    res = str(IDX2BG[res_idx]),"\n", format_dict(BGMap[res_idx]["display_data"]), "\n"
+    return Response(res,  mimetype='text/plain')
     
 @app.route('/messageinteresting')
 def interestingMessage():
     activeSearch.interestingMessage()
-    res = activeSearch.getNextMessage()
-    return Response(str(IDX2BG[res]),  mimetype='text/plain')
+    res_idx = activeSearch.getNextMessage()
+    res = str(IDX2BG[res_idx]),"\n", format_dict(BGMap[res_idx]["display_data"]), "\n"
+    return Response(res,  mimetype='text/plain')
 
 @app.route('/messageboring')
 def boringMessage():
     activeSearch.boringMessage()
-    res = activeSearch.getNextMessage()
-    return Response(str(IDX2BG[res]),  mimetype='text/plain')
+    res_idx = activeSearch.getNextMessage()
+    res = str(IDX2BG[res_idx]),"\n", format_dict(BGMap[res_idx]["display_data"]), "\n"
+    return Response(res,  mimetype='text/plain')
 
 #@app.route('/getNextMessage')
 #def getNextMessage():
