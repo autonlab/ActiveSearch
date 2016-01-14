@@ -12,6 +12,8 @@
 *.aux
 *.log
 *.out
+*.swp
+*.tmp
 
 *~
 
