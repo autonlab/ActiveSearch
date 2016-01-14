@@ -30,16 +30,21 @@ def load_blockgroups_data (field_info, city, dataframes_file, bg_file):
 
         npermits = city_data.shape[0]
 
+	num_nans = 0
+
         for ipermit in xrange(npermits):
                 permit = city_data.iloc[ipermit]
                 try:
                         blkg = int(permit.blockgroup)
                 except Exception as e:
-                        print ("Warning: Found NaN blockgroup. Ignoring...")
-                        break
+                        # print ("Warning: Found NaN blockgroup. Ignoring...")
+			num_nans += 1
+                        continue
                 if blkg not in blockgroups:
                         blockgroups[blkg] = []
                 blockgroups[blkg].append(permit)
+
+	print ('Ignored %i NaN values in the data.\n'%num_nans)
 
         for f in field_info:
 		field_features[f] = {'type':field_info[f]}
