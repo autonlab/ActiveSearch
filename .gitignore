@@ -3,8 +3,9 @@
 
 *.classpath
 *.project
-*.pyc
 
+*.pyc
+*.swp
 *.npy
 *.npz
 *.orig

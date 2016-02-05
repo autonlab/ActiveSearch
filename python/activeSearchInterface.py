@@ -9,7 +9,7 @@ def matrix_squeeze(X):
 	# converts into numpy.array and squeezes out singular dimensions
 	return np.squeeze(np.asarray(X))
 
-class Parameters:
+class Parameters(object):
 
 	def __init__ (self, pi=0.05, eta=0.5, w0=None, alpha=0, sparse=True, verbose=True, remove_self_degree=False):
 		"""
@@ -28,7 +28,7 @@ class Parameters:
 		self.alpha = alpha
 
 ## For more on how these functions operate, see their analogs in daemon_service.py
-class genericAS:
+class genericAS(object):
 
 	def __init__ (self, params=Parameters()):
 		"""
@@ -273,6 +273,7 @@ class kernelAS (genericAS):
 
 	def setLabel (self, idx, lbl, display_iter = None):
 		# Set label for given message id
+		# What if idx has already been labeled?
 
 		if self.params.verbose:
 			t1 = time.time()
@@ -331,6 +332,8 @@ class kernelAS (genericAS):
 			self.IM = self.f*(DF-Df_tilde)
 
 		# Some more book-keeping
+		# Not sure how we're going to change "history" in some sense:
+		# -- everything since this was first incorrectly labeled.
 		self.labeled_idxs.append(idx)
 		if self.iter == 0:
 			self.hits.append(lbl)
