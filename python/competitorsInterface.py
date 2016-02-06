@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 import time
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
-import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
+import scipy.sparse as ss, scipy.linalg as slg
 
 import activeSearchInterface as ASI
 
@@ -43,7 +43,7 @@ class averageNN (ASI.genericAS):
 		self.labels[self.labeled_idxs] = init_labels.values()
 
 		self.NN_similarity = None
-		if self.params.normalize = True:
+		if self.params.normalize is True:
 			self.abs_NN_similarity = None
 
 		# Setting iter/start_point

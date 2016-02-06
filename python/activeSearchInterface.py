@@ -1,7 +1,7 @@
 from __future__ import division, print_function
 import time
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
-import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
+import scipy.sparse as ss, scipy.linalg as slg
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
