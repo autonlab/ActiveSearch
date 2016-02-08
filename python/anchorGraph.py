@@ -13,11 +13,13 @@ import graph_utils as gu
 
 import IPython
 
+np.set_printoptions(suppress=True, precision=4, threshold=200)
+
 def matrix_squeeze(X):
 	# converts into numpy.array and squeezes out singular dimensions
 	return np.squeeze(np.asarray(X))
 
-def AnchorGraphReg(Z, rL, labels, gamma, sparse=True):
+def AnchorGraphReg(Z, rL, labels, C, gamma, sparse=True, matlab_indexing=True):
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	# % 
 	# % AnchorGraphReg 
@@ -33,9 +35,8 @@ def AnchorGraphReg(Z, rL, labels, gamma, sparse=True):
 	# %
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-	n,m = Z.shape()
+	n,m = Z.shape
 	ln = len(labels)
-	C = 2
 
 	lbl_idxs = np.array(labels.keys())
 	lbl_vals = np.array(labels.values())
@@ -43,8 +44,12 @@ def AnchorGraphReg(Z, rL, labels, gamma, sparse=True):
 	Yl = np.zeros((ln,C))
 
 	for i in range(C):
-		Yl[:,i] = (lvl_vals==i).astype(int)
-	Yl = ss.csr_matrix(Yl)
+		if matlab_indexing:
+			Yl[:,i] = (lbl_vals==(i+1)).astype(int)
+		else:
+			Yl[:,i] = (lbl_vals==i).astype(int)
+	if sparse:
+		Yl = ss.csr_matrix(Yl)
 
 	Zl = Z[lbl_idxs,:]
 	LM = Zl.T.dot(Zl)+gamma*rL
@@ -53,21 +58,21 @@ def AnchorGraphReg(Z, rL, labels, gamma, sparse=True):
 	# del Yl
 	# del Zl
 	if sparse:
-		A = nlg.solve(matrix_squeeze(LM.todense()) + 1e-06*np.eye(m)),matrix_squeeze(RM))
+		A = nlg.solve(matrix_squeeze(LM.todense()) + 1e-06*np.eye(m),matrix_squeeze(RM))
 		A = ss.csr_matrix(A)
 	else:
-		A = nlg.solve(LM + 1e-06*np.eye(m)),RM)
+		A = nlg.solve(LM + 1e-06*np.eye(m),RM)
 
 	# del LM
 	# del RM
 	F = Z.dot(A)
 	# del Z
 	if sparse:
-		F1 = F.dot(ss.diags([matrix_squeeze(F.sum(1))**(-1)],[0]))
+		F1 = F.dot(ss.diags([matrix_squeeze(F.sum(0))**(-1)],[0]))
 	else:
-		F1 = F.dot(np.diags(np.squeeze(F.sum(1))**(-1)]))
+		F1 = F.dot(np.diag(np.squeeze(F.sum(0))**(-1)))
 
-	output = F1.argmax(axis=1)
+	output = F1.argmax(axis=1)+1
 	# del temp
 	# del F1
 	# del order
@@ -95,31 +100,49 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 	if sparse:
 		Z = ss.lil_matrix((n, m))
 	else:
-		Z = np.zeros(n, m)
+		Z = np.zeros((n, m))
+	
 	Dis = sqdist(TrainData,Anchor,sparse)
+
 	if sparse:
-		val = ss.csr_matrix((n,s))
+		val = ss.lil_matrix((n,s))
+		pos = ss.lil_matrix((n,s))
 	else:
 		val = np.zeros((n,s))
-	pos = val.copy()
+		pos = np.zeros((n,s), dtype=int)
+
 	for i in xrange(s):
-		mininds = Dis.min(1)
-		pos[:,i] = np.atleast_2d(mininds).T
-		val[:,i] = Dis[np.arange(n),mininds].T
-		Dis[np.arange(n), mindinds] = 1e+60
+		mininds = Dis.argmin(1)
+
+		if sparse:
+			pos[:,i] = np.atleast_2d(mininds).T
+			val[:,i] = Dis[np.arange(n),mininds].T
+		else:
+			pos[:,i] = mininds
+			val[:,i] = Dis[np.arange(n),mininds]
+		Dis[np.arange(n), mininds] = 1e+60
+
+	if sparse:
+		val = val.tocsr()
+		pos = pos.tocsr()
 	# del Dis
 	# ind = (pos - 1) * n + repmat(cat(arange(1,n)).T,1,s)
 	if flag == 0:
 		if sparse:
-			raise Exception('RBF doesn\'t yet work for sparse matrices')
-			sigma = np.sqrt(val[:,s]).mean()
-			val = np.expm1(-val/(sigma ** 2))+1
+			print('Warning: Converting to dense matrix for RBF computation.')
+			sigma = val[:,s-1].sqrt().mean()
+			val = np.exp(-matrix_squeeze(val.todense())/(sigma ** 2))
+			val = np.tile(np.atleast_2d(np.sum(val,axis=1)).T**(-1),(1,s))*(val)
+			val = ss.csr_matrix(val)
+		else:
+			sigma = np.sqrt(val[:,s-1]).mean()
+			val = np.exp(-val/(sigma ** 2))
 			val = np.tile(np.atleast_2d(np.sum(val,axis=1)).T**(-1),(1,s))*(val)
 	else:
 		for i in xrange(n):
 			xi = TrainData[:,i]
 			if sparse:
-				xi = xi / np.sqrt((x.multiply(x).sum())
+				xi = xi / np.sqrt(x.multiply(x).sum())
 			else:
 				xi = xi / nlg.norm(xi)
 				if sparse:
@@ -129,9 +152,10 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 					U = Anchor[:,np.squeeze(pos[i,:])]
 					U = U.dot(np.diag((U**2).sum(axis=0)**(-0.5)))
 			val[i,:] = LAE(xi,U,cn,sparse)
+
 		# del xi
 		# del U
-	for i in xrange(s)
+	for i in xrange(s):
 		pinds = matrix_squeeze(pos[:,i].todense()) if sparse else pos[:,i].squeeze()
 		Z[np.arange(n), pinds] = val[:,i]
 	# del val
@@ -187,11 +211,11 @@ def LAE(x,U,cn,sparse=True):
 	d,s = U.shape
 	z0 = np.ones(s)/s #(U'*U+1e-6*eye(s))\(U'*x); % % %
 	z1 = z0.copy()
-	delta = np.zeros((1,cn+2))
+	delta = np.zeros(cn+2)
 	delta[0] = 0
 	delta[1] = 1
 
-	beta = np.zeros((1,cn+1))
+	beta = np.zeros(cn+1)
 	beta[0] = 1
 
 	for t in range(cn):
@@ -202,8 +226,9 @@ def LAE(x,U,cn,sparse=True):
 		gv =  dif.T.dot(dif)/2
 		# del dif
 		dgv = U.T.dot(U.dot(v)) - U.T.dot(x)
+
 		# seek beta
-		for j in range(101)
+		for j in range(101):
 			b = (2**j)*beta[t]
 			z = SimplexPr(v - dgv/b)
 			dif = x - U.dot(z)
@@ -211,14 +236,14 @@ def LAE(x,U,cn,sparse=True):
 			# del dif
 			dif = z - v
 			gvz = gv + dgv.T.dot(dif) + b*dif.T.dot(dif)/2
-			del dif
-			if gz <= gvz
+			# del dif
+			if gz <= gvz:
 				beta[t+1] = b
 				z0 = z1
 				z1 = z
 				break
 
-		if beta[t+1] == 0
+		if beta[t+1] == 0:
 			beta[t+1] = b
 			z0 = z1
 			z1 = z
@@ -227,7 +252,7 @@ def LAE(x,U,cn,sparse=True):
 		delta[t+2] = (1 + np.sqrt(1+4*delta[t+1]**2))/2
 		
 		#[t,z1']
-		if np.sum(np.abs(z1-z0)) <= 1e-4
+		if np.sum(np.abs(z1-z0)) <= 1e-4:
 			break
 
 	# del z0
@@ -246,6 +271,7 @@ def SimplexPr(X):
 	X = np.squeeze(X)
 	if len(X.shape) < 2:
 		N = 1
+		C = X.shape[0]
 	else:
 		C,N = X.shape
 
@@ -254,15 +280,15 @@ def SimplexPr(X):
 		kk = 0
 		t = T1
 		for j in range(C):
-			if t[j]-(np.sum(t[:j])-1)/(j+1) <= 0:
+			if t[j]-(np.sum(t[:j+1])-1)/(j+1) <= 0:
 				kk = j
-			break
+				break
 
-		if kk == 0
-			kk = C-1
+		if kk == 0:
+			kk = C
 
-		theta = (np.sum(t[:kk])-1)/(kk+1)
-		S = np.where(X > theta, X-theta, 0)
+		theta = (np.sum(t[:kk])-1)/kk
+		S = np.where(X > theta, X - theta, 0)
 		# del t
 		# del T1
 	else:
@@ -273,14 +299,14 @@ def SimplexPr(X):
 			kk = 0
 			t = T1[:,i]
 			for j in range(C):
-				if t[j]-(np.sum[t[:j]]-1)/(j+1) <= 0
+				if t[j]-(np.sum[t[:j+1]]-1)/(j+1) <= 0:
 					kk = j
 					break
 
 			if kk == 0:
-				kk = C-1
+				kk = C
 
-			theta = (np.sum(t[:kk])-1)/(kk+1)
+			theta = (np.sum(t[:kk])-1)/kk
 			S[:,i] = np.where(X[:,i] > theta, X[:,i]-theta, 0)
 			# del t
 
@@ -300,30 +326,31 @@ if __name__ == '__main__':
 	data = mdat['samples']
 	labels = mdat['labels'].squeeze()
 	label_index = mdat_labels['label_index']
-	anchor = mdat_anchors['anchor']
+	anchor = mdat_anchors['anchor'].T
 
 	r,n = data.shape
 	m = 1000
 	s = 3
 	cn = 10
+	C = labels.max()
 
 	# construct an AnchorGraph(m,s) with kernel weights
-	Z, rL = AnchorGraph(data, anchor, s, 0, cn, sparse)
-	rate0 = np.zeros(20)
-	for i in range(20)
-		run_labels = {li:labels[li] for li in label_index[i:]}
-		F, A, op = AnchorGraphReg(Z, rL, run_labels, 0.01, sparse)
-		rate0[i] = (op==labels).sum()
-	print('\n The average classification error rate of AGR with kernel weights is %.2f%%.\n'%100*np.mean(rate0))
+	# Z1, rL1 = AnchorGraph(data, anchor, s, 0, cn, sparse)
+	# rate0 = np.zeros(20)
+	# for i in range(20):
+	# 	run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
+	# 	F, A, op = AnchorGraphReg(Z1, rL1, run_labels, C, 0.01, sparse)
+	# 	rate0[i] = (op!=labels).sum()/(n-len(run_labels))
+	# print('\n The average classification error rate of AGR with kernel weights is %.2f.\n'%(100*np.mean(rate0)))
 
 	# construct an AnchorGraph(m,s) with LAE weights
-	Z, rL = AnchorGraph(data, anchor, s, 1, cn, sparse)
+	Z2, rL2 = AnchorGraph(data, anchor, s, 1, cn, sparse)
 	rate = np.zeros(20)
-	for i in range(20)
-		run_labels = {li:labels[li] for li in label_index[i:]}
-		F, A, op = AnchorGraphReg(Z, rL, run_labels, 0.01, sparse)
-		rate[i] = (op==labels).sum()
+	for i in range(20):
+		run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
+		F, A, op = AnchorGraphReg(Z2, rL2, run_labels, C, 0.01, sparse)
+		rate[i] = (op!=labels).sum()/(n-len(run_labels))
 
-	print('\n The average classification error rate of AGR with LAE weights is %.2f%%.\n'%100*mean(rate))
+	print('\n The average classification error rate of AGR with LAE weights is %.2f.\n'%(100*np.mean(rate)))
 
 	IPython.embed()
