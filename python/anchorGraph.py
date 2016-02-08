@@ -3,8 +3,11 @@
 
 from __future__ import division
 import time
+import os, os.path as osp
+
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
-import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
+import scipy.sparse as ss, scipy.sparse.linalg as ssl
+import scipy.linalg as slg, scipy.io as sio
 
 import graph_utils as gu
 
@@ -13,6 +16,64 @@ import IPython
 def matrix_squeeze(X):
 	# converts into numpy.array and squeezes out singular dimensions
 	return np.squeeze(np.asarray(X))
+
+def AnchorGraphReg(Z, rL, labels, gamma, sparse=True):
+	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	# % 
+	# % AnchorGraphReg 
+	# % Written by Wei Liu (wliu@ee.columbia.edu)
+	# % Z(nXm): regression weight matrix
+	# % rL(mXm): reduced graph Laplacian 
+	# % ground(1Xn): [1 1 1 2 2 2] discrete groundtruth class labels 
+	# % label_index(1Xln):  given index of labeled data
+	# % gamma: regularization parameter, set to 0.001-1
+	# % F(nXC): soft label scores on raw data
+	# % A(mXC): soft label scores on anchors
+	# % err: classification error rate on unlabeled data
+	# %
+	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+	n,m = Z.shape()
+	ln = len(labels)
+	C = 2
+
+	lbl_idxs = np.array(labels.keys())
+	lbl_vals = np.array(labels.values())
+
+	Yl = np.zeros((ln,C))
+
+	for i in range(C):
+		Yl[:,i] = (lvl_vals==i).astype(int)
+	Yl = ss.csr_matrix(Yl)
+
+	Zl = Z[lbl_idxs,:]
+	LM = Zl.T.dot(Zl)+gamma*rL
+	# del rL
+	RM = Zl.T.dot(Yl)
+	# del Yl
+	# del Zl
+	if sparse:
+		A = nlg.solve(matrix_squeeze(LM.todense()) + 1e-06*np.eye(m)),matrix_squeeze(RM))
+		A = ss.csr_matrix(A)
+	else:
+		A = nlg.solve(LM + 1e-06*np.eye(m)),RM)
+
+	# del LM
+	# del RM
+	F = Z.dot(A)
+	# del Z
+	if sparse:
+		F1 = F.dot(ss.diags([matrix_squeeze(F.sum(1))**(-1)],[0]))
+	else:
+		F1 = F.dot(np.diags(np.squeeze(F.sum(1))**(-1)]))
+
+	output = F1.argmax(axis=1)
+	# del temp
+	# del F1
+	# del order
+	output[lbl_idxs] = lbl_vals
+	return F,A,output
+
 
 def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -70,15 +131,21 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 			val[i,:] = LAE(xi,U,cn,sparse)
 		# del xi
 		# del U
-	Z[cat(ind)]=cat(val)
-	clear(char('val'))
-	clear(char('pos'))
-	clear(char('ind'))
-	clear(char('TrainData'))
-	clear(char('Anchor'))
-	T=Z.T * Z
-	rL=T - T * diag(sum_(Z) ** - 1) * T
-	clear(char('T'))
+	for i in xrange(s)
+		pinds = matrix_squeeze(pos[:,i].todense()) if sparse else pos[:,i].squeeze()
+		Z[np.arange(n), pinds] = val[:,i]
+	# del val
+	# del pos
+	# del ind
+	# del TrainData
+	# del Anchor
+
+	T = Z.T.dot(Z)
+	if sparse:
+		rL = T - T.dot(ss.diags([Z.sum(axis=0)**(-1)],[0])).dot(T)
+	else:
+		rL = T - T.dot(np.diag(Z.sum(axis=0)**(-1))).dot(T)
+	 # del T
 	return Z,rL
 
 def  sqdist (A, B, sparse=True):
@@ -110,16 +177,12 @@ def  sqdist (A, B, sparse=True):
 
 
 def LAE(x,U,cn,sparse=True):
-	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-	# % 
 	# % LAE (Local Anchor Embedding)
-	# % Written by Wei Liu (wliu@ee.columbia.edu)
 	# % x(dX1): input data vector 
 	# % U(dXs): anchor data matrix, s: the number of closest anchors 
 	# % cn: the number of iterations, 5-20
 	# % z: the s-dimensional coefficient vector   
-	# %
-	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 	d,s = U.shape
 	z0 = np.ones(s)/s #(U'*U+1e-6*eye(s))\(U'*x); % % %
@@ -131,48 +194,136 @@ def LAE(x,U,cn,sparse=True):
 	beta = np.zeros((1,cn+1))
 	beta[0] = 1
 
-	for t in range(cn)
-	    alpha = (delta(t)-1)/delta(t+1);
-	    v = z1+alpha*(z1-z0); %% probe point
-	    
-	    dif = x-U*v;
-	    gv =  dif'*dif/2;
-	    clear dif;
-	    dgv = U'*U*v-U'*x;
-	    %% seek beta
-	    for j = 0:100
-	        b = 2^j*beta(t);
-	        z = SimplexPr(v-dgv/b);
-	        dif = x-U*z;
-	        gz = dif'*dif/2;
-	        clear dif;
-	        dif = z-v;
-	        gvz = gv+dgv'*dif+b*dif'*dif/2;
-	        clear dif;
-	        if gz <= gvz
-	            beta(t+1) = b;
-	            z0 = z1;
-	            z1 = z;
-	            break;
-	        end
-	    end
-	    if beta(t+1) == 0
-	        beta(t+1) = b;
-	        z0 = z1;
-	        z1 = z;
-	    end
-	    clear z;
-	    clear dgv;
-	    delta(t+2) = ( 1+sqrt(1+4*delta(t+1)^2) )/2;
-	    
-	    %[t,z1']
-	    if sum(abs(z1-z0)) <= 1e-4
-	        break;
-	    end
-	end
-	z = z1;
-	clear z0;
-	clear z1;
-	clear delta;
-	clear beta;
+	for t in range(cn):
+		alpha = (delta[t]-1)/delta[t+1]
+		v = z1+alpha*(z1-z0) # probe point
+		
+		dif = x - U.dot(v)
+		gv =  dif.T.dot(dif)/2
+		# del dif
+		dgv = U.T.dot(U.dot(v)) - U.T.dot(x)
+		# seek beta
+		for j in range(101)
+			b = (2**j)*beta[t]
+			z = SimplexPr(v - dgv/b)
+			dif = x - U.dot(z)
+			gz = dif.T.dot(dif)/2
+			# del dif
+			dif = z - v
+			gvz = gv + dgv.T.dot(dif) + b*dif.T.dot(dif)/2
+			del dif
+			if gz <= gvz
+				beta[t+1] = b
+				z0 = z1
+				z1 = z
+				break
 
+		if beta[t+1] == 0
+			beta[t+1] = b
+			z0 = z1
+			z1 = z
+		# del z
+		# del dgv
+		delta[t+2] = (1 + np.sqrt(1+4*delta[t+1]**2))/2
+		
+		#[t,z1']
+		if np.sum(np.abs(z1-z0)) <= 1e-4
+			break
+
+	# del z0
+	# del z1
+	# del delta
+	# del beta	  
+	return z1
+
+
+
+def SimplexPr(X):
+	# % SimplexPr
+	# % X(CXN): input data matrix, C: dimension, N: # samples
+	# % S: the projected matrix of X onto C-dimensional simplex  
+  
+	X = np.squeeze(X)
+	if len(X.shape) < 2:
+		N = 1
+	else:
+		C,N = X.shape
+
+	if N == 1:
+		T1 = -np.sort(-X)
+		kk = 0
+		t = T1
+		for j in range(C):
+			if t[j]-(np.sum(t[:j])-1)/(j+1) <= 0:
+				kk = j
+			break
+
+		if kk == 0
+			kk = C-1
+
+		theta = (np.sum(t[:kk])-1)/(kk+1)
+		S = np.where(X > theta, X-theta, 0)
+		# del t
+		# del T1
+	else:
+		T1 = -np.sort(-X,axis=1)
+		S = X.copy()
+
+		for i in range(N):
+			kk = 0
+			t = T1[:,i]
+			for j in range(C):
+				if t[j]-(np.sum[t[:j]]-1)/(j+1) <= 0
+					kk = j
+					break
+
+			if kk == 0:
+				kk = C-1
+
+			theta = (np.sum(t[:kk])-1)/(kk+1)
+			S[:,i] = np.where(X[:,i] > theta, X[:,i]-theta, 0)
+			# del t
+
+		# del T1
+	return S
+
+
+if __name__ == '__main__':
+
+	sparse = False
+
+	dat_dir = osp.join(os.getenv('HOME'), 'opt/Anchor_Graph')
+	mdat = sio.loadmat(osp.join(dat_dir, 'USPS-MATLAB-train.mat'))
+	mdat_labels = sio.loadmat(osp.join(dat_dir, 'usps_label_100.mat'))
+	mdat_anchors = sio.loadmat(osp.join(dat_dir, 'usps_anchor_1000.mat'))
+
+	data = mdat['samples']
+	labels = mdat['labels'].squeeze()
+	label_index = mdat_labels['label_index']
+	anchor = mdat_anchors['anchor']
+
+	r,n = data.shape
+	m = 1000
+	s = 3
+	cn = 10
+
+	# construct an AnchorGraph(m,s) with kernel weights
+	Z, rL = AnchorGraph(data, anchor, s, 0, cn, sparse)
+	rate0 = np.zeros(20)
+	for i in range(20)
+		run_labels = {li:labels[li] for li in label_index[i:]}
+		F, A, op = AnchorGraphReg(Z, rL, run_labels, 0.01, sparse)
+		rate0[i] = (op==labels).sum()
+	print('\n The average classification error rate of AGR with kernel weights is %.2f%%.\n'%100*np.mean(rate0))
+
+	# construct an AnchorGraph(m,s) with LAE weights
+	Z, rL = AnchorGraph(data, anchor, s, 1, cn, sparse)
+	rate = np.zeros(20)
+	for i in range(20)
+		run_labels = {li:labels[li] for li in label_index[i:]}
+		F, A, op = AnchorGraphReg(Z, rL, run_labels, 0.01, sparse)
+		rate[i] = (op==labels).sum()
+
+	print('\n The average classification error rate of AGR with LAE weights is %.2f%%.\n'%100*mean(rate))
+
+	IPython.embed()
