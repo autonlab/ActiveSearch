@@ -112,6 +112,7 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 		pos = np.zeros((n,s), dtype=int)
 
 	for i in xrange(s):
+		IPython.embed()
 		mininds = Dis.argmin(1)
 
 		if sparse:
@@ -178,8 +179,8 @@ def  sqdist (A, B, sparse=True):
 	# % between points in A (given in columns) and points in B
 
 	if sparse:
-		A2 = A.multiple(A).sum(axis=0)
-		B2 = A.multiple(A).sum(axis=0)
+		A2 = A.multiply(A).sum(axis=0)
+		B2 = B.multiply(B).sum(axis=0)
 	else:
 		A = matrix_squeeze(A)
 		B = matrix_squeeze(B)
@@ -193,8 +194,8 @@ def  sqdist (A, B, sparse=True):
 		for i in xrange(n):
 			d[i,:] = d[i,:] + B2
 		for i in xrange(m):
-			d[:,i] = d[:,i] + A2
-		return d
+			d[:,i] = d[:,i] + A2.T
+		return d.tocsr()
 		# d = abs(repmat(aa',[1 size(bb,2)]) + repmat(bb,[size(aa,2) 1]) - 2*ab);
 	else:
 		return np.tile(A2.T, (1,B.shape[1])) + np.tile(B2, (A.shape[1],1)) - 2*AB
@@ -316,17 +317,23 @@ def SimplexPr(X):
 
 if __name__ == '__main__':
 
-	sparse = False
+	sparse = True
 
 	dat_dir = osp.join(os.getenv('HOME'), 'opt/Anchor_Graph')
 	mdat = sio.loadmat(osp.join(dat_dir, 'USPS-MATLAB-train.mat'))
 	mdat_labels = sio.loadmat(osp.join(dat_dir, 'usps_label_100.mat'))
 	mdat_anchors = sio.loadmat(osp.join(dat_dir, 'usps_anchor_1000.mat'))
 
-	data = mdat['samples']
+	if sparse:
+		data = ss.csr_matrix(mdat['samples'])
+		anchor = ss.csr_matrix(mdat_anchors['anchor']).T
+	else:
+		data = mdat['samples']
+		anchor = mdat_anchors['anchor'].T
+
 	labels = mdat['labels'].squeeze()
 	label_index = mdat_labels['label_index']
-	anchor = mdat_anchors['anchor'].T
+	
 
 	r,n = data.shape
 	m = 1000
@@ -335,13 +342,13 @@ if __name__ == '__main__':
 	C = labels.max()
 
 	# construct an AnchorGraph(m,s) with kernel weights
-	# Z1, rL1 = AnchorGraph(data, anchor, s, 0, cn, sparse)
-	# rate0 = np.zeros(20)
-	# for i in range(20):
-	# 	run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
-	# 	F, A, op = AnchorGraphReg(Z1, rL1, run_labels, C, 0.01, sparse)
-	# 	rate0[i] = (op!=labels).sum()/(n-len(run_labels))
-	# print('\n The average classification error rate of AGR with kernel weights is %.2f.\n'%(100*np.mean(rate0)))
+	Z1, rL1 = AnchorGraph(data, anchor, s, 0, cn, sparse)
+	rate0 = np.zeros(20)
+	for i in range(20):
+		run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
+		F, A, op = AnchorGraphReg(Z1, rL1, run_labels, C, 0.01, sparse)
+		rate0[i] = (op!=labels).sum()/(n-len(run_labels))
+	print('\n The average classification error rate of AGR with kernel weights is %.2f.\n'%(100*np.mean(rate0)))
 
 	# construct an AnchorGraph(m,s) with LAE weights
 	Z2, rL2 = AnchorGraph(data, anchor, s, 1, cn, sparse)
