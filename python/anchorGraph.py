@@ -58,8 +58,7 @@ def AnchorGraphReg(Z, rL, labels, C, gamma, sparse=True, matlab_indexing=True):
 	# del Yl
 	# del Zl
 	if sparse:
-		A = nlg.solve(matrix_squeeze(LM.todense()) + 1e-06*np.eye(m),matrix_squeeze(RM))
-		A = ss.csr_matrix(A)
+		A = ss.csr_matrix(nlg.solve(matrix_squeeze(LM.todense()) + 1e-06*np.eye(m),matrix_squeeze(RM.todense())))
 	else:
 		A = nlg.solve(LM + 1e-06*np.eye(m),RM)
 
@@ -69,6 +68,7 @@ def AnchorGraphReg(Z, rL, labels, C, gamma, sparse=True, matlab_indexing=True):
 	# del Z
 	if sparse:
 		F1 = F.dot(ss.diags([matrix_squeeze(F.sum(0))**(-1)],[0]))
+		F1 = matrix_squeeze(F1.todense())
 	else:
 		F1 = F.dot(np.diag(np.squeeze(F.sum(0))**(-1)))
 
@@ -80,7 +80,7 @@ def AnchorGraphReg(Z, rL, labels, C, gamma, sparse=True, matlab_indexing=True):
 	return F,A,output
 
 
-def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
+def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True, normalized=False):
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	# % 
 	# % AnchorGraph
@@ -96,40 +96,41 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	d,n = TrainData.shape
 	m = Anchor.shape[1]
+
 	
 	if sparse:
 		Z = ss.lil_matrix((n, m))
 	else:
 		Z = np.zeros((n, m))
 	
-	Dis = sqdist(TrainData,Anchor,sparse)
+	Dis = sqdist(TrainData,Anchor,sparse,normalized)
 
 	if sparse:
 		val = ss.lil_matrix((n,s))
-		pos = ss.lil_matrix((n,s))
+		pos = ss.lil_matrix((n,s), dtype=int)
 	else:
 		val = np.zeros((n,s))
 		pos = np.zeros((n,s), dtype=int)
 
 	for i in xrange(s):
-		IPython.embed()
 		mininds = Dis.argmin(1)
 
 		if sparse:
 			pos[:,i] = np.atleast_2d(mininds).T
-			val[:,i] = Dis[np.arange(n),mininds].T
+			val[:,i] = np.atleast_2d(Dis[np.arange(n),mininds]).T
 		else:
 			pos[:,i] = mininds
 			val[:,i] = Dis[np.arange(n),mininds]
 		Dis[np.arange(n), mininds] = 1e+60
 
-	if sparse:
-		val = val.tocsr()
-		pos = pos.tocsr()
+	del Dis
+
 	# del Dis
 	# ind = (pos - 1) * n + repmat(cat(arange(1,n)).T,1,s)
 	if flag == 0:
 		if sparse:
+			val = val.tocsr()
+			pos = pos.tocsr()
 			print('Warning: Converting to dense matrix for RBF computation.')
 			sigma = val[:,s-1].sqrt().mean()
 			val = np.exp(-matrix_squeeze(val.todense())/(sigma ** 2))
@@ -140,25 +141,41 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 			val = np.exp(-val/(sigma ** 2))
 			val = np.tile(np.atleast_2d(np.sum(val,axis=1)).T**(-1),(1,s))*(val)
 	else:
-		for i in xrange(n):
-			xi = TrainData[:,i]
-			if sparse:
-				xi = xi / np.sqrt(x.multiply(x).sum())
-			else:
-				xi = xi / nlg.norm(xi)
-				if sparse:
-					U = Anchor[:,matrix_squeeze(pos[i,:].todense())]
-					U = U.dot(ss.diags([(U.multiply(U)).sum(axis=0)**(-0.5)],[0]))
-				else:
-					U = Anchor[:,np.squeeze(pos[i,:])]
-					U = U.dot(np.diag((U**2).sum(axis=0)**(-0.5)))
-			val[i,:] = LAE(xi,U,cn,sparse)
+		if sparse:
+			pos = pos.tocsr()
+			if ss.issparse(Anchor):
+				Anchor = matrix_squeeze(Anchor.todense())
+			for i in xrange(n):
+				# print (i)
+				# t1 = time.time()
+				xi = matrix_squeeze(TrainData[:,i].todense())
+				if not normalized:
+					xi = xi / nlg.norm(xi)
+				# IPython.embed()
+				U = Anchor[:,matrix_squeeze(pos[i,:].todense())]
+				U = U.dot(np.diag((U**2).sum(axis=0)**(-0.5)))
+				# U = U.dot(ss.diags([matrix_squeeze((U.multiply(U)).sum(axis=0))**(-0.5)],[0]))
+				val[i,:] = LAE(xi,U,cn,sparse=False)
+				# print ('%.5f\n'%(time.time()-t1))
+				# 
+			val = val.tocsr()		
+		else:
+			for i in xrange(n):
+				xi = TrainData[:,i]
+				if not normalized:
+					xi = xi / nlg.norm(xi)
+					
+				U = Anchor[:,np.squeeze(pos[i,:])]
+				U = U.dot(np.diag((U**2).sum(axis=0)**(-0.5)))
+				val[i,:] = LAE(xi,U,cn,sparse)
 
-		# del xi
-		# del U
+	# del xi
+	# del U
 	for i in xrange(s):
 		pinds = matrix_squeeze(pos[:,i].todense()) if sparse else pos[:,i].squeeze()
-		Z[np.arange(n), pinds] = val[:,i]
+		Z[np.arange(n), pinds] = val[:,i].T
+	if sparse:
+		Z = Z.tocsr()
 	# del val
 	# del pos
 	# del ind
@@ -167,38 +184,50 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=None, cn=None, sparse=True):
 
 	T = Z.T.dot(Z)
 	if sparse:
-		rL = T - T.dot(ss.diags([Z.sum(axis=0)**(-1)],[0])).dot(T)
+		rL = T - T.dot(ss.diags([matrix_squeeze(Z.sum(axis=0))**(-1)],[0])).dot(T)
 	else:
 		rL = T - T.dot(np.diag(Z.sum(axis=0)**(-1))).dot(T)
 	 # del T
 	return Z,rL
 
-def  sqdist (A, B, sparse=True):
+def  sqdist (A, B, sparse=True, normalized=False):
 	# % SQDIST - computes squared Euclidean distance matrix
 	# %          computes a rectangular matrix of pairwise distances
 	# % between points in A (given in columns) and points in B
 
+	# honestly, it doesn't make sense to have a squared distance matrix as dense.
+	# If normalized, just returning the A.T*B.
+	# The constants can be added later on their own
+	if normalized:
+		AB = A.T.dot(B)
+		if sparse:
+			AB = matrix_squeeze(AB.todense())
+		return - 2*AB
+
 	if sparse:
-		A2 = A.multiply(A).sum(axis=0)
-		B2 = B.multiply(B).sum(axis=0)
+		A2 = np.atleast_2d(np.asarray(A.multiply(A).sum(axis=0)))
+		B2 = np.atleast_2d(np.asarray(B.multiply(B).sum(axis=0)))
 	else:
 		A = matrix_squeeze(A)
 		B = matrix_squeeze(B)
 		A2 = np.atleast_2d((A*A).sum(axis=0))
 		B2 = np.atleast_2d((B*B).sum(axis=0))
+	
 	AB = A.T.dot(B)
-
-
 	if sparse:
-		d = (-2*AB).tolil()
-		for i in xrange(n):
-			d[i,:] = d[i,:] + B2
-		for i in xrange(m):
-			d[:,i] = d[:,i] + A2.T
-		return d.tocsr()
-		# d = abs(repmat(aa',[1 size(bb,2)]) + repmat(bb,[size(aa,2) 1]) - 2*ab);
-	else:
-		return np.tile(A2.T, (1,B.shape[1])) + np.tile(B2, (A.shape[1],1)) - 2*AB
+		AB = matrix_squeeze(AB.todense())
+
+
+	# if sparse:
+	# 	d = (-2*AB).tolil()
+	# 	# for i in xrange(n):
+	# 	# 	d[i,:] = d[i,:] + B2
+	# 	# for i in xrange(m):
+	# 	# 	d[:,i] = d[:,i] + A2.T
+	# 	# return d.tocsr()
+	# 	# # d = abs(repmat(aa',[1 size(bb,2)]) + repmat(bb,[size(aa,2) 1]) - 2*ab);
+	# else:
+	return np.tile(A2.T, (1,B.shape[1])) + np.tile(B2, (A.shape[1],1)) - 2*AB
 
 
 def LAE(x,U,cn,sparse=True):
@@ -208,8 +237,10 @@ def LAE(x,U,cn,sparse=True):
 	# % cn: the number of iterations, 5-20
 	# % z: the s-dimensional coefficient vector   
 
-
 	d,s = U.shape
+	if sparse:
+		x = matrix_squeeze(x.todense())
+
 	z0 = np.ones(s)/s #(U'*U+1e-6*eye(s))\(U'*x); % % %
 	z1 = z0.copy()
 	delta = np.zeros(cn+2)
@@ -231,7 +262,8 @@ def LAE(x,U,cn,sparse=True):
 		# seek beta
 		for j in range(101):
 			b = (2**j)*beta[t]
-			z = SimplexPr(v - dgv/b)
+
+			z = SimplexPr(matrix_squeeze(v - dgv/b))
 			dif = x - U.dot(z)
 			gz = dif.T.dot(dif)/2
 			# del dif
@@ -268,7 +300,6 @@ def SimplexPr(X):
 	# % SimplexPr
 	# % X(CXN): input data matrix, C: dimension, N: # samples
 	# % S: the projected matrix of X onto C-dimensional simplex  
-  
 	X = np.squeeze(X)
 	if len(X.shape) < 2:
 		N = 1
@@ -333,7 +364,10 @@ if __name__ == '__main__':
 
 	labels = mdat['labels'].squeeze()
 	label_index = mdat_labels['label_index']
-	
+
+	import sklearn.cluster as skc
+	d2 = data.T1	
+	IPython.embed()
 
 	r,n = data.shape
 	m = 1000
@@ -342,13 +376,13 @@ if __name__ == '__main__':
 	C = labels.max()
 
 	# construct an AnchorGraph(m,s) with kernel weights
-	Z1, rL1 = AnchorGraph(data, anchor, s, 0, cn, sparse)
-	rate0 = np.zeros(20)
-	for i in range(20):
-		run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
-		F, A, op = AnchorGraphReg(Z1, rL1, run_labels, C, 0.01, sparse)
-		rate0[i] = (op!=labels).sum()/(n-len(run_labels))
-	print('\n The average classification error rate of AGR with kernel weights is %.2f.\n'%(100*np.mean(rate0)))
+	# Z1, rL1 = AnchorGraph(data, anchor, s, 0, cn, sparse)
+	# rate0 = np.zeros(20)
+	# for i in range(20):
+	# 	run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
+	# 	F, A, op = AnchorGraphReg(Z1, rL1, run_labels, C, 0.01, sparse)
+	# 	rate0[i] = (op!=labels).sum()/(n-len(run_labels))
+	# print('\n The average classification error rate of AGR with kernel weights is %.2f.\n'%(100*np.mean(rate0)))
 
 	# construct an AnchorGraph(m,s) with LAE weights
 	Z2, rL2 = AnchorGraph(data, anchor, s, 1, cn, sparse)
