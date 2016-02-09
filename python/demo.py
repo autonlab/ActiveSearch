@@ -219,5 +219,5 @@ def test_covtype ():
 if __name__ == '__main__':
 	
 	#test_higgs()
-	test_SUSY()
-	#test_covtype()
+	#test_SUSY()
+	test_covtype()

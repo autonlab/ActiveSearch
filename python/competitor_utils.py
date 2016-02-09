@@ -13,10 +13,10 @@ import IPython
 
 data_dir = os.getenv('AS_DATA_DIR')
 
-def save_kmeans (X, save_file=None, k=300, max_iter=300, n_jobs=4, verbose=100):
+def save_kmeans (X, save_file=None, k=300, max_iter=300, n_jobs=4, verbose=100, precompute_distances=True):
 	# perform kmeans clustering on X and save it
 
-	km = skc.KMeans(n_clusters=k, max_iter=max_iter, n_jobs=n_jobs, verbose=verbose)
+	km = skc.KMeans(n_clusters=k, max_iter=max_iter, n_jobs=n_jobs, verbose=verbose, precompute_distances=precompute_distances)
 	t1 = time.time()
 	km.fit(X)
 	print('Time taken to cluster: %.2fs'%(time.time() - t1))
@@ -42,7 +42,7 @@ def covtype_kmeans():
 def HIGGS_kmeans():
 
 	k = 300
-	n_jobs = 5
+	n_jobs = 
 	save_file = osp.join(data_dir, 'HIGGS_kmeans')
 
 	t1 = time.time()
