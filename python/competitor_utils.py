@@ -39,10 +39,23 @@ def covtype_kmeans():
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
 
+def SUSY_kmeans():
+
+	k = 300
+	n_jobs = 10
+	save_file = osp.join(data_dir, 'SUSY_kmeans')
+
+	t1 = time.time()
+	X,Y,_ = du.load_SUSY()
+	print('Time taken to load SUSY data: %.2f\n'%(time.time()-t1))
+
+	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
+
+
 def HIGGS_kmeans():
 
 	k = 300
-	n_jobs = 5
+	n_jobs = 10
 	save_file = osp.join(data_dir, 'HIGGS_kmeans')
 
 	t1 = time.time()
