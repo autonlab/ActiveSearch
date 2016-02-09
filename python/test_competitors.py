@@ -10,10 +10,13 @@ import cPickle as pick
 
 import activeSearchInterface as ASI
 import competitorsInterface as CI
-import lapsvmp as LapSVM
 import similarityLearning as SL
+
 import data_utils as du
 import graph_utils as gu
+
+import lapsvmp as LapSVM
+import anchorGraph as AG
 
 import IPython
 
@@ -68,5 +71,52 @@ def test_lapsvm ():
 
 	IPython.embed()
 
+
+def test_anchorgraph():
+	sparse = True
+
+	dat_dir = osp.join(os.getenv('HOME'), 'opt/Anchor_Graph')
+	mdat = sio.loadmat(osp.join(dat_dir, 'USPS-MATLAB-train.mat'))
+	mdat_labels = sio.loadmat(osp.join(dat_dir, 'usps_label_100.mat'))
+	mdat_anchors = sio.loadmat(osp.join(dat_dir, 'usps_anchor_1000.mat'))
+
+	if sparse:
+		data = ss.csr_matrix(mdat['samples'])
+		anchor = ss.csr_matrix(mdat_anchors['anchor']).T
+	else:
+		data = mdat['samples']
+		anchor = mdat_anchors['anchor'].T
+
+	labels = mdat['labels'].squeeze()
+	label_index = mdat_labels['label_index']
+
+	r,n = data.shape
+	m = 1000
+	s = 3
+	cn = 10
+	C = labels.max()
+
+	# construct an AnchorGraph(m,s) with kernel weights
+	# Z1, rL1 = AnchorGraph(data, anchor, s, 0, cn, sparse)
+	# rate0 = np.zeros(20)
+	# for i in range(20):
+	# 	run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
+	# 	F, A, op = AnchorGraphReg(Z1, rL1, run_labels, C, 0.01, sparse)
+	# 	rate0[i] = (op!=labels).sum()/(n-len(run_labels))
+	# print('\n The average classification error rate of AGR with kernel weights is %.2f.\n'%(100*np.mean(rate0)))
+
+	# construct an AnchorGraph(m,s) with LAE weights
+	Z2, rL2 = AG.AnchorGraph(data, anchor, s, 1, cn, sparse)
+	rate = np.zeros(20)
+	for i in range(20):
+		run_labels = {(li-1):labels[li-1] for li in label_index[i,:]}
+		F, A, op = AG.AnchorGraphReg(Z2, rL2, run_labels, C, 0.01, sparse)
+		rate[i] = (op!=labels).sum()/(n-len(run_labels))
+
+	print('\n The average classification error rate of AGR with LAE weights is %.2f.\n'%(100*np.mean(rate)))
+
+	IPython.embed()
+
 if __name__ == '__main__':
-	test_lapsvm()
+	# test_lapsvm()
+	test_anchorgraph()

@@ -9,8 +9,9 @@ import scipy.sparse as ss, scipy.sparse.linalg as ssl
 
 import data_utils as du
 # import graph_utils as gu
-
 import IPython
+
+data_dir = os.getenv('AS_DATA_DIR')
 
 def save_kmeans (X, save_file=None, k=300, max_iter=300, n_jobs=4, verbose=100):
 	# perform kmeans clustering on X and save it
@@ -26,4 +27,29 @@ def save_kmeans (X, save_file=None, k=300, max_iter=300, n_jobs=4, verbose=100):
 	else:
 		return Xk
 
+def covtype_kmeans():
 
+	k = 300
+	n_jobs = 4
+	save_file = osp.join(data_dir, 'covtype_kmeans')
+
+	t1 = time.time()
+	X,Y,_ = du.load_covertype()
+	print('Time taken to load covertype data: %.2f\n'%(time.time()-t1))
+
+	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
+
+def HIGGS_kmeans():
+
+	k = 300
+	n_jobs = 5
+	save_file = osp.join(data_dir, 'HIGGS_kmeans')
+
+	t1 = time.time()
+	X,Y,_ = du.load_higgs()
+	print('Time taken to load HIGGS data: %.2f\n'%(time.time()-t1))
+
+	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
+
+if __name__ == '__main__':
+	covtype_kmeans()
