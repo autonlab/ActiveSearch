@@ -42,7 +42,7 @@ def data_kmeans(dataset = 'HIGGS'):
 	k = 100
 	n_jobs = 10
 
-	save_file = osp.join(data_dir, '%s_kmeans_k'%(dataset,k))
+	save_file = osp.join(data_dir, '%s_kmeans%i'%(dataset,k))
 	
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
@@ -61,7 +61,7 @@ def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None)
 	if k is None:
 		kmeans_fl = osp.join(data_dir, '%s_kmeans.npz'%dataset)
 	else:
-		kmeans_fl = osp.join(data_dir, '%s_kmeans_%i.npz'%(dataset,k))
+		kmeans_fl = osp.join(data_dir, '%s_kmeans%i.npz'%(dataset,k))
 	Anchors = np.load(kmeans_fl)['arr_0']
 
 	t1 = time.time()
