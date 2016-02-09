@@ -26,8 +26,8 @@ def save_AG(filename,Z,rL):
 
 def load_AG(filename):
 	loader = np.load(filename)
-	Z = csr_matrix((loader['Zdata'], loader['Zindices'], loader['Zindptr']), shape=loader['Zshape'])
-	rL = csr_matrix((loader['rLdata'], loader['rLindices'], loader['rLindptr']), shape=loader['rLshape'])
+	Z = ss.csr_matrix((loader['Zdata'], loader['Zindices'], loader['Zindptr']), shape=loader['Zshape'])
+	rL = ss.csr_matrix((loader['rLdata'], loader['rLindices'], loader['rLindptr']), shape=loader['rLshape'])
 	return Z, rL
 
 def sparse_argmax(X, axis=0):
