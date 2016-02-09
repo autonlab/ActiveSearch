@@ -22,11 +22,10 @@ data_dir = os.getenv('AS_DATA_DIR')
 results_dir = os.getenv('AS_RESULTS_DIR')
 
 def min_sparse(X):
-    if len(X.data) == 0:
-        return 0
-    m = X.data.min()
-    return m if X.getnnz() == X.size else min(m, 0)
-
+	if len(X.data) == 0:
+		return 0
+	m = X.data.min()
+	return m if X.getnnz() == X.size else min(m, 0)
 
 def load_covertype (target=4, sparse=True, normalize=True):
 
@@ -58,7 +57,7 @@ def load_covertype (target=4, sparse=True, normalize=True):
 
 			c += 1
 
-		X = ss.csr_matrix((sdat, (rows, cols)), shape=(r, c))
+		X = ss.csc_matrix((sdat, (rows, cols)), shape=(r, c))
 
 	else:
 
@@ -116,7 +115,7 @@ def load_higgs (sparse=True, fname=None, normalize=True):
 
 			c += 1
 
-		X = ss.csr_matrix((sdat, (rows, cols)), shape=(r, c))
+		X = ss.csc_matrix((sdat, (rows, cols)), shape=(r, c))
 
 	else:
 
@@ -178,7 +177,7 @@ def load_SUSY (sparse=True, fname=None, normalize=False):
 			c += 1
 		assert len(line) == r+1
 
-		X = ss.csr_matrix((sdat, (rows, cols)), shape=(r, c))
+		X = ss.csc_matrix((sdat, (rows, cols)), shape=(r, c))
 
 	else:
 
@@ -238,7 +237,7 @@ def load_projected_data (sparse=True, fname=None, normalize=True):
 
 			c += 1
 
-		X = ss.csr_matrix((sdat, (rows, cols)), shape=(r, c))
+		X = ss.csc_matrix((sdat, (rows, cols)), shape=(r, c))
 
 	else:
 
@@ -312,7 +311,7 @@ def load_sql (fname):
 	# dummy function
 	fn = open(fname,'r')
 	sqlstrm = sql.parsestream(fn)
-  	
+	
 	for line in sqlstrm:
 		IPython.embed()
 

@@ -8,6 +8,7 @@ import scipy.sparse as ss, scipy.sparse.linalg as ssl
 # import scipy.linalg as slg, scipy.io as sio
 
 import data_utils as du
+import anchorGraph as AG
 # import graph_utils as gu
 import IPython
 
@@ -27,42 +28,46 @@ def save_kmeans (X, save_file=None, k=300, max_iter=300, n_jobs=4, verbose=100, 
 	else:
 		return Xk
 
-def covtype_kmeans():
+def data_kmeans(dataset = 'HIGGS'):
+
+	if dataset == 'HIGGS':
+		X,Y,_ = du.load_higgs()
+	elif dataset == 'SUSY':
+		X,Y,_ = du.load_SUSY()
+	elif dataset == 'covtype':
+		X,Y,_ = du.load_covertype()
 
 	k = 300
-	n_jobs = 4
-	save_file = osp.join(data_dir, 'covtype_kmeans')
+	n_jobs = 10
 
 	t1 = time.time()
-	X,Y,_ = du.load_covertype()
+	save_file = osp.join(data_dir, '%s_kmeans'%dataset)
 	print('Time taken to load covertype data: %.2f\n'%(time.time()-t1))
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
 
-def SUSY_kmeans():
+def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None):
+	if dataset == 'HIGGS':
+		X,Y,_ = du.load_higgs()
+		Xk = np.load()
+	elif dataset == 'SUSY':
+		X,Y,_ = du.load_SUSY()
+	elif dataset == 'covtype':
+		X,Y,_ = du.load_covertype()
 
-	k = 300
-	n_jobs = 10
-	save_file = osp.join(data_dir, 'SUSY_kmeans')
+	if k is None:
+		kmeans_fl = osp.join(data_dir, '%s_kmeans.npz'%dataset)
+	else:
+		kmeans_fl = osp.join(data_dir, '%s_kmeans_%i.npz'%(dataset,k))
+	Anchors = np.load(kmeans_fl)['arr_0']
 
-	t1 = time.time()
-	X,Y,_ = du.load_SUSY()
-	print('Time taken to load SUSY data: %.2f\n'%(time.time()-t1))
+	Z,rL = AG.AnchorGraph(X.T, Anchors, s=s, flag=flag, cn=cn, sparse=True, normalized=normalized)
+	if k is None:
+		ag_file = osp.join(data_dir, '%s_AG_kmeans'%dataset)
+	else:
+		ag_file = osp.join(data_dir, '%s_AG_kmeans%i'%(dataset, k))
 
-	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
-
-
-def HIGGS_kmeans():
-
-	k = 300
-	n_jobs = 10
-	save_file = osp.join(data_dir, 'HIGGS_kmeans')
-
-	t1 = time.time()
-	X,Y,_ = du.load_higgs()
-	print('Time taken to load HIGGS data: %.2f\n'%(time.time()-t1))
-
-	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
+	AG.save_AG(ag_file, Z, rL)
 
 if __name__ == '__main__':
-	covtype_kmeans()
+	create_AG('covtype')
