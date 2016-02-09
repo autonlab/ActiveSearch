@@ -39,10 +39,10 @@ def data_kmeans(dataset = 'HIGGS'):
 		X,Y,_ = du.load_covertype()
 	print('Time taken to load %s data: %.2f\n'%(dataset, time.time()-t1))
 
-	k = 300
+	k = 100
 	n_jobs = 10
 
-	save_file = osp.join(data_dir, '%s_kmeans'%dataset)
+	save_file = osp.join(data_dir, '%s_kmeans_k'%(dataset,k))
 	
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
@@ -78,4 +78,5 @@ def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None)
 	print('Time taken to save AG: %.2f\n'%(time.time()-t1))
 
 if __name__ == '__main__':
-	create_AG('covtype')
+	#create_AG('covtype')
+	data_kmeans('SUSY')
