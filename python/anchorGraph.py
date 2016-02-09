@@ -21,8 +21,8 @@ def matrix_squeeze(X):
 
 def save_AG(filename,Z,rL):
 	np.savez(	filename, 
-				Zdata=Z.data, Zindices=Z.indices, Zindptr=Zindptr, Zshape=Z.shape,
-				rLdata=rL.data, rLindices=rL.indices, rLindptr=rLindptr, rLshape=rL.shape)
+				Zdata=Z.data, Zindices=Z.indices, Zindptr=Z.indptr, Zshape=Z.shape,
+				rLdata=rL.data, rLindices=rL.indices, rLindptr=rL.indptr, rLshape=rL.shape)
 
 def load_AG(filename):
 	loader = np.load(filename)
