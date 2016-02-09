@@ -1,7 +1,7 @@
 # Written by Wei Liu (wliu@ee.columbia.edu)
 # Ported to Python by Sibi Venkatesan
 
-from __future__ import division
+from __future__ import division, print_function
 import time
 import os, os.path as osp
 
@@ -236,7 +236,9 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 	else:
 		Z = np.zeros((n, m))
 	
+	t1 = time.time()
 	Dis = sqdist(TrainData,Anchor,sparse,normalized)
+	print('Time taken to compute square distance: %.2f'%(time.time()-t1))
 
 	if sparse:
 		val = ss.lil_matrix((n,s))
@@ -246,10 +248,12 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 		pos = np.zeros((n,s), dtype=int)
 
 	for i in xrange(s):
-		if sparse:
-			mininds = Dis.argmin(1)
+		print('Iteration %i out of %i for closest anchors.'%(i+1,s))
+		if sparse and ss.issparse(Dis):
+			mininds = sparse_argmin(Dis, 1)
 		else:
 			mininds = Dis.argmin(1)
+		print('Found argmin.')
 
 		if sparse:
 			pos[:,i] = np.atleast_2d(mininds).T
@@ -263,6 +267,8 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 				val[:,i] = Dis[np.arange(n),mininds] + 2
 			else:
 				val[:,i] = Dis[np.arange(n),mininds]
+		print('Updated vals/pos.\n')
+
 		Dis[np.arange(n), mininds] = 1e+60
 
 	del Dis
@@ -287,6 +293,7 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 			if ss.issparse(Anchor):
 				Anchor = matrix_squeeze(Anchor.todense())
 			for i in xrange(n):
+				print('Performing LAE for %i out of %i points.'%(i+1,n),end='\r')
 				# print (i)
 				# t1 = time.time()
 				xi = matrix_squeeze(TrainData[:,i].todense())
@@ -298,7 +305,7 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 				# U = U.dot(ss.diags([matrix_squeeze((U.multiply(U)).sum(axis=0))**(-0.5)],[0]))
 				val[i,:] = LAE(xi,U,cn,sparse=False)
 				# print ('%.5f\n'%(time.time()-t1))
-				# 
+			print('Performing LAE for %i out of %i points.\n'%(n,n))
 			val = val.tocsr()		
 		else:
 			for i in xrange(n):
@@ -312,7 +319,9 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 
 	# del xi
 	# del U
+	print('Constructing Z.')
 	for i in xrange(s):
+		print('Iteration %i out of %i for closest anchors.'%(i+1,s))
 		pinds = matrix_squeeze(pos[:,i].todense()) if sparse else pos[:,i].squeeze()
 		Z[np.arange(n), pinds] = val[:,i].T
 	if sparse:
@@ -323,11 +332,14 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 	# del TrainData
 	# del Anchor
 
+	print('Constructing T = Z.T*Z')
 	T = Z.T.dot(Z)
+	print('Constructing Laplacian')
 	if sparse:
 		rL = T - T.dot(ss.diags([matrix_squeeze(Z.sum(axis=0))**(-1)],[0])).dot(T)
 	else:
 		rL = T - T.dot(np.diag(Z.sum(axis=0)**(-1))).dot(T)
+	print('Done')
 	 # del T
 	return Z,rL
 
@@ -391,6 +403,3 @@ def AnchorGraphReg(Z, rL, labels, C, gamma, sparse=True, matlab_indexing=True):
 	# del order
 	output[lbl_idxs] = lbl_vals
 	return F,A,output
-
-
-def sparse

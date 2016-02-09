@@ -30,23 +30,25 @@ def save_kmeans (X, save_file=None, k=300, max_iter=300, n_jobs=4, verbose=100, 
 
 def data_kmeans(dataset = 'HIGGS'):
 
+	t1 = time.time()
 	if dataset == 'HIGGS':
 		X,Y,_ = du.load_higgs()
 	elif dataset == 'SUSY':
 		X,Y,_ = du.load_SUSY()
 	elif dataset == 'covtype':
 		X,Y,_ = du.load_covertype()
+	print('Time taken to load %s data: %.2f\n'%(dataset, time.time()-t1))
 
 	k = 300
 	n_jobs = 10
 
-	t1 = time.time()
 	save_file = osp.join(data_dir, '%s_kmeans'%dataset)
-	print('Time taken to load covertype data: %.2f\n'%(time.time()-t1))
+	
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
 
 def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None):
+	t1 = time.time()
 	if dataset == 'HIGGS':
 		X,Y,_ = du.load_higgs()
 		Xk = np.load()
@@ -54,6 +56,7 @@ def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None)
 		X,Y,_ = du.load_SUSY()
 	elif dataset == 'covtype':
 		X,Y,_ = du.load_covertype()
+	print('Time taken to load %s data: %.2f\n'%(dataset, time.time()-t1))
 
 	if k is None:
 		kmeans_fl = osp.join(data_dir, '%s_kmeans.npz'%dataset)
@@ -61,13 +64,18 @@ def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None)
 		kmeans_fl = osp.join(data_dir, '%s_kmeans_%i.npz'%(dataset,k))
 	Anchors = np.load(kmeans_fl)['arr_0']
 
-	Z,rL = AG.AnchorGraph(X.T, Anchors, s=s, flag=flag, cn=cn, sparse=True, normalized=normalized)
+	t1 = time.time()
+	Z,rL = AG.AnchorGraph(X, Anchors.T, s=s, flag=flag, cn=cn, sparse=True, normalized=normalized)
+	print('Time taken to generate AG: %.2f\n'%(time.time()-t1))
+
 	if k is None:
 		ag_file = osp.join(data_dir, '%s_AG_kmeans'%dataset)
 	else:
 		ag_file = osp.join(data_dir, '%s_AG_kmeans%i'%(dataset, k))
 
+	t1 = time.time()
 	AG.save_AG(ag_file, Z, rL)
+	print('Time taken to save AG: %.2f\n'%(time.time()-t1))
 
 if __name__ == '__main__':
 	create_AG('covtype')
