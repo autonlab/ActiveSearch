@@ -46,7 +46,7 @@ def data_kmeans(dataset = 'HIGGS'):
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
 
-def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None):
+def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=None):
 	t1 = time.time()
 	if dataset == 'HIGGS':
 		X,Y,_ = du.load_higgs()
@@ -76,5 +76,5 @@ def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None)
 	print('Time taken to save AG: %.2f\n'%(time.time()-t1))
 
 if __name__ == '__main__':
-	#create_AG('covtype')
-	data_kmeans('SUSY')
+	create_AG('covtype')
+	#data_kmeans('SUSY')

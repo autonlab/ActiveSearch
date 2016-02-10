@@ -5,6 +5,7 @@ from __future__ import division, print_function
 import time
 import os, os.path as osp
 
+import sklearn.preprocessing as skp
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy.sparse as ss, scipy.sparse.linalg as ssl
 import scipy.linalg as slg, scipy.io as sio
@@ -213,7 +214,7 @@ def  sqdist (A, B, sparse=True, normalized=False):
 
 
 
-def AnchorGraph(TrainData, Anchor, s=2, flag=1, cn=5, sparse=True, normalized=False):
+def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=False):
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	# % 
 	# % AnchorGraph
@@ -227,6 +228,8 @@ def AnchorGraph(TrainData, Anchor, s=2, flag=1, cn=5, sparse=True, normalized=Fa
 	# % rL(mXm): reduced graph Laplacian matrix
 	# %
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+	if flag != 1:
+		raise Exception('only LAE currently working')
 	d,n = TrainData.shape
 	m = Anchor.shape[1]
 
@@ -240,33 +243,33 @@ def AnchorGraph(TrainData, Anchor, s=2, flag=1, cn=5, sparse=True, normalized=Fa
 	Dis = sqdist(TrainData,Anchor,sparse,normalized)
 	print('Time taken to compute square distance: %.2f'%(time.time()-t1))
 
-	if sparse:
-		val = ss.lil_matrix((n,s))
-		pos = ss.lil_matrix((n,s), dtype=int)
-	else:
-		val = np.zeros((n,s))
-		pos = np.zeros((n,s), dtype=int)
+	# if sparse:
+	# 	val = ss.lil_matrix((n,s))
+	# 	pos = ss.lil_matrix((n,s), dtype=int)
+	# else:
+	# val = np.zeros((n,s))
+	pos = np.zeros((n,s), dtype=int)
 
 	for i in xrange(s):
-		print('Iteration %i out of %i for closest anchors.'%(i+1,s))
+		print('Iteration %i out of %i for closest anchors.'%(i+1,s), end='\r')
 		if sparse and ss.issparse(Dis):
 			mininds = sparse_argmin(Dis, 1)
 		else:
 			mininds = Dis.argmin(1)
 		print('Found argmin.')
 
-		if sparse:
-			pos[:,i] = np.atleast_2d(mininds).T
-			if normalized:
-				val[:,i] = np.atleast_2d(Dis[np.arange(n),mininds]).T + 2
-			else:
-				val[:,i] = np.atleast_2d(Dis[np.arange(n),mininds]).T
-		else:
-			pos[:,i] = mininds
-			if normalized:
-				val[:,i] = Dis[np.arange(n),mininds] + 2
-			else:
-				val[:,i] = Dis[np.arange(n),mininds]
+		# if sparse:
+		# 	pos[:,i] = np.atleast_2d(mininds).T
+		# 	if normalized:
+		# 		val[:,i] = np.atleast_2d(Dis[np.arange(n),mininds]).T + 2
+		# 	else:
+		# 		val[:,i] = np.atleast_2d(Dis[np.arange(n),mininds]).T
+		# else:
+		pos[:,i] = mininds
+		# if normalized:
+		# 	val[:,i] = Dis[np.arange(n),mininds] + 2
+		# else:
+		# 	val[:,i] = Dis[np.arange(n),mininds]
 		print('Updated vals/pos.\n')
 
 		Dis[np.arange(n), mininds] = 1e+60
@@ -289,24 +292,32 @@ def AnchorGraph(TrainData, Anchor, s=2, flag=1, cn=5, sparse=True, normalized=Fa
 			val = np.tile(np.atleast_2d(np.sum(val,axis=1)).T**(-1),(1,s))*(val)
 	else:
 		if sparse:
-			pos = pos.tocsr()
+			# pos = pos.tocsr()
 			if ss.issparse(Anchor):
-				Anchor = matrix_squeeze(Anchor.todense())
+				Anchor = matrix_squeeze(Anchor.todense()).astype(float)
+			print('Constructing Z.\n')
+
 			for i in xrange(n):
-				print('Performing LAE for %i out of %i points.'%(i+1,n),end='\r')
+				print('Performing LAE for %i out of %i points.'%(i+1,n))
 				# print (i)
 				# t1 = time.time()
-				xi = matrix_squeeze(TrainData[:,i].todense())
+				xi = TrainData[:,i].todense().A.squeeze()
 				if not normalized:
 					xi = xi / nlg.norm(xi)
 				# IPython.embed()
-				U = Anchor[:,matrix_squeeze(pos[i,:].todense())]
-				U = U.dot(np.diag((U**2).sum(axis=0)**(-0.5)))
+				pinds = pos[i,:].squeeze()
+				U = skp.normalize(Anchor[:,pinds], axis=0)
+				# U = Anchor[:,pinds]
+				# U = U.dot(np.diag((U**2).sum(axis=0)**(-0.5)))
 				# U = U.dot(ss.diags([matrix_squeeze((U.multiply(U)).sum(axis=0))**(-0.5)],[0]))
-				val[i,:] = LAE(xi,U,cn,sparse=False)
+				
+				# val[i,:] = LAE(xi,U,cn,sparse=False)
+				Z[i, pinds] = LAE(xi,U,cn,sparse=False)
+
+
 				# print ('%.5f\n'%(time.time()-t1))
-			print('Performing LAE for %i out of %i points.\n'%(n,n))
-			val = val.tocsc()		
+			# print('Performing LAE for %i out of %i points.\n'%(n,n))
+			# val = val.tocsc()		
 		else:
 			for i in xrange(n):
 				xi = TrainData[:,i]
@@ -319,12 +330,14 @@ def AnchorGraph(TrainData, Anchor, s=2, flag=1, cn=5, sparse=True, normalized=Fa
 
 	# del xi
 	# del U
-	print('Constructing Z.')
-	for i in xrange(s):
-		print('Iteration %i out of %i for closest anchors.'%(i+1,s))
-		pinds = matrix_squeeze(pos[:,i].todense()) if sparse else pos[:,i].squeeze()
-		Z[np.arange(n), pinds] = val[:,i].T
+	if not sparse:
+		print('Constructing Z.')
+		for i in xrange(s):
+			print('Iteration %i out of %i for closest anchors.'%(i+1,s))
+			pinds = matrix_squeeze(pos[:,i].todense()) if sparse else pos[:,i].squeeze()
+			Z[np.arange(n), pinds] = val[:,i].T
 	if sparse:
+		print ('Converting Z to CSR.')
 		Z = Z.tocsr()
 	# del val
 	# del pos
