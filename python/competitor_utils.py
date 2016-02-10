@@ -43,7 +43,6 @@ def data_kmeans(dataset = 'HIGGS'):
 	n_jobs = 10
 
 	save_file = osp.join(data_dir, '%s_kmeans%i'%(dataset,k))
-	
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
 
@@ -51,7 +50,6 @@ def create_AG (dataset = 'covtype', flag=1, s=5, cn=10, normalized=True, k=None)
 	t1 = time.time()
 	if dataset == 'HIGGS':
 		X,Y,_ = du.load_higgs()
-		Xk = np.load()
 	elif dataset == 'SUSY':
 		X,Y,_ = du.load_SUSY()
 	elif dataset == 'covtype':

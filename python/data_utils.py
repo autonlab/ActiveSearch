@@ -21,6 +21,10 @@ np.set_printoptions(suppress=True, precision=5, linewidth=100)
 data_dir = os.getenv('AS_DATA_DIR')
 results_dir = os.getenv('AS_RESULTS_DIR')
 
+def matrix_squeeze(X):
+	# converts into numpy.array and squeezes out singular dimensions
+	return np.squeeze(np.asarray(X))
+
 def min_sparse(X):
 	if len(X.data) == 0:
 		return 0
@@ -317,7 +321,7 @@ def load_sql (fname):
 
 	fn.close()
 
-def change_prev (X, Y, prev=0.005, save=False, save_file=None):
+def change_prev (X, Y, prev=0.005, save=False, save_file=None, return_inds=False):
 	# Changes the prevalence of positves to $prev
 	pos = Y.nonzero()[0]
 	neg = (Y==0).nonzero()[0]
@@ -336,10 +340,13 @@ def change_prev (X, Y, prev=0.005, save=False, save_file=None):
 			save_file = osp.join(data_dir, 'SUSY_projected_prev%.4f.csv'%prev)
 		np.savetxt(save_file, np.c_[Y2,X2.T], delimiter=',')
 
-	return X2, Y2
+	if return_inds:
+		return X2, Y2, prev_idxs
+	else:
+		return X2, Y2
 
 
-def stratified_sample (X, Y, classes, strat_frac=0.1):
+def stratified_sample (X, Y, classes, strat_frac=0.1, return_inds=False):
 
 	inds = []
 	for c in classes:
@@ -350,7 +357,10 @@ def stratified_sample (X, Y, classes, strat_frac=0.1):
 	Xs = X[:,inds]
 	Ys = Y[inds]
 
-	return Xs, Ys
+	if return_inds:
+		return Xs, Ys, inds
+	else:
+		return Xs, Ys
 
 def return_average_positive_neighbors (X, Y, k):
 	Y = np.asarray(Y)

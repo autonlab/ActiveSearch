@@ -150,6 +150,7 @@ class LapSVMData:
 	def __init__(self, X, Y, options, K = None, L = None, Kv=None, Yv=None, sparse=True):
 		self.X = X
 		self.Y = Y
+
 		self.options = options
 		if K is None:
 			self.K = CalcKernel(options, X)#ss.csr_matrix(X.dot(X.T))
@@ -557,6 +558,8 @@ def newton(data, options=None, alpha=None, b=None, oc=None):
 			lsiters[t] = 0
 			Kalpha = data.K.dot(alpha)
 
+	if options.Verbose:
+		print('Done with Newton\'s method.')
 	lsiters = lsiters[0:t]
 	sec = time.time() - t1
 	return alpha,b,t,sec,lsiters
@@ -758,6 +761,8 @@ def pcg(data=None, options=None,alpha=None,b=None,oc=None):
 
 	sec = time.time() - t1
 
+	if options.Verbose:
+		print('Done with PCG.')
 	lsiters = lsiters[0:t]
 	if len(stats) > 0:
 		stats=stats[0:t,:]

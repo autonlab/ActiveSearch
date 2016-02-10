@@ -213,7 +213,7 @@ def  sqdist (A, B, sparse=True, normalized=False):
 
 
 
-def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=False):
+def AnchorGraph(TrainData, Anchor, s=2, flag=1, cn=5, sparse=True, normalized=False):
 	# %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 	# % 
 	# % AnchorGraph
@@ -306,7 +306,7 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 				val[i,:] = LAE(xi,U,cn,sparse=False)
 				# print ('%.5f\n'%(time.time()-t1))
 			print('Performing LAE for %i out of %i points.\n'%(n,n))
-			val = val.tocsr()		
+			val = val.tocsc()		
 		else:
 			for i in xrange(n):
 				xi = TrainData[:,i]

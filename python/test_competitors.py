@@ -9,7 +9,6 @@ import cPickle as pick
 # import sqlparse as sql
 
 import activeSearchInterface as ASI
-import competitorsInterface as CI
 import similarityLearning as SL
 
 import data_utils as du
