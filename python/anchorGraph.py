@@ -298,7 +298,7 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 			print('Constructing Z.\n')
 
 			for i in xrange(n):
-				print('Performing LAE for %i out of %i points.'%(i+1,n))
+				print('Performing LAE for %i out of %i points.'%(i+1,n), end='\r')
 				# print (i)
 				# t1 = time.time()
 				xi = TrainData[:,i].todense().A.squeeze()
