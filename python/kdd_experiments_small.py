@@ -22,7 +22,6 @@ import anchorGraph as AG
 
 import IPython
 
-
 def test_covtype (seed=None, prev=0.05, verbose=True, save=False):
 	if seed is not None:
 		nr.seed(seed)

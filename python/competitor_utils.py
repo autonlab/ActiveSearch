@@ -44,14 +44,14 @@ def data_kmeans(dataset='HIGGS', k=100, n_jobs=10):
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
 
-def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=None):
+def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=100, ft=None, proj=False):
 	t1 = time.time()
 	if dataset == 'HIGGS':
-		X,Y,_ = du.load_higgs()
+		X,Y,_ = du.load_higgs(normalized=False)
 	elif dataset == 'SUSY':
-		X,Y,_ = du.load_SUSY()
+		X,Y,_ = du.load_SUSY(normalized=False)
 	elif dataset == 'covtype':
-		X,Y,_ = du.load_covertype()
+		X,Y,_ = du.load_covertype(normalized=False)
 	print('Time taken to load %s data: %.2f\n'%(dataset, time.time()-t1))
 
 	if k is None:
@@ -59,6 +59,9 @@ def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=None):
 	else:
 		kmeans_fl = osp.join(data_dir, '%s_kmeans%i.npz'%(dataset,k))
 	Anchors = np.load(kmeans_fl)['arr_0']
+	
+	if ft is not None:
+		X = ft(X, sparse=True)
 
 	t1 = time.time()
 	Z,rL = AG.AnchorGraph(X, Anchors.T, s=s, flag=flag, cn=cn, sparse=True, normalized=normalized)

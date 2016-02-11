@@ -49,6 +49,7 @@ def bias_square_ft (X,sparse=True):
 	else:
 		return np.r_[X,X*X,np.ones((1,X.shape[1]))]	
 
+def project_data
 
 
 def load_covertype (target=4, sparse=True, normalize=True):
