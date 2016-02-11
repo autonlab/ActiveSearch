@@ -75,10 +75,10 @@ def test_SUSY_small (arg_dict):
 	print ('Time taken to load SUSY data: %.2f'%(time.time()-t1))
 	t1 = time.time()
 	if proj:
-		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300_proj.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans100_proj.npz')
 		Z,rL = AG.load_AG(ag_file)
 	else:
-		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans100.npz')
 		Z,rL = AG.load_AG(ag_file)
 	print ('Time taken to load SUSY AG: %.2f'%(time.time()-t1))
 	
@@ -248,10 +248,10 @@ def test_SUSY_large (arg_dict):
 	print ('Time taken to load SUSY data: %.2f'%(time.time()-t1))
 	t1 = time.time()
 	if proj:
-		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300_proj.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans100_proj.npz')
 		Z,rL = AG.load_AG(ag_file)
 	else:
-		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans100.npz')
 		Z,rL = AG.load_AG(ag_file)
 	print ('Time taken to load SUSY AG: %.2f'%(time.time()-t1))
 	

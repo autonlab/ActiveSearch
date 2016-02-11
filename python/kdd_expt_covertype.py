@@ -225,7 +225,7 @@ def test_covtype_large (arg_dict):
 	sparse = True
 	pi = 0.5
 	eta = 0.5
-	K = 100
+	K = 200
 	
 	t1 = time.time()
 	X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
