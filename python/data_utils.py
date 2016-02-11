@@ -49,7 +49,21 @@ def bias_square_ft (X,sparse=True):
 	else:
 		return np.r_[X,X*X,np.ones((1,X.shape[1]))]	
 
-def project_data
+def project_data (X,Y,NT=10000,random_coeff=0.0,sparse=True):
+
+	r,n = X.shape
+	train_samp = nr.permutation(n)[:NT]
+
+	X_train = X[:,train_samp]
+	if sparse:
+		X_train = X_train.todense()
+	Y_train = Y[train_samp]
+
+	T = np.matrix([Y_train,(1.0-Y_train)]).T
+	X2inv = nlg.inv(X_train.dot(X_train.T) + random_coeff*nr.random((r,r)))
+	L = X2inv.dot(X_train.dot(tgt))
+
+	return L, train_samp
 
 
 def load_covertype (target=4, sparse=True, normalize=True):

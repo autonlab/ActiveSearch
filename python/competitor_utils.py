@@ -54,20 +54,33 @@ def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=100, f
 	print('Time taken to load %s data: %.2f\n'%(dataset, time.time()-t1))
 
 	if k is None:
-		kmeans_fl = osp.join(data_dir, '%s_kmeans.npz'%dataset)
+		kmeans_fl = osp.join(data_dir, '%s_kmeans_unnormalized.npz'%dataset)
 	else:
-		kmeans_fl = osp.join(data_dir, '%s_kmeans%i.npz'%(dataset,k))
+		kmeans_fl = osp.join(data_dir, '%s_kmeans%i_unnormalized.npz'%(dataset,k))
 	Anchors = np.load(kmeans_fl)['arr_0']
 	
 	if ft is not None:
 		X = ft(X, sparse=True)
+		Anchors = ft(Anchors.T, sparse=False).T
+
+	if proj:
+		N = 10000
+		random_coeff = 0.01 if dataset is 'covtype' else 0
+		L, train_samp = du.project_data(X,Y,NT=N,random_coeff=random_coeff, sparse=True)
+		rem_inds = np.ones(X.shape[1]).astype(bool)
+		rem_inds[train_samp] = False
+
+		X = ss.csc_matrix(L.T.dot(X[:,rem_inds]))
+		Y = Y[rem_inds]
+		Anchors = Anchors.dot(L)
 
 	t1 = time.time()
-	Z,rL = AG.AnchorGraph(X, Anchors.T, s=s, flag=flag, cn=cn, sparse=True, normalized=normalized)
+	# Measuring "distance" only based on dot-product
+	Z,rL = AG.AnchorGraph(X, Anchors.T, s=s, flag=flag, cn=cn, sparse=True, normalized=True)
 	print('Time taken to generate AG: %.2f\n'%(time.time()-t1))
 
-	if k is None:
-		ag_file = osp.join(data_dir, '%s_AG_kmeans'%dataset)
+	if proj:
+		ag_file = osp.join(data_dir, '%s_AG_kmeans%i_proj'%(dataset, k))
 	else:
 		ag_file = osp.join(data_dir, '%s_AG_kmeans%i'%(dataset, k))
 
@@ -76,5 +89,14 @@ def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=100, f
 	print('Time taken to save AG: %.2f\n'%(time.time()-t1))
 
 if __name__ == '__main__':
-	# create_AG('covtype')
-	data_kmeans('HIGGS')
+	create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_ft, proj=False)
+	# create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_ft, proj=True)
+	# data_kmeans('covtype', k=300)
+
+	# create_AG('SUSY', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=False)
+	# create_AG('SUSY', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=True)
+	# data_kmeans('SUSY', k=100)
+
+	# create_AG('HIGGS', s=3, cn=5, normalized=True, k=100, ft=du.bias_square_ft, proj=False)
+	# create_AG('HIGGS', s=3, cn=10, normalized=True, k=100, ft=du.bias_square_ft, proj=True)
+	# data_kmeans('HIGGS', k=100)
