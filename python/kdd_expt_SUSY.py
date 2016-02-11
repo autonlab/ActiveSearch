@@ -352,8 +352,8 @@ if __name__ == '__main__':
 	## Argument 4: projected features or normal features
 
 	exp_type = 1
-	num_expts = 3
-	prev = 0.05
+	num_expts = 10
+	prev = 0.01
 	proj = False
 
 	if len(sys.argv) > 1:
@@ -378,9 +378,9 @@ if __name__ == '__main__':
 		try:
 			prev = float(sys.argv[3])
 		except:
-			prev = 0.05
+			prev = 0.01
 		if prev < 0 or prev > 0.05:
-			prev = 0.05	
+			prev = 0.01	
 
 	if len(sys.argv) > 4:
 		try:
