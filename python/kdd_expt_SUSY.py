@@ -22,9 +22,9 @@ import anchorGraph as AG
 
 import IPython
 
-results_dir = osp.join(du.results_dir, 'kdd/covtype/expts')
+results_dir = osp.join(du.results_dir, 'kdd/SUSY/expts')
 
-def test_covtype_small (arg_dict):
+def test_SUSY_small (arg_dict):
 
 	if 'seed' in arg_dict:
 		seed = arg_dict['seed']
@@ -42,6 +42,8 @@ def test_covtype_small (arg_dict):
 		save = arg_dict['save']
 	else: save = False
 
+	nr.seed()
+
 	verbose=True
 	sparse = True
 	pi = 0.5
@@ -49,10 +51,10 @@ def test_covtype_small (arg_dict):
 	K = 10
 	
 	t1 = time.time()
-	X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
-	X0 = du.bias_square_ft(X0,sparse=True)
+	X0,Y0,classes = du.load_SUSY(sparse=sparse, normalize=False)
+	X0 = du.bias_normalize_ft(X0,sparse=True)
 	if proj:
-		proj_file = osp.join(du.data_dir, 'covtype_proj_mat.npz')
+		proj_file = osp.join(du.data_dir, 'SUSY_proj_mat.npz')
 		proj_data = np.load(proj_file)
 		L = proj_data['L']
 		train_samp = proj_data['train_samp']
@@ -63,7 +65,6 @@ def test_covtype_small (arg_dict):
 		X0 = ss.csc_matrix(ss.csc_matrix(L).T.dot(X0[:,rem_inds]))
 		Y0 = Y0[rem_inds]
 
-	nr.seed(seed)
 	## DUMMY STUFF
 	# n = 1000
 	# r = 20
@@ -71,15 +72,15 @@ def test_covtype_small (arg_dict):
 	# print (X0.shape)
 	# Y0 = np.array([1]*int(n/2) + [0]*(n-int(n/2)))
 	##
-	print ('Time taken to load covtype data: %.2f'%(time.time()-t1))
+	print ('Time taken to load SUSY data: %.2f'%(time.time()-t1))
 	t1 = time.time()
 	if proj:
-		ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300_proj.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300_proj.npz')
 		Z,rL = AG.load_AG(ag_file)
 	else:
-		ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300.npz')
 		Z,rL = AG.load_AG(ag_file)
-	print ('Time taken to load covtype AG: %.2f'%(time.time()-t1))
+	print ('Time taken to load SUSY AG: %.2f'%(time.time()-t1))
 	
 	# Changing prevalence of +
 	if Y0.sum()/Y0.shape[0] < prev:
@@ -203,7 +204,7 @@ def test_covtype_small (arg_dict):
 		IPython.embed()
 
 
-def test_covtype_large (arg_dict):
+def test_SUSY_large (arg_dict):
 
 	if 'seed' in arg_dict:
 		seed = arg_dict['seed']
@@ -221,17 +222,19 @@ def test_covtype_large (arg_dict):
 		save = arg_dict['save']
 	else: save = False
 
+	nr.seed()
+
 	verbose=True
 	sparse = True
 	pi = 0.5
 	eta = 0.5
-	K = 100
+	K = 200
 	
 	t1 = time.time()
-	X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
-	X0 = du.bias_square_ft(X0,sparse=True)
+	X0,Y0,classes = du.load_SUSY(sparse=sparse, normalize=False)
+	X0 = du.bias_square_normalize_ft(X0,sparse=True)
 	if proj:
-		proj_file = osp.join(du.data_dir, 'covtype_proj_mat.npz')
+		proj_file = osp.join(du.data_dir, 'SUSY_proj_mat.npz')
 		proj_data = np.load(proj_file)
 		L = proj_data['L']
 		train_samp = proj_data['train_samp']
@@ -242,17 +245,15 @@ def test_covtype_large (arg_dict):
 		X0 = ss.csc_matrix(ss.csc_matrix(L).T.dot(X0[:,rem_inds]))
 		Y0 = Y0[rem_inds]
 
-	nr.seed(seed)
-
-	print ('Time taken to load covtype data: %.2f'%(time.time()-t1))
+	print ('Time taken to load SUSY data: %.2f'%(time.time()-t1))
 	t1 = time.time()
 	if proj:
-		ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300_proj.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300_proj.npz')
 		Z,rL = AG.load_AG(ag_file)
 	else:
-		ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300.npz')
+		ag_file = osp.join(du.data_dir, 'SUSY_AG_kmeans300.npz')
 		Z,rL = AG.load_AG(ag_file)
-	print ('Time taken to load covtype AG: %.2f'%(time.time()-t1))
+	print ('Time taken to load SUSY AG: %.2f'%(time.time()-t1))
 	
 	# Changing prevalence of +
 	if Y0.sum()/Y0.shape[0] < prev:
@@ -305,8 +306,6 @@ def test_covtype_large (arg_dict):
 
 	print ('Time taken to initialize all approaches: %.2f'%(time.time()-t1))
 	print ('Beginning experiment.')
-
-	IPython.embed()
 
 	for i in xrange(K):
 
@@ -389,15 +388,11 @@ if __name__ == '__main__':
 		except:
 			proj = False
 
-	test_funcs = {1:test_covtype_small, 2:test_covtype_large}
-
-
-	nr.seed(int((time.clock()%(0.01))*10e6))
-	seeds = nr.choice(int(10e6),num_expts,replace=False)
-	print seeds
-	# seed = range(1, num_expts+1)
-	save = (num_expts != 1)
-	arg_dicts = [{'prev':prev, 'proj':proj, 'seed':s, 'save':save} for s in seeds]
+	test_funcs = {1:test_SUSY_small, 2:test_SUSY_large}
+	# seeds = nr.choice(10e6,num_expts,replace=False)
+	seed = range(1, num_expts+1)
+	save = True
+	arg_dicts = [{'prev':prev, 'proj':proj, 'seed':s, 'save':save} for s in seed]
 
 	if num_expts == 1:
 		print ('Running 1 experiment')
