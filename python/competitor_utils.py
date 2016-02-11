@@ -32,15 +32,15 @@ def data_kmeans(dataset='HIGGS', k=100, n_jobs=10):
 
 	t1 = time.time()
 	if dataset == 'HIGGS':
-		X,Y,_ = du.load_higgs()
+		X,Y,_ = du.load_higgs(normalized=False)
 	elif dataset == 'SUSY':
-		X,Y,_ = du.load_SUSY()
+		X,Y,_ = du.load_SUSY(normalized=False)
 	elif dataset == 'covtype':
 		X,Y,_ = du.load_covertype(normalized=False)
 	print('Time taken to load %s data: %.2f\n'%(dataset, time.time()-t1))
 
 
-	save_file = osp.join(data_dir, '%s_kmeans%i'%(dataset,k))
+	save_file = osp.join(data_dir, '%s_kmeans%i_unnormalized'%(dataset,k))
 
 	Xk = save_kmeans(X.T, save_file, k=k, n_jobs=n_jobs)
 
