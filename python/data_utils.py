@@ -35,10 +35,24 @@ def min_sparse(X):
 def bias_normalize_ft (X, sparse=True):
 	## Data -- r x n for r features and n points
 	if sparse:
+		n = X.shape[1]
 		X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
-		X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
+		X = X.dot(ss.spdiags([1/X_norms],[0],n,n)) # Normalization
 		return ss.vstack([X,ss.csr_matrix(np.ones((1,X.shape[1])))]).tocsc()
 	else:
+		X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
+		X = X/X_norms # Normalization
+		return np.r_[X,np.ones((1,X.shape[1]))]
+
+def bias_square_normalize_ft (X,sparse=True):
+	if sparse:
+		n = X.shape[1]
+		X = ss.vstack([X,X.multiply(X)])
+		X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
+		X = X.dot(ss.spdiags([1/X_norms],[0],n,n)) # Normalization
+		return ss.vstack([X,ss.csr_matrix(np.ones((1,X.shape[1])))]).tocsc()
+	else:
+		X = np.r_[X,X*X]
 		X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
 		X = X/X_norms # Normalization
 		return np.r_[X,np.ones((1,X.shape[1]))]
@@ -48,22 +62,6 @@ def bias_square_ft (X,sparse=True):
 		return ss.vstack([X,X.multiply(X),ss.csr_matrix(np.ones((1,X.shape[1])))]).tocsc()
 	else:
 		return np.r_[X,X*X,np.ones((1,X.shape[1]))]	
-
-def project_data (X,Y,NT=10000,random_coeff=0.0,sparse=True):
-
-	r,n = X.shape
-	train_samp = nr.permutation(n)[:NT]
-
-	X_train = X[:,train_samp]
-	if sparse:
-		X_train = X_train.todense()
-	Y_train = Y[train_samp]
-
-	T = np.matrix([Y_train,(1.0-Y_train)]).T
-	X2inv = nlg.inv(X_train.dot(X_train.T) + random_coeff*nr.random((r,r)))
-	L = X2inv.dot(X_train.dot(tgt))
-
-	return L, train_samp
 
 
 def load_covertype (target=4, sparse=True, normalize=True):
@@ -345,6 +343,27 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 		np.savetxt(save_file, np.c_[Y2,X2.T], delimiter=',')
 	else:
 		return X2, Y2
+
+def project_data2 (X,Y,NT=10000,sparse=True):
+
+	r,n = X.shape
+	train_samp = nr.permutation(n)[:NT]
+
+	X_train = X[:,train_samp]
+	if sparse:
+		X_train = X_train.todense()
+	Y_train = Y[train_samp]
+
+	T = np.array([Y_train,(1.0-Y_train)]).T
+
+	try:
+		L = nlg.inv(X_train.dot(X_train.T)).dot(X_train.dot(T))
+	except:
+		L = nlg.pinv(X_train.T).dot(T)
+	# X2inv = nlg.inv(X_train.dot(X_train.T) + random_coeff*nr.random((r,r)))
+	# L = X2inv.dot(X_train.dot(T))
+
+	return L, train_samp
 
 def load_sql (fname):
 	# dummy function

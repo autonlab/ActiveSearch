@@ -68,15 +68,14 @@ def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=100, f
 	if proj:
 		t1 = time.time()
 		N = 10000
-		random_coeff = 0.01 if dataset is 'covtype' else 0
-		L, train_samp = du.project_data(X,Y,NT=N,random_coeff=random_coeff, sparse=True)
+		L, train_samp = du.project_data2(X,Y,NT=N, sparse=True)
 		rem_inds = np.ones(X.shape[1]).astype(bool)
 		rem_inds[train_samp] = False
 
-		X = ss.csc_matrix(L.T.dot(X[:,rem_inds]))
+		X = (ss.csc_matrix(L).T.dot(X[:,rem_inds])).tocsc()
 		Y = Y[rem_inds]
-		Anchors = Anchors.dot(L)
-		save_proj_file = osp.join(data_dir, '%s_proj_mat')
+		Anchors = du.matrix_squeeze(Anchors.dot(L))
+		save_proj_file = osp.join(data_dir, '%s_proj_mat'%dataset)
 		np.savez(save_proj_file, L=L, train_samp=train_samp)
 		print('Time taken for projection: %.2f\n'%(time.time()-t1))
 
@@ -95,14 +94,14 @@ def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=100, f
 	print('Time taken to save AG: %.2f\n'%(time.time()-t1))
 
 if __name__ == '__main__':
-	create_AG('covtype', s=10, cn=10, normalized=True, k=300, ft=du.bias_square_ft, proj=False)
-	# create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_ft, proj=True)
+	# create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_normalize_ft, proj=False)
+	create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_normalize_ft, proj=True)
 	# data_kmeans('covtype', k=300)
 
 	# create_AG('SUSY', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=False)
 	# create_AG('SUSY', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=True)
 	# data_kmeans('SUSY', k=100)
 
-	# create_AG('HIGGS', s=3, cn=5, normalized=True, k=100, ft=du.bias_square_ft, proj=False)
-	# create_AG('HIGGS', s=3, cn=10, normalized=True, k=100, ft=du.bias_square_ft, proj=True)
+	# create_AG('HIGGS', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=False)
+	# create_AG('HIGGS', s=3, cn=10, normalized=True, k=100, ft=du.bias_normalize_ft, proj=True)
 	# data_kmeans('HIGGS', k=100)
