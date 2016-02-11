@@ -32,11 +32,11 @@ def data_kmeans(dataset='HIGGS', k=100, n_jobs=10):
 
 	t1 = time.time()
 	if dataset == 'HIGGS':
-		X,Y,_ = du.load_higgs(normalized=False)
+		X,Y,_ = du.load_higgs(normalize=False)
 	elif dataset == 'SUSY':
-		X,Y,_ = du.load_SUSY(normalized=False)
+		X,Y,_ = du.load_SUSY(normalize=False)
 	elif dataset == 'covtype':
-		X,Y,_ = du.load_covertype(normalized=False)
+		X,Y,_ = du.load_covertype(normalize=False)
 	print('Time taken to load %s data: %.2f\n'%(dataset, time.time()-t1))
 
 
@@ -75,4 +75,4 @@ def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=None):
 
 if __name__ == '__main__':
 	# create_AG('covtype')
-	data_kmeans('covtype')
+	data_kmeans('HIGGS')
