@@ -37,7 +37,7 @@ def bias_normalize_ft (X, sparse=True):
 	if sparse:
 		X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
 		X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
-		return ss.vstack([X,ss.csr_matrix(np.ones((1,X.shape[1])))])
+		return ss.vstack([X,ss.csr_matrix(np.ones((1,X.shape[1])))]).tocsc()
 	else:
 		X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
 		X = X/X_norms # Normalization
@@ -45,7 +45,7 @@ def bias_normalize_ft (X, sparse=True):
 
 def bias_square_ft (X,sparse=True):
 	if sparse:
-		return ss.vstack([X,X.multiply(X),ss.csr_matrix(np.ones((1,X.shape[1])))])
+		return ss.vstack([X,X.multiply(X),ss.csr_matrix(np.ones((1,X.shape[1])))]).tocsc()
 	else:
 		return np.r_[X,X*X,np.ones((1,X.shape[1]))]	
 

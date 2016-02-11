@@ -344,6 +344,10 @@ def AnchorGraph(TrainData, Anchor, s=5, flag=1, cn=10, sparse=True, normalized=F
 	# del ind
 	# del TrainData
 	# del Anchor
+	Zsum = Z.sum(0)
+	if (Zsum==0).any():
+		Zinds = matrix_squeeze((Z.sum(0)!=0)).astype(bool)
+		Z = Z[:,Zinds]
 
 	print('Constructing T = Z.T*Z')
 	T = Z.T.dot(Z)
