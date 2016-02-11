@@ -183,7 +183,7 @@ if __name__=='__main__':
 	if proj:
 		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f/proj/'%(dset_name, expt_type, prev))
 	else:
-		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f/2'%(dset_name, expt_type, prev))
+		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f'%(dset_name, expt_type, prev))
 
 	tname = {1:'CoverType',2:'SUSY',3:'HIGGS'}[dset]
 	slname = {1:' Small ', 2:' '}[sl]

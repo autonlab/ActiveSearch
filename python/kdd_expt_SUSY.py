@@ -242,6 +242,17 @@ def test_SUSY_large (arg_dict):
 		rem_inds = np.ones(X0.shape[1]).astype(bool)
 		rem_inds[train_samp] = False
 
+		if L.shape[0] != X0.shape[1]:
+			X_train = X0[:,train_samp].todense()
+			Y_train = Y0[train_samp]
+
+			T = np.array([Y_train,(1.0-Y_train)]).T
+
+			try:
+				L = nlg.inv(X_train.dot(X_train.T)).dot(X_train.dot(T))
+			except:
+				L = nlg.pinv(X_train.T).dot(T)
+
 		X0 = ss.csc_matrix(ss.csc_matrix(L).T.dot(X0[:,rem_inds]))
 		Y0 = Y0[rem_inds]
 
