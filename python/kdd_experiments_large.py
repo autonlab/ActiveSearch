@@ -69,7 +69,7 @@ def test_covtype (seed=None, prev=0.05, verbose=True, save=False):
 	# IPython.embed()
 
 	# init points
-	n_init = 2
+	n_init = 1
 	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),n_init,replace=False)]
 	init_labels = {p:1 for p in init_pt}
 
@@ -86,28 +86,6 @@ def test_covtype (seed=None, prev=0.05, verbose=True, save=False):
 	NNAS = CI.averageNNAS (NNprms)
 	NNAS.initialize(X, init_labels=init_labels)
 	print ('NNAS initialized.')
-	
-	# # lapSVM AS
-	# relearnT = 1
-	# LapSVMoptions = LapSVM.LapSVMOptions()
-	# LapSVMoptions.gamma_I = 1
-	# LapSVMoptions.gamma_A = 1e-5
-	# LapSVMoptions.NN = 6
-	# LapSVMoptions.KernelParam = 0.35
-	# LapSVMoptions.Verbose = False ## setting this to be false
-	# LapSVMoptions.UseBias = True
-	# LapSVMoptions.UseHinge = True
-	# LapSVMoptions.LaplacianNormalize = False
-	# LapSVMoptions.NewtonLineSearch = False
-	# LapSVMoptions.Cg = 1 # PCG
-	# LapSVMoptions.MaxIter = 1000  # upper bound
-	# LapSVMoptions.CgStopType = 1 # 'stability' early stop
-	# LapSVMoptions.CgStopParam = 0.015 # tolerance: 1.5%
-	# LapSVMoptions.CgStopIter = 3 # check stability every 3 iterations
-	# LapSVMprms = CI.lapSVMParameters(options=LapSVMoptions, relearnT=relearnT, sparse=False, verbose=verbose)
-	# LapSVMAS = CI.lapsvmAS (LapSVMprms)
-	# LapSVMAS.initialize(du.matrix_squeeze(X.todense()), init_labels=init_labels)
-	# print ('LapSVMAS initialized.')
 
 	# # anchorGraph AS
 	gamma = 0.01
@@ -118,7 +96,6 @@ def test_covtype (seed=None, prev=0.05, verbose=True, save=False):
 
 	hits_K = [n_init]
 	hits_NN = [n_init]
-	# hits_LSVM = [n_init]
 	hits_AG = [n_init]
 
 	print ('Time taken to initialize all approaches: %.2f'%(time.time()-t1))
@@ -135,17 +112,13 @@ def test_covtype (seed=None, prev=0.05, verbose=True, save=False):
 		NNAS.setLabelCurrent(Y[idx2])
 		hits_NN.append(hits_NN[-1]+Y[idx2])
 
-		# idx3 = LapSVMAS.getNextMessage()
-		# LapSVMAS.setLabelCurrent(Y[idx3])
-		# hits_LSVM.append(hits_LSVM[-1]+Y[idx3])
-
 		idx4 = AGAS.getNextMessage()
 		AGAS.setLabelCurrent(Y[idx4])
 		hits_AG.append(hits_AG[-1]+Y[idx4])
 		print('')
 	
 	# Calculate KNN Accuracy
-	IPython.embed()
+	if s
 	# save_results = {'kAS': hits1, 'aAS':hits2, 'knn_native':knn_avg_native, 'knn_learned':knn_avg_learned}
 	# fname = 'covertype/expt1_seed_%d_npos_%d_nneg_%d.cpk'%(seed, n_samples_pos, n_samples_neg)
 	# fname = osp.join(results_dir, fname)

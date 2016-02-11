@@ -31,6 +31,26 @@ def min_sparse(X):
 	m = X.data.min()
 	return m if X.getnnz() == X.size else min(m, 0)
 
+## some feature transforms
+def bias_normalize_ft (X, sparse=True):
+	## Data -- r x n for r features and n points
+	if sparse:
+		X_norms = np.sqrt(((X.multiply(X)).sum(axis=0))).A.squeeze()
+		X = X.dot(ss.spdiags([1/X_norms],[0],c,c)) # Normalization
+		return ss.vstack([X,ss.csr_matrix(np.ones((1,X.shape[1])))])
+	else:
+		X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
+		X = X/X_norms # Normalization
+		return np.r_[X,np.ones((1,X.shape[1]))]
+
+def bias_square_ft (X,sparse=True):
+	if sparse:
+		return ss.vstack([X,X.multiply(X),ss.csr_matrix(np.ones((1,X.shape[1])))])
+	else:
+		return np.r_[X,X*X,np.ones((1,X.shape[1]))]	
+
+
+
 def load_covertype (target=4, sparse=True, normalize=True):
 
 	fname = osp.join(data_dir, 'covtype.data')
