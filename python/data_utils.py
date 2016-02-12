@@ -390,6 +390,14 @@ def project_data3 (X,Y,NT=10000):
 
 	return X, Y, L, train_samp
 
+def apply_proj(X,Y,L,train_samp):
+	rem_inds = np.ones(X.shape[1]).astype(bool)
+	rem_inds[train_samp] = False
+
+	X = (ss.csc_matrix(L).T.dot(X[:,rem_inds])).tocsc()
+	Y = Y[rem_inds]
+	return X, Y
+
 def load_sql (fname):
 	# dummy function
 	fn = open(fname,'r')

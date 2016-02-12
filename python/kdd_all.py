@@ -147,6 +147,7 @@ if __name__ == '__main__':
 	parser.add_argument('--num_expts', help='number of experiments', default=3, type=int, choices=range(1,11))
 	parser.add_argument('--prev', help='prevalence of positive class', default=0.05, type=float)
 	parser.add_argument('--proj', help='use projection', action='store_true')
+	parser.add_argument('--load_proj', help='load projection', action='store_true')
 	parser.add_argument('--n_init', help='number of initial positives', default=1, type=int)
 	parser.add_argument('--save', help='save results', action='store_true')
 
@@ -158,6 +159,7 @@ if __name__ == '__main__':
 	if prev < 0 or prev > 0.05:
 		prev = 0.05
 	proj = args.proj
+	load_proj = args.load_proj
 	save = args.save
 	n_init = args.n_init
 	if n_init < 1: n_init = 1
@@ -187,20 +189,37 @@ if __name__ == '__main__':
 		
 
 	if proj:
-		X0, Y0, L, train_samp = du.project_data3 (X0,Y0,NT=10000)
-		Anchors = du.matrix_squeeze(Anchors.dot(L))
-		save_proj_file = osp.join(data_dir, '%s_proj_mat_%.2f'%(dset, prev))
-		np.savez(save_proj_file, L=np.array(L), train_samp=train_samp)
+		if load_proj:
+			proj_file = osp.join(data_dir, '%s_proj_mat_%.2f.npz'%(dset, prev))
+			
+			if dset == 'covtype':			
+				ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.3f.npz'%(dset, prev))
+			else:
+				ag_file = osp.join(data_dir,'%s_AG_kmeans100_proj_%.3f.npz'%(dset, prev))
 
-		ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.3f'%(dset, prev))
-		t1 = time.time()
-		if dset == 'covtype':
-			Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=3, flag=1, cn=10, sparse=True, normalized=True)
+			projdat = np.load(proj_file)
+			L = projdat['L']
+			train_samp = projdat['train_samp']
+			X0, Y0 = du.apply_proj(X0,Y0,L,train_samp)
+			# Anchors = du.matrix_squeeze(Anchors.dot(L))
+
+			Z0,rL = AG.load_AG(ag_file)
 		else:
-			Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=2, flag=1, cn=5, sparse=True, normalized=True)
-		print ('Time taken to get AG: %.2f'%(time.time()-t1))
+			X0, Y0, L, train_samp = du.project_data3 (X0,Y0,NT=10000)
+			Anchors = du.matrix_squeeze(Anchors.dot(L))
 
-		AG.save_AG(ag_file, Z0, rL)
+			save_proj_file = osp.join(data_dir, '%s_proj_mat_%.2f'%(dset, prev))
+			np.savez(save_proj_file, L=np.array(L), train_samp=train_samp)
+
+			if dset == 'covtype':
+				ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.3f'%(dset, prev))
+				Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=3, flag=1, cn=10, sparse=True, normalized=True)
+			else:
+				ag_file = osp.join(data_dir,'%s_AG_kmeans100_proj_%.3f'%(dset, prev))
+				Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=2, flag=1, cn=5, sparse=True, normalized=True)
+			print ('Time taken to get AG: %.2f'%(time.time()-t1))
+
+			AG.save_AG(ag_file, Z0, rL)
 	else:
 		if dset == 'covtype':
 			ag_file = osp.join(data_dir,'covtype_AG_kmeans300.npz')
