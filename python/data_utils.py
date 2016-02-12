@@ -319,7 +319,7 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	if remove_samples:
 		cols_to_keep = np.where(np.logical_not(np.in1d(np.arange(n), train_idx)))[0]
 		X2 = X[:,cols_to_keep]
-		Y2 = np.delete(Y,train_idx,0)
+		Y2 = Y2[cols_to_keep]#np.delete(Y,train_idx,0)
 	
 	# Target feature matrix
 	T = np.array([Y_train,(1.0-Y_train)]).T
@@ -332,7 +332,7 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 		# L = X2inv.dot(X_train.dot(T))
 
 	X2 = ss.csr_matrix(L).T.dot(X2)
-	X2 = X2.todense().A - min_sparse(X2)
+	# X2 = X2.todense().A - min_sparse(X2)
 
 	# IPython.embed()
 	

@@ -35,13 +35,15 @@ def get_expts_from_dir (dir_path):
 			with open(osp.join(dir_path,fname),'r') as fh: 
 				expt_data.append(pick.load(fh))
 
-	hits = {k:[] for k in alg_names}
+	hits = {}
 
 	for dat in expt_data:
 		for k in dat.keys():
+			if k not in hits:
+				hits[k] = []
 			hits[k].append(dat[k])
-
-	hits = {k:np.array(hits[k]) for k in alg_names}
+	IPython.embed()
+	hits = {k:np.array(hits[k]) for k in hits}
 	return hits
 
 # def plot_expts (hits, title = '', save=True):
@@ -90,15 +92,15 @@ def plot_expts (hits, prev=0, max_possible=None, ind_expts=False, title='', save
 	ax = plt.subplot()
 
 	if ind_expts:
-		for k in alg_names:
+		for k in hits:
 			for run in range(num_exp):
 				plt.plot(itr, hits[k][run, :], color=color_map[k], alpha=0.2, linewidth=2)
 			plt.plot(itr, mean_hits[k], label=name_map[k], color=color_map[k], linewidth=5)
 	else:
-		for k in alg_names:
-			y1 = mean_hits[k]-std_hits[k]
+		for k in hits:
+			y1 = mean_hits[k]-0.5*std_hits[k]
 			y1 = np.where(y1>0, y1, 0)
-			y2 = mean_hits[k]+std_hits[k]
+			y2 = mean_hits[k]+0.5*std_hits[k]
 			y2 = np.where(y2<ideal, y2, ideal)
 
 			ax.fill_between(itr, y1, y2, where=(y2 >= y1), facecolor=color_map[k], alpha=0.2, interpolate=True)
@@ -155,7 +157,7 @@ if __name__=='__main__':
 			sl = int(sys.argv[2])
 		except:
 			sl = 1
-		if sl not in [1,2]:
+		if sl not in [1,2,3]:
 			sl = 2
 
 	if len(sys.argv) > 3:
@@ -179,14 +181,14 @@ if __name__=='__main__':
 			save = False
 
 	dset_name = {1:'covtype',2:'SUSY',3:'HIGGS'}[dset]
-	expt_type = {1:'small',2:'large'}[sl]
+	expt_type = {1:'small',2:'large', 3:'simple'}[sl]
 	if proj:
 		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f/proj/'%(dset_name, expt_type, prev))
 	else:
 		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f'%(dset_name, expt_type, prev))
 
 	tname = {1:'CoverType',2:'SUSY',3:'HIGGS'}[dset]
-	slname = {1:' Small ', 2:' '}[sl]
+	slname = {1:' Small ', 2:' ', 3:' Simple'}[sl]
 	if proj:
 		title = '%s%swith Projected Features'%(tname, slname)
 	else:
