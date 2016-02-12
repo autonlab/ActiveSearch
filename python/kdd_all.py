@@ -176,7 +176,7 @@ if __name__ == '__main__':
 	elif dset == 'SUSY':
 		X0,Y0,classes = du.load_SUSY(sparse=True, normalize=False)
 	else:
-		X0,Y0,classes = du.load_HIGGS(sparse=True, normalize=False)
+		X0,Y0,classes = du.load_higgs(sparse=True, normalize=False)
 	print ('Time taken to load %s data: %.2f'%(dset, time.time()-t1))
 
 	if dset == 'covtype':
