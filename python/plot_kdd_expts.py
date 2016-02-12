@@ -176,6 +176,7 @@ if __name__=='__main__':
 	else:
 		title = '%s with Native Features'%(tname)
 		if save: save = '%s_prev%.2f'%(dset,prev)
+	if ptype == 'log': save + 'log'
 
 	hits = get_expts_from_dir(dname)
 	plot_expts (hits, prev=prev/100, stdc=stdc, max_possible=None, ind_expts=False, title=title, save=save, ptype=ptype)

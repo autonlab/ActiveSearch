@@ -93,6 +93,7 @@ def Adjacency (X, options):
 	else:
 		raise Exception('Unknown weight type')
 
+	A = matrix_squeeze(A.todense())
 	A = A + (A!=A.T).multiply(A.T) # symmetrize
 	return A
 	
