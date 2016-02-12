@@ -362,16 +362,13 @@ def test_covtype_simple (arg_dict):
 
 	verbose=True
 	sparse = True
+	nr.seed()
 	
 	t1 = time.time()
 	X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
 	X0 = du.bias_square_normalize_ft(X0,sparse=True)
 	if proj:
-
-		X0 = ss.csc_matrix(ss.csc_matrix(L).T.dot(X0[:,rem_inds]))
-		Y0 = Y0[rem_inds]
-
-	nr.seed(seed)
+		X0, Y0, L, train_samp = du.project_data3 (X0,Y0,NT=10000)
 
 	# print ('Time taken to load covtype data: %.2f'%(time.time()-t1))
 	# t1 = time.time()
@@ -402,14 +399,14 @@ def test_covtype_simple (arg_dict):
 	d,n = X.shape
 
 	# init points
-	n_init = 1
+	n_init = 3
 	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),n_init,replace=False)]
 	init_labels = {p:1 for p in init_pt}
 
 	t1 = time.time()
 	# Kernel AS
 	pi = prev
-	eta = 0.7
+	eta = 0.5
 	ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta)
 	kAS = ASI.kernelAS (ASprms)
 	kAS.initialize(X, init_labels=init_labels)

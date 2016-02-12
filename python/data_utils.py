@@ -365,6 +365,32 @@ def project_data2 (X,Y,NT=10000,sparse=True):
 
 	return L, train_samp
 
+
+def project_data3 (X,Y,NT=10000):
+	# sparse only
+
+	r,n = X.shape
+	train_samp = nr.permutation(n)[:NT]
+
+	X_train = X[:,train_samp]
+	X_train = X_train.todense()
+	Y_train = Y[train_samp]
+
+	T = np.array([Y_train,(1.0-Y_train)]).T
+
+	try:
+		L = nlg.inv(X_train.dot(X_train.T)).dot(X_train.dot(T))
+	except:
+		L = nlg.pinv(X_train.T).dot(T)
+
+	rem_inds = np.ones(X.shape[1]).astype(bool)
+	rem_inds[train_samp] = False
+
+	X = (ss.csc_matrix(L).T.dot(X[:,rem_inds])).tocsc()
+	Y = Y[rem_inds]
+
+	return X, Y, L, train_samp
+
 def load_sql (fname):
 	# dummy function
 	fn = open(fname,'r')

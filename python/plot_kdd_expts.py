@@ -42,7 +42,6 @@ def get_expts_from_dir (dir_path):
 			if k not in hits:
 				hits[k] = []
 			hits[k].append(dat[k])
-	IPython.embed()
 	hits = {k:np.array(hits[k]) for k in hits}
 	return hits
 
@@ -181,14 +180,14 @@ if __name__=='__main__':
 			save = False
 
 	dset_name = {1:'covtype',2:'SUSY',3:'HIGGS'}[dset]
-	expt_type = {1:'small',2:'large', 3:'simple'}[sl]
+	expt_type = {1:'small',2:'large', 3:'main'}[sl]
 	if proj:
 		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f/proj/'%(dset_name, expt_type, prev))
 	else:
 		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f'%(dset_name, expt_type, prev))
 
 	tname = {1:'CoverType',2:'SUSY',3:'HIGGS'}[dset]
-	slname = {1:' Small ', 2:' ', 3:' Simple'}[sl]
+	slname = {1:' Small ', 2:' ', 3:' Main '}[sl]
 	if proj:
 		title = '%s%swith Projected Features'%(tname, slname)
 	else:
