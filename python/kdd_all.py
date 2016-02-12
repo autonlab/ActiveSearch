@@ -191,7 +191,7 @@ if __name__ == '__main__':
 		save_proj_file = osp.join(data_dir, '%s_proj_mat_%.2f'%(dset, prev))
 		np.savez(save_proj_file, L=np.array(L), train_samp=train_samp)
 
-		IPython.embed()
+		ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.3f'%(dset, prev))
 		t1 = time.time()
 		if dset == 'covtype':
 			Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=3, flag=1, cn=10, sparse=True, normalized=True)
@@ -199,7 +199,6 @@ if __name__ == '__main__':
 			Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=2, flag=1, cn=5, sparse=True, normalized=True)
 		print ('Time taken to get AG: %.2f'%(time.time()-t1))
 
-		ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.2f'%(dset, prev))
 		AG.save_AG(ag_file, Z0, rL)
 	else:
 		if dset == 'covtype':
