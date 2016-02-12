@@ -191,12 +191,12 @@ if __name__ == '__main__':
 
 	if proj:
 		if load_proj:
-			proj_file = osp.join(data_dir, '%s_proj_mat_%.3f.npz'%(dset, prev))
+			proj_file = osp.join(data_dir, '%s_proj_mat_%.4f.npz'%(dset, prev))
 			
 			if dset == 'covtype':			
-				ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.3f.npz'%(dset, prev))
+				ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.4f.npz'%(dset, prev))
 			else:
-				ag_file = osp.join(data_dir,'%s_AG_kmeans100_proj_%.3f.npz'%(dset, prev))
+				ag_file = osp.join(data_dir,'%s_AG_kmeans100_proj_%.4f.npz'%(dset, prev))
 
 			projdat = np.load(proj_file)
 			L = projdat['L']
@@ -209,14 +209,14 @@ if __name__ == '__main__':
 			X0, Y0, L, train_samp = du.project_data3 (X0,Y0,NT=10000)
 			Anchors = du.matrix_squeeze(Anchors.dot(L))
 
-			save_proj_file = osp.join(data_dir, '%s_proj_mat_%.3f'%(dset, prev))
+			save_proj_file = osp.join(data_dir, '%s_proj_mat_%.4f'%(dset, prev))
 			np.savez(save_proj_file, L=np.array(L), train_samp=train_samp)
 
 			if dset == 'covtype':
-				ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.3f'%(dset, prev))
+				ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.4f'%(dset, prev))
 				Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=3, flag=1, cn=10, sparse=True, normalized=True)
 			else:
-				ag_file = osp.join(data_dir,'%s_AG_kmeans100_proj_%.3f'%(dset, prev))
+				ag_file = osp.join(data_dir,'%s_AG_kmeans100_proj_%.4f'%(dset, prev))
 				Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=2, flag=1, cn=5, sparse=True, normalized=True)
 			print ('Time taken to get AG: %.2f'%(time.time()-t1))
 
