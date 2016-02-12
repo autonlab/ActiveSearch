@@ -26,6 +26,13 @@ name_map = {'kAS': 'Linearized AS',
 color_map = {'kAS': 'b', 
 			'NNAS': 'r',
 			'AGAS': 'g'}
+linestyle_map = {'kAS': '-', 
+				'NNAS': '--',
+				'AGAS': ''}
+marker_map = {	'kAS': '', 
+		    	'NNAS': '',
+				'AGAS': 'o'}
+
 alg_names = ['kAS', 'NNAS', 'AGAS']
 
 def get_expts_from_dir (dir_path):
@@ -75,7 +82,7 @@ def get_expts_from_dir (dir_path):
 
 # 	plt.show()
 
-def plot_expts (hits, prev=0, max_possible=None, ind_expts=False, title='', save=False):
+def plot_expts (hits, prev=0, stdc=0.25, max_possible=None, ind_expts=False, title='', save=False, ptype='lin'):
 
 	num_exp, max_iter = hits[hits.keys()[0]].shape
 	mean_hits = {k:hits[k].mean(axis=0).squeeze() for k in hits}
@@ -83,7 +90,7 @@ def plot_expts (hits, prev=0, max_possible=None, ind_expts=False, title='', save
 	max_hits = {k:hits[k].max(axis=1).squeeze() for k in hits}
 
 	itr = range(max_iter)
-	chance = (np.array(itr)*prev).tolist()
+	chance = (1 + np.array(itr)*prev).tolist()
 	if max_possible is None:
 		ideal = (np.array(itr)+1).tolist()
 	else:
@@ -94,47 +101,51 @@ def plot_expts (hits, prev=0, max_possible=None, ind_expts=False, title='', save
 	if ind_expts:
 		for k in hits:
 			for run in range(num_exp):
-				plt.plot(itr, hits[k][run, :], color=color_map[k], alpha=0.2, linewidth=2)
-			plt.plot(itr, mean_hits[k], label=name_map[k], color=color_map[k], linewidth=5)
+				plt.plot(itr, hits[k][run, :], color=color_map[k], alpha=0.2, linewidth=2, marker=marker_map[k], linestyle=linestyle_map[k])
+			plt.plot(itr, mean_hits[k], color=color_map[k], label=name_map[k], linewidth=5, marker=marker_map[k], linestyle=linestyle_map[k])
 	else:
 		for k in hits:
-			y1 = mean_hits[k]-0.5*std_hits[k]
-			y1 = np.where(y1>0, y1, 0)
-			print y1.min()
-			y2 = mean_hits[k]+0.5*std_hits[k]
+			y1 = mean_hits[k]-stdc*std_hits[k]
+			y1 = np.where(y1>1, y1, 1)
+			y2 = mean_hits[k]+stdc*std_hits[k]
 			y2 = np.where(y2<ideal, y2, ideal)
 
 			ax.fill_between(itr, y1, y2, where=(y2 >= y1), facecolor=color_map[k], alpha=0.2, interpolate=True)
-			ax.plot(itr, y1, color=color_map[k], linewidth=1)
-			ax.plot(itr, y2, color=color_map[k], linewidth=1)
-			ax.plot(itr, mean_hits[k], label=name_map[k], color=color_map[k], linewidth=5)
+			ax.plot(itr, y1, color=color_map[k], linewidth=1)#, marker=marker_map[k], linestyle=linestyle_map[k])
+			ax.plot(itr, y2, color=color_map[k], linewidth=1)#, marker=marker_map[k], linestyle=linestyle_map[k])
+			ax.plot(itr, mean_hits[k], color=color_map[k], label=name_map[k], 
+					linewidth=5, marker=marker_map[k], markevery=2, linestyle=linestyle_map[k])
 
 	# ideal and random chance
 	ax.plot(itr, ideal, 'k', label='Ideal', linewidth=4)
-	ax.plot(itr, chance, 'ko', label='Chance', alpha=0.5, linewidth=4)
+	ax.plot(itr, chance, 'kx', label='Chance', alpha=0.5, linewidth=4, markevery=2)
 
-	plt.xlabel('Iterations',fontsize=50)
-	plt.ylabel('Number of Hits',fontsize=50)
-	plt.legend(loc=1)
+	plt.xlabel('Iterations',fontsize=30)
+	plt.ylabel('Number of Hits',fontsize=30)
+	plt.legend(loc=2, fontsize=25)
 
-	if title:
-			plt.title(title, y=1.02, fontsize=50)
+	if ptype=='log':
+		ax.set_yscale('log')
 
 	if save:
-			fname = title+'.png'
+			fname = osp.join(results_dir, 'kdd/imgs', save+'.png')
 			fig = plt.figure(1)
 			fig.set_size_inches(24,14)
 			plt.savefig(fname, format='png', transparent=True, facecolor='w')
-
-	# if show:
-	plt.show()
-
+	else:
+		plt.title(title, y=1.02, fontsize=50)
+		# if show:
+		plt.show()
 
 if __name__=='__main__':
+	matplotlib.rcParams.update({'font.size': 25})
+
 	parser = argparse.ArgumentParser(description='KDD expts.')
 	parser.add_argument('--dset', help='dataset', default='covtype', type=str, choices=['covtype', 'SUSY', 'HIGGS'])
 	parser.add_argument('--etype', help='expt type', default='main', type=str, choices=['main'])
+	parser.add_argument('--ptype', help='plot type', default='lin', type=str, choices=['lin', 'log'])
 	parser.add_argument('--prev', help='prevalence of positive class', default=0.05, type=float)
+	parser.add_argument('--stdc', help='+/- stdc*stddev in plots', default=0.5, type=float)
 	parser.add_argument('--proj', help='use projection', action='store_true')
 	parser.add_argument('--save', help='save results', action='store_true')
 
@@ -142,11 +153,16 @@ if __name__=='__main__':
 
 	dset = args.dset
 	etype = args.etype
+	ptype = args.ptype
 	prev = args.prev
 	if prev < 0 or prev > 5.00:
 		prev = 5.00
 	proj = args.proj
 	save = args.save
+	stdc = args.stdc
+	if stdc < 0 or stdc > 1:
+		stdc = 0.5
+
 
 	if proj:
 		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f/proj/'%(dset, etype, prev))
@@ -156,8 +172,10 @@ if __name__=='__main__':
 	tname = {'covtype':'CoverType','SUSY':'SUSY','HIGGS':'HIGGS'}[dset]
 	if proj:
 		title = '%s with Projected Features'%(tname)
+		if save: save = '%s_proj_prev%.2f'%(dset,prev)
 	else:
 		title = '%s with Native Features'%(tname)
+		if save: save = '%s_prev%.2f'%(dset,prev)
 
 	hits = get_expts_from_dir(dname)
-	plot_expts (hits, prev=prev/100, max_possible=None, ind_expts=False, title=title, save=save)
+	plot_expts (hits, prev=prev/100, stdc=stdc, max_possible=None, ind_expts=False, title=title, save=save, ptype=ptype)
