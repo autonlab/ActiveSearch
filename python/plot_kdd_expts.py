@@ -99,6 +99,7 @@ def plot_expts (hits, prev=0, max_possible=None, ind_expts=False, title='', save
 		for k in hits:
 			y1 = mean_hits[k]-0.5*std_hits[k]
 			y1 = np.where(y1>0, y1, 0)
+			print y1.min()
 			y2 = mean_hits[k]+0.5*std_hits[k]
 			y2 = np.where(y2<ideal, y2, ideal)
 

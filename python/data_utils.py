@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
 # import matplotlib.pyplot as plt
@@ -212,7 +212,6 @@ def load_SUSY (sparse=True, fname=None, normalize=False):
 			sdat.extend(xvec[xcol].tolist())
 
 			c += 1
-		assert len(line) == r+1
 
 		X = ss.csc_matrix((sdat, (rows, cols)), shape=(r, c))
 

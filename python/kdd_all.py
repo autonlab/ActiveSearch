@@ -21,11 +21,6 @@ import IPython
 
 def test_dataset (arg_dict):
 
-	X0 = arg_dict['X0']
-	Y0 = arg_dict['Y0']
-	Z = arg_dict['Z']
-	rL = arg_dict['rL']
-
 	if 'seed' in arg_dict:
 		seed = arg_dict['seed']
 	else: seed = None
@@ -50,21 +45,20 @@ def test_dataset (arg_dict):
 		results_dir = arg_dict['results_dir']
 	else: results_dir = osp.join(du.results_dir, 'kdd/covtype/expts')
 
-
 	verbose=True
 	sparse = True
 	nr.seed()
 
 	t1 = time.time()
-	
+
 	# Changing prevalence of +
 	if Y0.sum()/Y0.shape[0] < prev:
 		prev = Y0.sum()/Y0.shape[0]
-		X,Y = X0,Y0
+		X,Y,Z = X0,Y0,Z0
 	else:
 		t1 = time.time()
 		X,Y,inds = du.change_prev (X0,Y0,prev=prev,return_inds=True)
-		Z = Z[inds, :]
+		Z = Z0[inds, :]
 		print ('Time taken to change prev: %.2f'%(time.time()-t1))
 
 	strat_frac = 1.0
@@ -197,28 +191,30 @@ if __name__ == '__main__':
 		save_proj_file = osp.join(data_dir, '%s_proj_mat_%.2f'%(dset, prev))
 		np.savez(save_proj_file, L=np.array(L), train_samp=train_samp)
 
+		IPython.embed()
 		t1 = time.time()
 		if dset == 'covtype':
-			Z,rL = AG.AnchorGraph(X0, Anchors.T, s=3, flag=1, cn=10, sparse=True, normalized=True)
+			Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=3, flag=1, cn=10, sparse=True, normalized=True)
 		else:
-			Z,rL = AG.AnchorGraph(X0, Anchors.T, s=2, flag=1, cn=5, sparse=True, normalized=True)
+			Z0,rL = AG.AnchorGraph(X0, Anchors.T, s=2, flag=1, cn=5, sparse=True, normalized=True)
 		print ('Time taken to get AG: %.2f'%(time.time()-t1))
 
-		ag_file = osp.join(data_dir,'/%s_AG_kmeans300_proj_%.2f'%(dset, prev))
-		AG.save_AG(ag_file, Z, rL)
+		ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.2f'%(dset, prev))
+		AG.save_AG(ag_file, Z0, rL)
 	else:
 		if dset == 'covtype':
 			ag_file = osp.join(data_dir,'covtype_AG_kmeans300.npz')
 		else:
 			ag_file = osp.join(data_dir,'%s_AG_kmeans100.npz'%dset)
-		Z,rL = AG.load_AG(ag_file)
+		Z0,rL = AG.load_AG(ag_file)
 
 	# seeds = nr.choice(int(10e6),num_expts,replace=False)
 	seeds = range(1, num_expts+1)
 
 	arg_dicts = []
 	for s in seeds:
-		arg_dicts.append({'X0':X0, 'Y0':Y0, 'Z':Z, 'rL':rL, 'prev':prev, 'proj':proj, 'n_init':n_init, 'seed':s, 'save':save, 'results_dir':results_dir})
+		# arg_dicts.append({'X0':X0, 'Y0':Y0, 'Z0':Z0, 'rL':rL, 'prev':prev, 'proj':proj, 'n_init':n_init, 'seed':s, 'save':save, 'results_dir':results_dir})
+		arg_dicts.append({'prev':prev, 'proj':proj, 'n_init':n_init, 'seed':s, 'save':save, 'results_dir':results_dir})
 
 	if num_expts == 1:
 		print ('Running 1 experiment')
