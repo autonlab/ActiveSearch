@@ -155,9 +155,10 @@ if __name__ == '__main__':
 
 	dset = args.dset
 	prev = args.prev
-	num_expts = args.num_expts
 	if prev < 0 or prev > 0.05:
 		prev = 0.05
+	num_expts = args.num_expts
+
 	proj = args.proj
 	load_proj = args.load_proj
 	save = args.save
@@ -190,7 +191,7 @@ if __name__ == '__main__':
 
 	if proj:
 		if load_proj:
-			proj_file = osp.join(data_dir, '%s_proj_mat_%.2f.npz'%(dset, prev))
+			proj_file = osp.join(data_dir, '%s_proj_mat_%.3f.npz'%(dset, prev))
 			
 			if dset == 'covtype':			
 				ag_file = osp.join(data_dir,'%s_AG_kmeans300_proj_%.3f.npz'%(dset, prev))
@@ -208,7 +209,7 @@ if __name__ == '__main__':
 			X0, Y0, L, train_samp = du.project_data3 (X0,Y0,NT=10000)
 			Anchors = du.matrix_squeeze(Anchors.dot(L))
 
-			save_proj_file = osp.join(data_dir, '%s_proj_mat_%.2f'%(dset, prev))
+			save_proj_file = osp.join(data_dir, '%s_proj_mat_%.3f'%(dset, prev))
 			np.savez(save_proj_file, L=np.array(L), train_samp=train_samp)
 
 			if dset == 'covtype':

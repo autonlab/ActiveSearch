@@ -9,6 +9,7 @@ import time
 import csv
 import os, os.path as osp
 import cPickle as pick
+import argparse
 import IPython
 
 import data_utils as du
@@ -130,70 +131,33 @@ def plot_expts (hits, prev=0, max_possible=None, ind_expts=False, title='', save
 
 
 if __name__=='__main__':
-	import sys
+	parser = argparse.ArgumentParser(description='KDD expts.')
+	parser.add_argument('--dset', help='dataset', default='covtype', type=str, choices=['covtype', 'SUSY', 'HIGGS'])
+	parser.add_argument('--etype', help='expt type', default='main', type=str, choices=['main'])
+	parser.add_argument('--prev', help='prevalence of positive class', default=0.05, type=float)
+	parser.add_argument('--proj', help='use projection', action='store_true')
+	parser.add_argument('--save', help='save results', action='store_true')
 
-	## Argument 1: 1/2/3 -- covtype/SUSY/HIGGS
-	## Argument 2: 1/2 -- small/large
-	## Argument 3: prevalence of +ve class
-	## Argument 4: 0/1 projected features?
-	## Argument 5: 0/1 save?
+	args = parser.parse_args()
 
-	dset = 1
-	sl = 2
-	prev = 0.47
-	proj = False
-	save = False
+	dset = args.dset
+	etype = args.etype
+	prev = args.prev
+	if prev < 0 or prev > 5.00:
+		prev = 5.00
+	proj = args.proj
+	save = args.save
 
-	if len(sys.argv) > 1:
-		try:
-			dset = int(sys.argv[1])
-		except:
-			dset = 1
-		if dset not in [1,2,3]:
-			dset = 1
-
-	if len(sys.argv) > 2:
-		try:
-			sl = int(sys.argv[2])
-		except:
-			sl = 1
-		if sl not in [1,2,3]:
-			sl = 2
-
-	if len(sys.argv) > 3:
-		try:
-			prev = float(sys.argv[3])
-		except:
-			prev = 5.
-		if prev < 0 or prev > 5.0:
-			prev = 5.0
-
-	if len(sys.argv) > 4:
-		try:
-			proj = bool(int(sys.argv[4]))
-		except:
-			proj = False
-
-	if len(sys.argv) > 5:
-		try:
-			save = bool(int(sys.argv[4]))
-		except:
-			save = False
-
-	dset_name = {1:'covtype',2:'SUSY',3:'HIGGS'}[dset]
-	expt_type = {1:'small',2:'large', 3:'main'}[sl]
 	if proj:
-		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f/proj/'%(dset_name, expt_type, prev))
+		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f/proj/'%(dset, etype, prev))
 	else:
-		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f'%(dset_name, expt_type, prev))
+		dname = osp.join(results_dir, 'kdd/%s/expts/%s/%.2f'%(dset, etype, prev))
 
-	tname = {1:'CoverType',2:'SUSY',3:'HIGGS'}[dset]
-	slname = {1:' Small ', 2:' ', 3:' Main '}[sl]
+	tname = {'covtype':'CoverType','SUSY':'SUSY','HIGGS':'HIGGS'}[dset]
 	if proj:
-		title = '%s%swith Projected Features'%(tname, slname)
+		title = '%s with Projected Features'%(tname)
 	else:
-		title = '%s%swith Native Features'%(tname, slname)
-
+		title = '%s with Native Features'%(tname)
 
 	hits = get_expts_from_dir(dname)
 	plot_expts (hits, prev=prev/100, max_possible=None, ind_expts=False, title=title, save=save)
