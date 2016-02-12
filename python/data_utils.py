@@ -318,7 +318,7 @@ def project_data (X, Y, dim = 2, num_samples = 10000, remove_samples=True, save=
 	if remove_samples:
 		cols_to_keep = np.where(np.logical_not(np.in1d(np.arange(n), train_idx)))[0]
 		X2 = X[:,cols_to_keep]
-		Y2 = Y2[cols_to_keep]#np.delete(Y,train_idx,0)
+		Y2 = Y[cols_to_keep]#np.delete(Y,train_idx,0)
 	
 	# Target feature matrix
 	T = np.array([Y_train,(1.0-Y_train)]).T
@@ -382,20 +382,22 @@ def project_data3 (X,Y,NT=10000):
 	except:
 		L = nlg.pinv(X_train.T).dot(T)
 
-	rem_inds = np.ones(X.shape[1]).astype(bool)
-	rem_inds[train_samp] = False
+	cols_to_keep = np.where(np.logical_not(np.in1d(np.arange(n), train_samp)))[0]
+	# rem_inds = np.ones(X.shape[1]).astype(bool)
+	# rem_inds[train_samp] = False
 
-	X = (ss.csc_matrix(L).T.dot(X[:,rem_inds])).tocsc()
-	Y = Y[rem_inds]
+	X = (ss.csc_matrix(L).T.dot(X[:,cols_to_keep])).tocsc()
+	Y = Y[cols_to_keep]
 
-	return X, Y, L, train_samp
+	return X, Y, matrix_squeeze(L), train_samp
 
 def apply_proj(X,Y,L,train_samp):
-	rem_inds = np.ones(X.shape[1]).astype(bool)
-	rem_inds[train_samp] = False
+	cols_to_keep = np.where(np.logical_not(np.in1d(np.arange(X.shape[1]), train_samp)))[0]
+	# rem_inds = np.ones(X.shape[1]).astype(bool)
+	# rem_inds[train_samp] = False
 
-	X = (ss.csc_matrix(L).T.dot(X[:,rem_inds])).tocsc()
-	Y = Y[rem_inds]
+	X = (ss.csc_matrix(L).T.dot(X[:,cols_to_keep])).tocsc()
+	Y = Y[cols_to_keep]
 	return X, Y
 
 def load_sql (fname):
