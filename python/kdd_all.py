@@ -20,7 +20,7 @@ import anchorGraph as AG
 import IPython
 
 def test_dataset (arg_dict):
-
+	global X0, Y0, Z0, rL
 	if 'seed' in arg_dict:
 		seed = arg_dict['seed']
 	else: seed = None
@@ -60,6 +60,7 @@ def test_dataset (arg_dict):
 		X,Y,inds = du.change_prev (X0,Y0,prev=prev,return_inds=True)
 		Z = Z0[inds, :]
 		print ('Time taken to change prev: %.2f'%(time.time()-t1))
+	del X0, Y0, Z0
 
 	strat_frac = 1.0
 	if strat_frac < 1.0:
