@@ -95,13 +95,13 @@ def create_AG (dataset = 'covtype', flag=1, s=3, cn=5, normalized=True, k=100, f
 
 if __name__ == '__main__':
 	# create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_normalize_ft, proj=False)
-	create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_normalize_ft, proj=True)
+	# create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_normalize_ft, proj=True)
 	# data_kmeans('covtype', k=300)
 
 	# create_AG('SUSY', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=False)
 	# create_AG('SUSY', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=True)
 	# data_kmeans('SUSY', k=100)
 
-	# create_AG('HIGGS', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=False)
+	create_AG('HIGGS', s=3, cn=5, normalized=True, k=100, ft=du.bias_normalize_ft, proj=False)
 	# create_AG('HIGGS', s=3, cn=10, normalized=True, k=100, ft=du.bias_normalize_ft, proj=True)
 	# data_kmeans('HIGGS', k=100)

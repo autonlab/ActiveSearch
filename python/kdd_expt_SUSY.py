@@ -226,8 +226,6 @@ def test_SUSY_large (arg_dict):
 
 	verbose=True
 	sparse = True
-	pi = 0.5
-	eta = 0.5
 	K = 200
 	
 	t1 = time.time()
@@ -281,6 +279,8 @@ def test_SUSY_large (arg_dict):
 
 	t1 = time.time()
 	# Kernel AS
+	pi = prev
+        eta = 0.5
 	ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta)
 	kAS = ASI.kernelAS (ASprms)
 	kAS.initialize(X, init_labels=init_labels)
