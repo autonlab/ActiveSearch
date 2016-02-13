@@ -233,53 +233,70 @@ def test_dataset (arg_dict):
 	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),n_init,replace=False)]
 	init_labels = {p:1 for p in init_pt}
 
-	t1 = time.time()
+	
 	# Kernel AS
 	pi = prev
 	eta = 0.5
 	ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta)
 	kAS = ASI.kernelAS (ASprms)
+	t1 = time.time()
 	kAS.initialize(X, init_labels=init_labels)
-	print ('KAS initialized.')
+	kAS_init =time.time()-t1
+	print ('Time taken to initialize KAS approaches: %.2f'%(time.time()-t1))
 	
 	# NN AS
+	
 	normalize = True
 	NNprms = CI.NNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
 	NNAS = CI.averageNNAS (NNprms)
+	t1 = time.time()
 	NNAS.initialize(X, init_labels=init_labels)
-	print ('NNAS initialized.')
+	NNAS_init =time.time()-t1
+	print ('Time taken to initialize NNAS approaches: %.2f'%(time.time()-t1))
 
 	# # anchorGraph AS
 	gamma = 0.01
 	AGprms = CI.anchorGraphParameters(gamma=gamma, sparse=sparse, verbose=verbose)
 	AGAS = CI.anchorGraphAS (AGprms)
+	t1 = time.time()
 	AGAS.initialize(Z, rL, init_labels=init_labels)	
-	print ('AGAS initialized.')
+	AGAS_init =time.time()-t1
+	print ('Time taken to initialize AGAS approaches: %.2f'%(time.time()-t1))
 
 	hits_K = [n_init]
 	hits_NN = [n_init]
 	hits_AG = [n_init]
 
-	print ('Time taken to initialize all approaches: %.2f'%(time.time()-t1))
+	# print ('Time taken to initialize all approaches: %.2f'%(time.time()-t1))
 	print ('Beginning experiment.')
 
-	K = 200
+	elapsed1 = 0
+	elapsed2 = 0
+	elapsed3 = 0
+	K = 5
 	for i in xrange(K):
 
 		print('Iter %i out of %i'%(i+1,K))
 		idx1 = kAS.getNextMessage()
 		kAS.setLabelCurrent(Y[idx1])
 		hits_K.append(hits_K[-1]+Y[idx1])
+		elapsed1 += kAS.elapsed
 
 		idx2 = NNAS.getNextMessage()
 		NNAS.setLabelCurrent(Y[idx2])
 		hits_NN.append(hits_NN[-1]+Y[idx2])
+		elapsed2 += NNAS.elapsed
 
 		idx4 = AGAS.getNextMessage()
 		AGAS.setLabelCurrent(Y[idx4])
 		hits_AG.append(hits_AG[-1]+Y[idx4])
+		elapsed3 += AGAS.elapsed
 		print('')
 	
+	elapsed1 /= K
+	elapsed2 /= K
+	elapsed3 /= K
+
 	if save:
 		if seed is None: 
 			seed = -1

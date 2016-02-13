@@ -654,7 +654,7 @@ class shariAS (genericAS):
 		self.seen_next = False 
 
 		if self.params.verbose:
-			elapsed = time.time() - t1
+			self.elapsed = time.time() - t1
 			print('Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 			
 	def getStartPoint (self):

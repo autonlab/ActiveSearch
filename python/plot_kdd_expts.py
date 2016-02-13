@@ -21,17 +21,17 @@ data_dir = os.getenv('AS_DATA_DIR')
 results_dir = os.getenv('AS_RESULTS_DIR')
 
 name_map = {'kAS': 'Linearized AS', 
-			'NNAS': 'Nearest Neighbor AS',
+			'NNAS': 'Weighted Neighbor AS',
 			'AGAS': 'Anchor Graph AS'}
 color_map = {'kAS': 'b', 
 			'NNAS': 'r',
 			'AGAS': 'g'}
 linestyle_map = {'kAS': '-', 
 				'NNAS': '--',
-				'AGAS': ''}
+				'AGAS': ':'}
 marker_map = {	'kAS': '', 
 		    	'NNAS': '',
-				'AGAS': 'o'}
+				'AGAS': ''}
 
 alg_names = ['kAS', 'NNAS', 'AGAS']
 
@@ -120,25 +120,26 @@ def plot_expts (hits, prev=0, stdc=0.25, max_possible=None, ind_expts=False, tit
 	ax.plot(itr, ideal, 'k', label='Ideal', linewidth=4)
 	ax.plot(itr, chance, 'kx', label='Chance', alpha=0.5, linewidth=4, markevery=2)
 
-	plt.xlabel('Iterations',fontsize=30)
-	plt.ylabel('Number of Hits',fontsize=30)
-	plt.legend(loc=2, fontsize=25)
+	plt.xlabel('Iterations',fontsize=40)
+	plt.ylabel('Number of Hits',fontsize=40)
+	plt.legend(loc=2, fontsize=40)
 
 	if ptype=='log':
 		ax.set_yscale('log')
 
 	if save:
-			fname = osp.join(results_dir, 'kdd/imgs', save+'.png')
-			fig = plt.figure(1)
-			fig.set_size_inches(24,14)
-			plt.savefig(fname, format='png', transparent=True, facecolor='w')
+		fname = osp.join(results_dir, 'kdd/imgs', save+'.pdf')
+		plt.title(title, y=1.02, fontsize=40)
+		fig = plt.figure(1)
+		fig.set_size_inches(24,14)
+		plt.savefig(fname, format='pdf', transparent=True, facecolor='w')
 	else:
-		plt.title(title, y=1.02, fontsize=50)
+		plt.title(title, y=1.02, fontsize=40)
 		# if show:
 		plt.show()
 
 if __name__=='__main__':
-	matplotlib.rcParams.update({'font.size': 25})
+	matplotlib.rcParams.update({'font.size': 40})
 
 	parser = argparse.ArgumentParser(description='KDD expts.')
 	parser.add_argument('--dset', help='dataset', default='covtype', type=str, choices=['covtype', 'SUSY', 'HIGGS'])
@@ -171,13 +172,15 @@ if __name__=='__main__':
 
 	tname = {'covtype':'CoverType','SUSY':'SUSY','HIGGS':'HIGGS'}[dset]
 	if proj:
-		title = '%s with Projected Features'%(tname)
+		# title = '%s with Projected Features'%(tname)
 		if save: save = '%s_proj_prev%.2f'%(dset,prev)
 	else:
-		title = '%s with Native Features'%(tname)
+		# title = '%s with Native Features'%(tname)
 		if save: save = '%s_prev%.2f'%(dset,prev)
 
 	if ptype == 'log': save += '_log'
+
+	title = '%s with %.2f'%(dset, prev) + '% positives'
 
 	hits = get_expts_from_dir(dname)
 	plot_expts (hits, prev=prev/100, stdc=stdc, max_possible=None, ind_expts=False, title=title, save=save, ptype=ptype)

@@ -230,7 +230,7 @@ class averageNNAS (ASI.genericAS):
 		self.seen_next = False 
 
 		if self.params.verbose:
-			elapsed = time.time() - t1
+			self.elapsed = time.time() - t1
 			print('Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 
 		return ret
@@ -425,7 +425,7 @@ class lapsvmAS (ASI.genericAS):
 		self.seen_next = False 
 
 		if self.params.verbose:
-			elapsed = time.time() - t1
+			self.elapsed = time.time() - t1
 			display_iter = display_iter if display_iter else self.iter
 			print( 'LapSVMAS -- Iter: %i, Selected: %i, Hits: %i, Time: %f'%(display_iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 			
@@ -635,7 +635,7 @@ class anchorGraphAS (ASI.genericAS):
 		self.seen_next = False 
 
 		if self.params.verbose:
-			elapsed = time.time() - t1
+			self.elapsed = time.time() - t1
 			display_iter = display_iter if display_iter else self.iter
 			print( 'AGAS -- Iter: %i, Selected: %i, Hits: %i, Time: %f'%(display_iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 			
