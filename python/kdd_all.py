@@ -273,7 +273,7 @@ def test_dataset (arg_dict):
 	elapsed1 = 0
 	elapsed2 = 0
 	elapsed3 = 0
-	K = 5
+	K = 100
 	for i in xrange(K):
 
 		print('Iter %i out of %i'%(i+1,K))
