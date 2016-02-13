@@ -176,9 +176,9 @@ class averageNNAS (ASI.genericAS):
 		self.seen_next = False 
 
 		if self.params.verbose:
-			elapsed = time.time() - t1
+			self.elapsed = time.time() - t1
 			display_iter = display_iter if display_iter else self.iter
-			print( 'NNAS -- Iter: %i, Selected: %i, Hits: %i, Time: %f'%(display_iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
+			print( 'NNAS -- Iter: %i, Selected: %i, Hits: %i, Time: %f'%(display_iter, self.labeled_idxs[-1], self.hits[-1], self.elapsed))
 			
 	def getStartPoint (self):
 		if self.start_point is None:
