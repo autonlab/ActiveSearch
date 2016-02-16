@@ -22,18 +22,24 @@ results_dir = os.getenv('AS_RESULTS_DIR')
 
 name_map = {'kAS': 'Linearized AS', 
 			'NNAS': 'Weighted Neighbor AS',
-			'AGAS': 'Anchor Graph AS'}
+			'AGAS': 'Anchor Graph AS',
+			'LSVMAS': 'LapSVM AS'}
 color_map = {'kAS': 'b', 
 			'NNAS': 'r',
-			'AGAS': 'g'}
+			'AGAS': 'g',
+			'LSVMAS': 'm'
+			}
 linestyle_map = {'kAS': '-', 
 				'NNAS': '--',
-				'AGAS': ':'}
+				'AGAS': ':',
+				'LSVMAS': '-.'
+				}
 marker_map = {	'kAS': '', 
 		    	'NNAS': '',
-				'AGAS': ''}
+				'AGAS': '',
+				'LSVMAS': '*'}
 
-alg_names = ['kAS', 'NNAS', 'AGAS']
+alg_names = ['kAS', 'NNAS', 'AGAS', 'LSVMAS']
 
 def get_expts_from_dir (dir_path):
 	fnames = os.listdir(dir_path)
@@ -143,7 +149,7 @@ if __name__=='__main__':
 
 	parser = argparse.ArgumentParser(description='KDD expts.')
 	parser.add_argument('--dset', help='dataset', default='covtype', type=str, choices=['covtype', 'SUSY', 'HIGGS'])
-	parser.add_argument('--etype', help='expt type', default='main', type=str, choices=['main'])
+	parser.add_argument('--etype', help='expt type', default='main', type=str, choices=['main', 'small'])
 	parser.add_argument('--ptype', help='plot type', default='lin', type=str, choices=['lin', 'log'])
 	parser.add_argument('--prev', help='prevalence of positive class', default=0.05, type=float)
 	parser.add_argument('--stdc', help='+/- stdc*stddev in plots', default=0.5, type=float)
