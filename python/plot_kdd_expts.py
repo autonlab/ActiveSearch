@@ -134,11 +134,11 @@ def plot_expts (hits, prev=0, stdc=0.25, max_possible=None, ind_expts=False, tit
 		ax.set_yscale('log')
 
 	if save:
-		fname = osp.join(results_dir, 'kdd/imgs', save+'.pdf')
-		plt.title(title, y=1.02, fontsize=40)
+		fname = osp.join(results_dir, 'kdd/imgs', save+'.png')
+		# plt.title(title, y=1.02, fontsize=40)
 		fig = plt.figure(1)
-		fig.set_size_inches(24,14)
-		plt.savefig(fname, format='pdf', transparent=True, facecolor='w')
+		fig.set_size_inches(20,16)
+		plt.savefig(fname, format='png', transparent=True, facecolor='w')
 	else:
 		plt.title(title, y=1.02, fontsize=40)
 		# if show:
