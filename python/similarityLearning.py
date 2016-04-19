@@ -10,6 +10,12 @@ def matrix_squeeze(X):
 	# converts into numpy.array and squeezes out singular dimensions
 	return np.squeeze(np.asarray(X))
 
+
+### ----------------------------------------------------------------------- ###
+# Based on:
+# Self-supervised online metric learning with low 
+# rank constraint for scene categorization
+
 class SPSDParameters:
 	# Parameters for SPSD
 	def __init__(self, alpha=1, C1=0, C2=1, gamma=1, margin=None, 
@@ -42,6 +48,7 @@ class SPSDParameters:
 			self.verbose, self.sparse, self.sqrt_eps)
 
 class SPSD:
+
 	# Class for Stochastic Proximal Subgradient Descent for bi-linear sim. learning
 	def __init__(self, params=SPSDParameters()):
 
@@ -182,3 +189,7 @@ class SPSD:
 			S = np.where (np.abs(S) < self.params.sqrt_eps, 0, S)
 			self.sqrtW = U.dot(np.diag(np.sqrt(S))).dot(U.T)
 		return self.sqrtW
+
+### ----------------------------------------------------------------------- ###
+### ----------------------------------------------------------------------- ###
+

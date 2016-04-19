@@ -38,7 +38,7 @@ def test1 (n, cc=2, nt=1, d=4):
 
 	pi = sum(Yfull)/len(Yfull)
 
-	f1,_,_ = AS.kernel_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt)
+	f1,_,_ = AS.linearized_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt)
 
 	Xe, b, w, deg = eigenmap(Xfull.T.dot(Xfull), d)
 	f2,_,_ = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Yfull, options={'num_eval':num_eval,'pi':pi,'init_pt':init_pt,'n_conncomp':b})
@@ -62,7 +62,7 @@ def test2 (n, cc=2, nt=1, d=5):
 	init_pt = 1
 	pi = sum(Yfull)/len(Yfull)
 
-	f1 = AS.kernel_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt)
+	f1 = AS.linearized_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt)
 	f2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Yfull, options={'num_eval':num_eval,'pi':pi,'init_pt':init_pt,'n_conncomp':b})
 
 	import IPython
@@ -109,7 +109,7 @@ def test3 (hubs=3, followers=10):
 	pi = sum(Yfull)/len(Yfull)
 
 	# t1 = time.time()
-	f1,_,_ = AS.kernel_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt)
+	f1,_,_ = AS.linearized_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt)
 	# t2 = time.time()
 	Xe, b, w, deg = eigenmap(Xfull.T.dot(Xfull), d)
 	f2,_,_ = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Yfull, options={'num_eval':num_eval,'pi':pi,'init_pt':init_pt,'n_conncomp':b})
@@ -122,7 +122,7 @@ def test3 (hubs=3, followers=10):
 	# print f1
 	# print f2
 
-	plt.plot(f1, color='r', label='kernel')
+	plt.plot(f1, color='r', label='linearized')
 	plt.plot(f2, color='b', label='lreg')
 	plt.plot(Yfull, color='g', label='true')
 	plt.legend()
@@ -242,9 +242,9 @@ def test4():
 	print "Constructing the similarity matrix:"
 	A = X.T.dot(X)
 	t1 = time.time()
-	print "Performing Kernel AS"
+	print "Performing Linearized AS"
 
-	f1,h1,s1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=None, verbose=verbose)
+	f1,h1,s1 = AS.linearized_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=None, verbose=verbose)
 	t2 = time.time()
 	print "Performing Eigen decmop"
 	Xe, b, w, deg = eigenmap(A, d)
@@ -253,10 +253,10 @@ def test4():
 	f2,h2,s2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b}, verbose=verbose)
 	t4 = time.time()
 
-	print "Time taken for kernel:", t2-t1
+	print "Time taken for linearized:", t2-t1
 	print "Time taken for eigenmap + computing X.T*X:", t3-t2
 	print "Time taken for lreg:", t4-t3
-	print "h_kernel: %i/%i"%(h1[-1],num_eval)
+	print "h_linearized: %i/%i"%(h1[-1],num_eval)
 	print "h_lreg: %i/%i"%(h2[-1],num_eval)
 
 	import IPython
@@ -284,8 +284,8 @@ def testfake():
 		print i
 
 		# print "Constructing the similarity matrix:"
-		# print "Performing Kernel AS"
-		f1,h1,s1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=None, verbose=verbose)
+		# print "Performing Linearized AS"
+		f1,h1,s1 = AS.linearized_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=None, verbose=verbose)
 
 
 def test5():
@@ -310,12 +310,12 @@ def test5():
 	t2 = time.time()
 	f2,_,_ = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Yfull, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b,'init_pt':init_pt}, verbose=verbose)
 	t3 = time.time()
-	f1,_,_ = AS.kernel_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose)
+	f1,_,_ = AS.linearized_AS (Xfull, Yfull, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose)
 	t4 = time.time()
 
 	print "Time taken for eigenmap + computing X.T*X:", t2-t1
 	print "Time taken for lreg:", t3-t2
-	print "Time taken for kernel:", t4-t3
+	print "Time taken for linearized:", t4-t3
 
 	f1 = np.squeeze(f1)
 	f2 = np.squeeze(f2)
@@ -325,7 +325,7 @@ def test5():
 	IPython.embed()
 
 
-# def run_kernel_AS()
+# def run_linearized_AS()
 
 def test6():
 	n = 10
@@ -342,7 +342,7 @@ def test6():
 	drange = [r*2 for r in rrange]
 	nerange = [int(ne_ratio*nv) for nv in nrange]
 
-	t_kernel = []
+	t_linearized = []
 	t_eigendecomp = []
 	t_lreg = []
 	max_error = []
@@ -357,7 +357,7 @@ def test6():
 		A = X.T.dot(X) # Don't really want to include timings for this.
 
 		t1 = time.time()
-		f1,h1,s1 = AS.kernel_AS (X, Y, pi=pi, num_eval=ne, init_pt=None, verbose=verbose)
+		f1,h1,s1 = AS.linearized_AS (X, Y, pi=pi, num_eval=ne, init_pt=None, verbose=verbose)
 		t2 = time.time()
 		Xe, b, w, deg = eigenmap(A, d)
 		t3 = time.time()
@@ -365,18 +365,18 @@ def test6():
 		t4 = time.time()
 
 		print "Parameters: n=%i, nt=%i, r=%i, d=%i, ne=%i"%(n,nt,2*r,d,ne)
-		print "Time taken for kernel:", t2-t1
+		print "Time taken for linearized:", t2-t1
 		print "Time taken for eigenmap + computing X.T*X:", t3-t2
 		print "Time taken for lreg:", t4-t3
 		print "Max error difference:", np.max(np.abs(f1-f2))
 		print
 
-		t_kernel.append(t2-t1)
+		t_linearized.append(t2-t1)
 		t_eigendecomp.append(t3-t2)
 		t_lreg.append(t4-t3)
 		max_error.append(np.max(np.abs(f1-f2)))
 
-	plt.plot(nrange, t_kernel, label='kernel')
+	plt.plot(nrange, t_linearized, label='linearized')
 	plt.plot(nrange, t_eigendecomp, label='eigendecomp')
 	plt.plot(nrange, t_lreg, label='lreg')
 
@@ -420,8 +420,8 @@ def test8():
 	A = X.T.dot(X)
 	t1 = time.time()
 	if ker:
-		print "Performing Kernel AS"
-		f1,h1,s1,fs1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
+		print "Performing Linearized AS"
+		f1,h1,s1,fs1 = AS.linearized_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
 	t2 = time.time()
 	#print "Performing Eigen decmop"
 	#Xe, b, w, deg = eigenmap(A, d)
@@ -432,11 +432,11 @@ def test8():
 		#f2,h2,s2,fs2 = AS.lreg_AS (Xe, deg, d, alpha=0.0, labels=Y, options={'num_eval':num_eval,'pi':pi,'n_conncomp':b}, verbose=verbose)
 	t4 = time.time()
 
-	print "Time taken for kernel:", t2-t1
+	print "Time taken for linearized:", t2-t1
 	#print "Time taken for eigenmap + computing X.T*X:", t3-t2
 	print "Time taken for Shari's method (naive):", t4-t2
 	if ker:
-		print "h_kernel: %i/%i"%(h1[-1],num_eval)
+		print "h_linearized: %i/%i"%(h1[-1],num_eval)
 		print "h_lreg: %i/%i"%(h2[-1],num_eval)
 
 	import IPython
@@ -484,8 +484,8 @@ def test9():
 	IPython.embed()
 
 	t1 = time.time()
-	print "Kernel method"
-	#f1,h1,s1,fs1,dt = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True)
+	print "Lineaized method"
+	#f1,h1,s1,fs1,dt = AS.linearized_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True)
 	t2 = time.time()
 	print "Eigen map"
 	#Xe, b, w, deg = eigenmap(A, d)
@@ -499,7 +499,7 @@ def test9():
 	t4 = time.time()
 	f3,h3,s3,fs3 = AS.shari_activesearch_probs_naive(A, labels=Y, pi=pi, w0=None, eta=None, num_eval=num_eval, init_pt=init_pt, verbose=verbose, all_fs=True)
 
-	print "Time taken for kernel:", t2-t1
+	print "Time taken for linearized:", t2-t1
 	#print "Time taken for inverse:", dt
 	print "Time taken for eigen decomp:", t3 - t2
 	print "Time taken for lreg:", t4-t3
@@ -543,7 +543,7 @@ def test10():
 		print
 	#f3,h3,s3,fs3 = AS.shari_activesearch_probs_naive(A, labels=Y, pi=pi, w0=None, eta=None, num_eval=num_eval, init_pt=init_pt, verbose=verbose, all_fs=True)
 
-	# print "Time taken for kernel:", t2-t1
+	# print "Time taken for linearized:", t2-t1
 	# #print "Time taken for inverse:", dt
 	# print "Time taken for eigen decomp:", t3 - t2
 	# print "Time taken for lreg:", t4-t3
@@ -601,7 +601,7 @@ def test11():
 		Xr = Xr[:,np.nonzero(Xr.sum(axis=0))[1]]
 
 		t1 = time.time()
-		f1,h1,s1,fs1 = AS.kernel_AS (Xr, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
+		f1,h1,s1,fs1 = AS.linearized_AS (Xr, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True)
 		t2 = time.time()
 
 		hits.append(h1[-1][0])
@@ -667,8 +667,8 @@ def test12():
 	#for r in rrange:
 	
 	t1 = time.time()
-	print "Performing the kernel AS"
-	f1,h1,s1,fs1 = AS.kernel_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,sparse=False)
+	print "Performing the Linearized AS"
+	f1,h1,s1,fs1 = AS.linearized_AS (X, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,sparse=False)
 	t2 = time.time()
 
 	# hits.append(h1[-1][0])
@@ -731,9 +731,9 @@ def test13(): # testing sparse AS
 	init_pt = 100
 
 	t1 = time.time()
-	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+	f1,h1,s1,fs1,dtinv1 = AS.linearized_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
 	t2 = time.time()
-	f2,h2,s2,fs2,dtinv2 = AS.kernel_AS (np.array(Xfull.todense()), Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=False)
+	f2,h2,s2,fs2,dtinv2 = AS.linearized_AS (np.array(Xfull.todense()), Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=False)
 	t3 = time.time()
 
 	import IPython
@@ -757,7 +757,7 @@ def test_interface ():
 	t1 = time.time()
 
 	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(Xfull)
 	kAS.firstMessage(init_pt)
 	fs2 = [kAS.f]	
@@ -769,7 +769,7 @@ def test_interface ():
 
 	t2 = time.time()
 
-	f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+	f1,h1,s1,fs1,dtinv1 = AS.linearized_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
 
 	t3 = time.time()
 
@@ -822,7 +822,7 @@ def test_interface2 ():
 	t1 = time.time()
 
 	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
 	sAS = ASI.naiveShariAS(prms)
 	sAS.initialize(A)
@@ -854,7 +854,7 @@ def test_interface2 ():
 
 	t2 = time.time()
 
-	# f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+	# f1,h1,s1,fs1,dtinv1 = AS.linearized_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
 
 	t3 = time.time()
 
@@ -908,7 +908,7 @@ def test_interface3 ():
 	t1 = time.time()
 
 	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
 	sAS = ASI.shariAS(prms)
 	sAS.initialize(A)
@@ -966,7 +966,7 @@ def test_interface3 ():
 
 	t2 = time.time()
 
-	# f1,h1,s1,fs1,dtinv1 = AS.kernel_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
+	# f1,h1,s1,fs1,dtinv1 = AS.linearized_AS (Xfull, Y, pi=pi, num_eval=num_eval, init_pt=init_pt, verbose=verbose,all_fs=True,tinv=True,sparse=True)
 
 	t3 = time.time()
 
@@ -1021,10 +1021,10 @@ def test_warm_start ():
 	t1 = time.time()
 
 	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
 	
-	kAS2 = ASI.kernelAS(prms)
+	kAS2 = ASI.linearizedAS(prms)
 	sAS = ASI.shariAS(prms)
 	sAS2 = ASI.naiveShariAS(prms)
 
@@ -1045,7 +1045,7 @@ def test_warm_start ():
 		# fs3.append(sAS.f)
 
 	print("Batch initializing:")
-	print("Kernel AS:")
+	print("Linearized AS:")
 	kAS2.initialize(X, init_lbls)
 	print("Shari AS:")
 	sAS.initialize(A, init_lbls)
@@ -1098,7 +1098,7 @@ def test_cinv ():
 
 	verbose = True
 	prms = ASI.Parameters(pi=pi,sparse=False, verbose=verbose)	
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
 
 
@@ -1140,7 +1140,7 @@ def test_CC ():
 
 	verbose = True
 	prms = ASI.Parameters(pi=pi,sparse=False, verbose=verbose)	
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
 	
 	sAS = ASI.shariAS(prms)
@@ -1202,7 +1202,7 @@ def test_nan ():
 
 	verbose = True
 	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
 
 
@@ -1252,13 +1252,13 @@ if __name__ == '__main__':
 	# IPython.embed()
 	# plt.figure()
 	# plt.plot(dr, h1,c='b',label='TK')
-	# plt.plot(rr, h2,c='r',label='Kernel')
+	# plt.plot(rr, h2,c='r',label='linearized')
 	# plt.xlabel('d/r')
 	# plt.ylabel('hits')
 	# plt.legend()
 	# plt.figure()
 	# plt.plot(dr, t1,c='b',label='TK')
-	# plt.plot(rr, t2,c='r',label='Kernel')
+	# plt.plot(rr, t2,c='r',label='linearized')
 	# plt.xlabel('d/r')
 	# plt.ylabel('time in s')
 	# plt.legend()

@@ -22,8 +22,8 @@ cpu_count = multiprocessing.cpu_count()
 cpu_count /= 2 #we don't want hyperthreading cores, only physical cores. AMD also kind of cheats by having one FPU per two cores so this seems reasonable as a default
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-m', '--method', default='kernel', help='shari, naiveshari, kernel, default to kernel')
-parser.add_argument('-w', '--wordlimit', default=6000, type=int, help='in kernel mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
+parser.add_argument('-m', '--method', default='linearized', help='shari, naiveshari, linearized, default to linearized')
+parser.add_argument('-w', '--wordlimit', default=6000, type=int, help='in linearized mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
 parser.add_argument('-d', '--database', default='jebbush', help='database name')
 parser.add_argument('-u', '--database_user', default='root', help='database user')
 parser.add_argument('-p', '--database_pass', default='', help='database pass')
@@ -44,14 +44,14 @@ else:
 
 activeSearch = None
 
-# when firstMessage is called we reinitialize the kernel algorithm. However calling
+# when firstMessage is called we reinitialize the linearizedAS algorithm. However calling
 # initialize again requires us to invert C so we could be smarter and save that 
 # For now the invert time is a couple of seconds so we can do that as future work
 restart_save = None
 first_run = True
-if (args.method == "kernel"):
-    print "Using kernelAS"
-    activeSearch = asI.kernelAS()
+if (args.method == "linearized"):
+    print "Using linearizedAS"
+    activeSearch = asI.linearizedAS()
     wMat = dataConn.getFinalFeatureMatrix(args.wordlimit,args.skip_stemmer, args.num_cpus, message_count, 0,0)
     restart_save = wMat.copy()
     activeSearch.initialize(wMat)

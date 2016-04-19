@@ -227,9 +227,9 @@ def test_covtype ():
 	slprms = SL.SPSDParameters(alpha=sl_alpha, C1=sl_C1, C2=sl_C2, gamma=sl_gamma, margin=sl_margin, 
 		epochs=sl_epochs, npairs_per_epoch=sl_npairs_per_epoch, nneg_per_pair=sl_nneg_per_pair, batch_size=sl_batch_size)
 
-	kAS = ASI.kernelAS (prms)
-	# aAS = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=True)
-	aAS = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=False)
+	kAS = ASI.linearizedAS (prms)
+	# aAS = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=True)
+	aAS = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=False)
 
 	kAS.initialize(X,init_labels={p:1 for p in init_pt})
 	aAS.initialize(X,init_labels={p:1 for p in init_pt})
@@ -317,9 +317,9 @@ def test_covtype2 ():
 	slprms = SL.SPSDParameters(alpha=sl_alpha, C1=sl_C1, C2=sl_C2, gamma=sl_gamma, margin=sl_margin, 
 		epochs=sl_epochs, npairs_per_epoch=sl_npairs_per_epoch, nneg_per_pair=sl_nneg_per_pair, batch_size=sl_batch_size)
 
-	kAS = ASI.kernelAS (prms)
-	aAS1 = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=True)
-	aAS2 = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=False)
+	kAS = ASI.linearizedAS (prms)
+	aAS1 = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=True)
+	aAS2 = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=False)
 
 	kAS.initialize(X,init_labels={p:1 for p in init_pt})
 	aAS1.initialize(X,init_labels={p:1 for p in init_pt})

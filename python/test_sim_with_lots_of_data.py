@@ -166,8 +166,8 @@ def test_covtype ():
 
 	prms = ASI.Parameters(pi=pi,sparse=sparse, verbose=True, eta=eta)
 
-	kAS = ASI.kernelAS (prms)
-	aAS = AAS.adaptiveKernelAS(W0, T, prms, slprms)
+	kAS = ASI.linearizedAS (prms)
+	aAS = AAS.adaptiveLinearizedAS(W0, T, prms, slprms)
 
 	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),1,replace=False)]
 

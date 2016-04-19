@@ -95,7 +95,7 @@ class genericAS(object):
 		return self.labels[idx]
 
 
-class kernelAS (genericAS):
+class linearizedAS (genericAS):
 
 	def __init__ (self, params=Parameters()):
 		genericAS.__init__ (self, params)
@@ -749,8 +749,6 @@ class naiveShariAS (genericAS):
 		self.A = A
 		self.n = A.shape[0]
 
-		# self.unlabeled_idxs = range(self.n)
-		# self.labels = [-1]*self.n
 
 		self.labeled_idxs = init_labels.keys()
 		self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
@@ -758,25 +756,17 @@ class naiveShariAS (genericAS):
 		self.labels = np.array([-1]*self.n)
 		self.labels[self.labeled_idxs] = init_labels.values()
 
-
 		# Initialize some parameters and constants which are needed and not yet initialized
 		self.l = (1-self.params.eta)/self.params.eta
 		if self.params.w0 is None:
 			self.params.w0 = 1/self.n
 
-	
 		# Set up some of the initial values of some matrices
-		#B = np.ones(self.n)/(1 + self.params.w0) ##
 		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
 		D = np.squeeze(self.A.sum(1)) ##
 		self.Dinv = 1./D
 		self.BDinv = np.diag(np.squeeze(B*self.Dinv))
-		# if self.params.sparse:
-		# 	self.BDinv = ss.diags([np.squeeze(B*self.Dinv)],[0]).tocsr()
-		# else:
-		# 	self.BDinv = np.squeeze(B*self.Dinv)
 
-		# self.q = (1-B)*self.params.pi*np.ones(self.n) # Need to update q every iteration
 		self.q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
 		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
 
@@ -893,54 +883,7 @@ class naiveShariAS (genericAS):
 	# Need to think a bit about the math here
 	# def resetLabel (self, idx, lbl):
 	# 	# Reset label for given message id
-
 	# 	# If reset label is called on something not yet set, it should do the same as setLabel
-	# 	if self.label[idx] == -1:
-	# 		self.setLabel(idx, lbl)
-	# 		return
-	# 	elif self.label[idx] == lbl:
-	# 		print("Already the same value!")
-	# 		return
-
-	# 	if self.params.verbose:
-	# 		t1 = time.time()
-
-	# 	# just in case, force lbl to be 0 or 1
-	# 	lbl = 0 if lbl <= 0 else 1
-	
-	# 	# First, some book-keeping
-	# 	# Message is already labeled, se we don't change self.unlabeled_idx
-	# 	self.iter += 1 # We're increasing iter because it will be consistent with "hits"
-	# 	self.labels[idx] = lbl
-
-	# 	# Updating various parameters to calculate next f
-	# 	# Cinv is already correct as it does not depend on the label -- just whether the nodes are labeled or not
-	# 	# self.q[idx] = lbl*self.l/(1+self.l) --> old
-	# 	gamma = (lbl-self.labels[idx])*self.l/(1+self.l)
-	# 	ei = np.zeros((self.n,1))
-	# 	ei[idx] = 1
-	
-	# 	# f = q + Aq + gamma*(ei + Aei)
-	# 	if self.params.sparse:
-	# 		self.f = self.f + gamma*self.BDinv.dot(((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(ei))))))
-	# 	else:
-	# 		self.f = self.f + gamma*self.BDinv*((self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(ei)))))
-	# 	self.f[idx] += gamma
-	# 	self.q[idx] += gamma
-
-	# 	# Some more book-keeping
-	# 	self.hits.append(self.hits[-1] + (-1 if lbl == 0 else 1))
-
-	# 	# Finding the next message to show -- get the current max element
-	# 	uidx = np.argmax(self.f[self.unlabeled_idxs])
-	# 	self.next_message = self.unlabeled_idxs[uidx]
-	# 	# Now that a new message has been selected, mark it as unseen
-	# 	self.seen_next = False 
-	# 	# this is confusing. What if they reset something before they mark "current email" as something? Not sure
-
-	# 	if self.params.verbose:
-	# 		elapsed = time.time() - t1
-	#		print 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed)
 
 	def getNextMessage (self):
 		if self.next_message is None:
@@ -963,4 +906,3 @@ class naiveShariAS (genericAS):
 	def getLabel (self, idx):
 		# 0 is boring, 1 is interesting and -1 is unlabeled
 		return self.labels[idx]
-

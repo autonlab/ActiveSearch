@@ -20,7 +20,7 @@ import IPython
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
-# data_dir = osp.join(os.getenv('HOME'),  'Research/Data/ActiveSearch/Kyle/data/KernelAS')
+# data_dir = osp.join(os.getenv('HOME'),  'Research/Data/ActiveSearch/Kyle/data/linearizedAS')
 # results_dir = osp.join(os.getenv('HOME'),  'Classes/10-725/project/ActiveSearch/results')
 data_dir = os.getenv('AS_DATA_DIR')
 results_dir = os.getenv('AS_RESULTS_DIR')
@@ -238,9 +238,9 @@ def test_covtype (seed=0):
 	slprms = SL.SPSDParameters(alpha=sl_alpha, C1=sl_C1, C2=sl_C2, gamma=sl_gamma, margin=sl_margin, 
 		epochs=sl_epochs, npairs_per_epoch=sl_npairs_per_epoch, nneg_per_pair=sl_nneg_per_pair, batch_size=sl_batch_size)
 
-	kAS = ASI.kernelAS (prms)
-	aAS1 = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=True)
-	aAS2 = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=False)
+	kAS = ASI.linearizedAS (prms)
+	aAS1 = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=True)
+	aAS2 = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=False)
 
 	kAS.initialize(X,init_labels={p:1 for p in init_pt})
 	aAS1.initialize(X,init_labels={p:1 for p in init_pt})
@@ -318,9 +318,9 @@ def test_higgs (seed=0):
 	slprms = SL.SPSDParameters(alpha=sl_alpha, C1=sl_C1, C2=sl_C2, gamma=sl_gamma, margin=sl_margin, 
 		epochs=sl_epochs, npairs_per_epoch=sl_npairs_per_epoch, nneg_per_pair=sl_nneg_per_pair, batch_size=sl_batch_size)
 
-	kAS = ASI.kernelAS (prms)
-	aAS1 = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=True)
-	aAS2 = AAS.adaptiveKernelAS(W0, T, prms, slprms, from_all_data=False)
+	kAS = ASI.linearizedAS (prms)
+	aAS1 = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=True)
+	aAS2 = AAS.adaptiveLinearizedAS(W0, T, prms, slprms, from_all_data=False)
 
 	kAS.initialize(X,init_labels={p:1 for p in init_pt})
 	aAS1.initialize(X,init_labels={p:1 for p in init_pt})

@@ -30,7 +30,7 @@ def plot_heatmap (M,title):
 	plt.show()
 
 
-def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, alpha=0.2, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
+def linearized_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, alpha=0.2, init_pt=None, verbose=True, all_fs=False, sparse=False, tinv=False):
 	"""
 	X 			--> r x n matrix of feature values for each point.
 	labels 		--> true labels for each point.
@@ -262,7 +262,7 @@ def kernel_AS (X, labels, num_initial=1, num_eval=1, pi=0.05, eta=0.5, w0=None, 
 	# P = S*D
 	# M = np.array(np.diag(D+P)-X.T.dot(X))
 	# Mi = nlg.inv(M)
-	# plot_heatmap(Mi, 'kernelAS')
+	# plot_heatmap(Mi, 'linearizedAS')
 
 	if all_fs:
 		if tinv: return f, hits, selected, fs, dtinv

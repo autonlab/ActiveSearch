@@ -70,7 +70,7 @@ def test_vals ():
 	verbose = True
 	w0 = 0.0
 	prms = ASI.Parameters(pi=pi, w0=w0, sparse=True, verbose=verbose)
-	kAS = ASI.kernelAS(prms)
+	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
 
 	import IPython 
@@ -177,7 +177,7 @@ def test_20ng ():
 	prms1 = ASI.Parameters(pi=pi,sparse=True, verbose=verbose, remove_self_degree=remove_self_degree)
 	prms2 = ASI.Parameters(pi=pi,sparse=False, verbose=verbose, remove_self_degree=remove_self_degree)
 
-	kAS = ASI.kernelAS(prms1)
+	kAS = ASI.linearizedAS(prms1)
 	kAS.initialize(Xf)
 
 	sAS = ASI.shariAS(prms2)
@@ -200,12 +200,12 @@ def test_20ng ():
 	fpr1, tpr1, thresh1 = roc_curve(labels, kAS.f)
 	fpr2, tpr2, thresh2 = roc_curve(labels, sAS.f)
 
-	plt.plot(fpr1, tpr1, label='kernel', color='r')
+	plt.plot(fpr1, tpr1, label='linearized', color='r')
 	plt.plot(fpr2, tpr2, label='sherry', color='b')
 
 	plt.xlabel('False Positive Rate')
 	plt.ylabel('True Positive Rate')
-	plt.title('Receiver operating characteristic for kernel AS')
+	plt.title('Receiver operating characteristic for linearized AS')
 	plt.legend(loc="lower right")
 
 	import IPython
@@ -419,10 +419,10 @@ def test_20_ng_IM ():
 	alpha4 = 0.5
 
 
-	f1, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha1, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
-	f2, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
-	f3, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha3, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
-	f4, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha4, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f1, _, _, _ =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha1, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f2, _, _, _ =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f3, _, _, _ =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha3, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f4, _, _, _ =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha4, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
 
 	# q1 = np.percentile(f1,pi*100)
 	# found_l1 = (f1>q1).astype(int)
@@ -502,11 +502,11 @@ def test_20_ng_IM_ASI ():
 	prms3 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha3, verbose=verbose)	
 	prms4 = ASI.Parameters(pi=pi,sparse=sparse, alpha=alpha4, verbose=verbose)	
 
-	kAS1 = ASI.kernelAS(prms2)
+	kAS1 = ASI.linearizedAS(prms2)
 	kAS1.initialize(Xf)
 	kAS1.firstMessage(init_pt)
 
-	f1, _, _, fs1 =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	f1, _, _, fs1 =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
 	
 	assert np.allclose(kAS1.f,fs1[0])
 	# import IPython
@@ -532,9 +532,9 @@ def test_20_ng_IM_ASI ():
 		# fs2.append(kAS.f)
 		# fs3.append(sAS.f)
 
-	# f2, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
-	# f3, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha3, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
-	# f4, _, _, _ =	AS.kernel_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha4, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	# f2, _, _, _ =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha2, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	# f3, _, _, _ =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha3, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
+	# f4, _, _, _ =	AS.linearized_AS (Xf, labels, num_eval=num_eval, w0=None, pi=pi, eta=0.5, alpha=alpha4, init_pt=init_pt, sparse=sparse, verbose=verbose, all_fs=all_fs)
 
 	# q1 = np.percentile(f1,pi*100)
 	# found_l1 = (f1>q1).astype(int)

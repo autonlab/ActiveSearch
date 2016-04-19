@@ -17,7 +17,12 @@ def matrix_sqrt (W, sqrt_eps=1e-6):
 	S = np.where (np.abs(S) < sqrt_eps, 0, S)
 	return U.dot(np.diag(np.sqrt(S))).dot(U.T)
 
-class adaptiveKernelAS (ASI.genericAS):
+### ----------------------------------------------------------------------- ###
+# Based on:
+# Self-supervised online metric learning with low 
+# rank constraint for scene categorization
+
+class SPSDLinearizedAS (ASI.genericAS):
 
 	def __init__ (self, W0, T, ASparams=ASI.Parameters(), SLparams = SL.SPSDParameters(), learn_sim = True, from_all_data=False):
 
@@ -51,7 +56,7 @@ class adaptiveKernelAS (ASI.genericAS):
 			# IPython.embed()
 			Xf = ss.csr_matrix(self.sqrtW).dot(Xf)
 
-		self.kAS = ASI.kernelAS(self.ASparams)
+		self.kAS = ASI.LinearizedAS(self.ASparams)
 		self.kAS.initialize (Xf, init_labels)
 
 		if not self.initialized or self.start_point is None:
@@ -167,3 +172,179 @@ class adaptiveKernelAS (ASI.genericAS):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
 		return self.kAS.getLabel(idx)
+
+
+### ----------------------------------------------------------------------- ###
+## Simple approach to just weight the kernel matrix
+## based on the labeled distribution
+
+class reweightedNaiveAS (genericAS):
+
+	def __init__ (self, params=Parameters()):
+		genericAS.__init__ (self, params)
+
+	def initialize(self, A, init_labels = {}):
+		"""
+		A 			--> n x n affinity matrix of feature values for each point.
+		"""
+		# Save Xf and initialize some of the variables which depend on Xf
+		self.A = A
+		self.n = A.shape[0]
+
+
+		self.labeled_idxs = init_labels.keys()
+		self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
+
+		self.labels = np.array([-1]*self.n)
+		self.labels[self.labeled_idxs] = init_labels.values()
+
+		# Initialize some parameters and constants which are needed and not yet initialized
+		self.l = (1-self.params.eta)/self.params.eta
+		if self.params.w0 is None:
+			self.params.w0 = 1/self.n
+
+		# Set up some of the initial values of some matrices
+		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
+		D = np.squeeze(self.A.sum(1)) ##
+		self.Dinv = 1./D
+		self.BDinv = np.diag(np.squeeze(B*self.Dinv))
+
+		self.q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
+		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
+
+		self.f =  nlg.solve(I_A, self.q)
+		# Setting iter/start_point
+		# If batch initialization is done, then start_point is everything given
+		if len(self.labeled_idxs) > 0:
+			if len(self.labeled_idxs) == 0:
+				self.start_point = self.labeled_idxs[0]
+			else:
+				self.start_point = [eid for eid in self.labeled_idxs]
+			# Finding the next message to show -- get the current max element
+			uidx = np.argmax(self.f[self.unlabeled_idxs])
+			self.next_message = self.unlabeled_idxs[uidx]
+			# Now that a new message has been selected, mark it as unseen
+			self.seen_next = False 
+
+			self.iter = 0
+			self.hits = [sum(init_labels.values())]		
+
+		if self.params.verbose:
+			print ("Done with the initialization.")
+		
+		self.initialized = True
+
+	def firstMessage(self, idx):
+		# Assuming this is always +ve. Can be changed otherwise
+		# Need to check whether this does the right thing.
+
+		if not self.initialized:
+			raise Exception ("Has not been initialized with data")
+
+		if self.iter >= 0:
+			print("First message has already been set. Treating this as a positive.")
+		else:
+			self.start_point = idx
+		self.setLabel(idx, 1)
+
+	def interestingMessage(self):
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
+			else:
+				raise Exception("I don't know how you got here.")
+		if not self.seen_next:
+			raise Exception ("This message has not been requested/seen yet.")
+		self.setLabel(self.next_message, 1)
+
+	def boringMessage(self):
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
+			else:
+				raise Exception("I don't know how you got here.")
+		if not self.seen_next:
+			raise Exception ("This message has not been requested/seen yet.")
+		self.setLabel(self.next_message, 0)
+
+	def setLabelCurrent(self, value):
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
+			else:
+				raise Exception("I don't know how you got here.")
+		if not self.seen_next:
+			raise Exception ("This message has not been requested/seen yet.")
+		self.setLabel(self.next_message, value)
+
+	def setLabel (self, idx, lbl):
+		# Set label for given message id
+
+		if self.params.verbose:
+			t1 = time.time()
+
+		# just in case, force lbl to be 0 or 1
+		lbl = 0 if lbl <= 0 else 1
+	
+		# First, some book-keeping
+		# If setLabel is called without "firstMessage," then set start_point
+		if self.start_point is None:
+			self.start_point = idx
+		self.iter += 1
+		self.labels[idx] = lbl
+		self.unlabeled_idxs.remove(idx)
+
+		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l)
+		self.q[idx] = lbl*1/(1+self.l)
+		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
+
+		self.f =  nlg.solve(I_A, self.q)
+
+		# Some more book-keeping
+		self.labeled_idxs.append(idx)
+		if self.iter == 0:
+			self.hits.append(lbl)
+		else:
+			self.hits.append(self.hits[-1] + lbl)
+
+		# Finding the next message to show -- get the current max element
+		uidx = np.argmax(self.f[self.unlabeled_idxs])
+		self.next_message = self.unlabeled_idxs[uidx]
+		# Now that a new message has been selected, mark it as unseen
+		self.seen_next = False 
+
+		if self.params.verbose:
+			elapsed = time.time() - t1
+			print('Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
+			
+	def getStartPoint (self):
+		if self.start_point is None:
+			raise Exception("The algortithm has not been initialized. Please call \"firstMessage\".")
+		return self.start_point
+
+	# Need to think a bit about the math here
+	# def resetLabel (self, idx, lbl):
+	# 	# Reset label for given message id
+	# 	# If reset label is called on something not yet set, it should do the same as setLabel
+
+	def getNextMessage (self):
+		if self.next_message is None:
+			if self.iter < 0:
+				raise Exception("The algortithm has not been initialized. There is no current message.")
+			else:
+				raise Exception("I don't know how you got here.")
+		self.seen_next = True
+		return self.next_message
+
+	def setLabelBulk (self, idxs, lbls):
+		for idx,lbl in zip(idxs,lbls):
+			self.setLabel(idx,lbls)
+
+	def pickRandomLabeledMessage (self):
+		if iter < 0:
+			raise Exception("The algortithm has not been initialized. Please call \"firstMessage\".")
+		return self.labeled_idxs[nr.randint(len(self.labeled_idxs))]
+
+	def getLabel (self, idx):
+		# 0 is boring, 1 is interesting and -1 is unlabeled
+		return self.labels[idx]
