@@ -178,10 +178,20 @@ class SPSDLinearizedAS (ASI.genericAS):
 ## Simple approach to just weight the kernel matrix
 ## based on the labeled distribution
 
-class reweightedNaiveAS (genericAS):
+class RWParameters (ASI.Parameters):
 
-	def __init__ (self, params=Parameters()):
-		genericAS.__init__ (self, params)
+	def __init__ (self, lw=1, cut_connections=True, sparse=True, verbose=True):
+		"""
+		Parameters specifically for nearest neighbours.
+		"""
+		ASI.Parameters.__init__ (self, sparse=sparse, verbose=verbose)
+		self.lw = lw # label weight
+		self.cut_connections = cut_connections
+
+class reweightedNaiveAS (ASI.genericAS):
+
+	def __init__ (self, params=RWParameters()):
+		ASI.genericAS.__init__ (self, params)
 
 	def initialize(self, A, init_labels = {}):
 		"""
@@ -203,14 +213,26 @@ class reweightedNaiveAS (genericAS):
 		if self.params.w0 is None:
 			self.params.w0 = 1/self.n
 
+		if self.params.cut_connections and len(self.labeled_idxs) > 0:
+			pos_labels = (self.labels==1).nonzero()[0]
+			neg_labels = (self.labels==0).nonzero()[0]
+			if len(pos_labels) > 0 and len(neg_labels) > 0:
+				self.A[np.ix_(pos_labels, neg_labels)] = 0
+				self.A[np.ix_(neg_labels, pos_labels)] = 0
+
+		if self.params.lw  > 0:
+			self.Lmat = np.atleast_2d(np.where(self.labels==-1, 0, self.labels))
+			AL = self.A + self.params.lw*self.Lmat.T.dot(self.Lmat)
+		else:
+			AL = self.A
 		# Set up some of the initial values of some matrices
 		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
-		D = np.squeeze(self.A.sum(1)) ##
-		self.Dinv = 1./D
-		self.BDinv = np.diag(np.squeeze(B*self.Dinv))
+		D = np.squeeze(AL.sum(1)) ##
+		Dinv = 1./D
+		BDinv = np.diag(np.squeeze(B*Dinv))
 
 		self.q = (1-B)*np.where(self.labels==-1,self.params.pi,self.labels) # Need to update q every iteration
-		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
+		I_A = np.eye(self.n) - BDinv.dot(AL)
 
 		self.f =  nlg.solve(I_A, self.q)
 		# Setting iter/start_point
@@ -294,9 +316,26 @@ class reweightedNaiveAS (genericAS):
 		self.labels[idx] = lbl
 		self.unlabeled_idxs.remove(idx)
 
-		self.BDinv[idx,idx] = self.Dinv[idx]*self.l/(1+self.l)
+		if self.params.cut_connections:
+			if lbl == 1:
+				lbl_inds = (self.labels==0).nonzero()[0]
+			else:
+				lbl_inds = (self.labels==1).nonzero()[0]
+			self.A[idx, lbl_inds] = 0
+			self.A[lbl_inds, idx] = 0
+
+		if self.params.lw  > 0:
+			self.Lmat[0, idx] = lbl
+			AL = self.A + self.params.lw*self.Lmat.T.dot(self.Lmat)
+		else:
+			AL = self.A
+
+		B = np.where(self.labels==-1, 1/(1+self.params.w0),self.l/(1+self.l))
+		D = np.squeeze(AL.sum(1)) ##
+		Dinv = 1./D
+		BDinv = np.diag(np.squeeze(B*Dinv))
 		self.q[idx] = lbl*1/(1+self.l)
-		I_A = np.eye(self.n) - self.BDinv.dot(self.A)
+		I_A = np.eye(self.n) - BDinv.dot(AL)
 
 		self.f =  nlg.solve(I_A, self.q)
 

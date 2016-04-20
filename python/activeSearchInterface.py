@@ -471,7 +471,7 @@ class linearizedAS (genericAS):
 
 ########## Weighted Neighbor Active Search
 
-class NNParameters (Parameters):
+class WNParameters (Parameters):
 
 	def __init__ (self, normalize=True, use_prior=False, pi=None, sparse=True, verbose=True):
 		"""
@@ -484,7 +484,7 @@ class NNParameters (Parameters):
 
 class weightedNeighborAS (genericAS):
 
-	def __init__ (self, params=NNParameters()):
+	def __init__ (self, params=WNParameters()):
 		genericAS.__init__(self, params)
 
 	def initialize(self, Xf, init_labels = {}):
@@ -715,7 +715,7 @@ class weightedNeighborAS (genericAS):
 
 class weightedNeighborGraphAS (genericAS):
 
-	def __init__ (self, params=NNParameters()):
+	def __init__ (self, params=WNParameters()):
 		genericAS.__init__ (self, params)
 
 	def initialize(self, A, init_labels = {}):

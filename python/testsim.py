@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt, matplotlib.cm as cm
 import IPython # debugging
 
 import activeSearchInterface as ASI
+import adaptiveActiveSearch as AAS
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -180,7 +181,7 @@ def testWNAS ():
 	sparse = False
 	verbose = True
 	normalize = True
-	prms = ASI.NNParameters(sparse=sparse, verbose=verbose, normalize=normalize)
+	prms = ASI.WNParameters(sparse=sparse, verbose=verbose, normalize=normalize)
 
 	np_init = 1
 	nn_init = 1
@@ -210,8 +211,60 @@ def testWNAS ():
 
 	IPython.embed()
 
+def testRWNAS ():
+
+	## Create swiss roll data
+	npts = 1000
+	prev = 0.5
+	c = 1
+	nloops = 1.5
+	var = 0.2
+	shuffle = False
+	eps = 2
+	gamma = 10
+	
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var, shuffle=shuffle)
+	A = createEpsilonGraph (X, eps=eps, gamma=gamma)
+
+	## Initialize naiveAS
+	pi = prev
+	sparse = False
+	verbose = True
+	lw = 1
+	cut_connections = True
+	prms = AAS.RWParameters(sparse=sparse, verbose=verbose, lw=lw, cut_connections=cut_connections)
+
+	np_init = 1
+	nn_init = 1
+	n_init = np_init + nn_init
+	initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
+	initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
+	init_labels = {p:1 for p in initp_pt}
+	for p in initn_pt: init_labels[p] = 0
+
+	rwnAS = AAS.reweightedNaiveAS (prms)
+	rwnAS.initialize(A, init_labels)
+
+	plotData(X, None, (rwnAS.f+1)/2, rwnAS.labels)
+
+	hits = [n_init]
+	K = 200
+	for i in xrange(K):
+
+		print('Iter %i out of %i'%(i+1,K))
+		idx = rwnAS.getNextMessage()
+		rwnAS.setLabelCurrent(Y[idx])
+		hits.append(hits[-1]+Y[idx])
+
+		plotData(X, None, (rwnAS.f+1)/2, rwnAS.labels)
+
+		print('')
+
+	IPython.embed()
+
 
 if __name__ == '__main__':
 	# testSwissRolls()
-	testNaiveAS()
+	# testNaiveAS()
 	# testWNAS()
+	testRWNAS()
