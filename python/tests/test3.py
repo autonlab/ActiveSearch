@@ -4,6 +4,8 @@ import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
 import matplotlib.pyplot as plt
 import time
 
+import activeSearchInterface as ASI
+
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
 def createFakeData (n, r, nt, rcross=10):

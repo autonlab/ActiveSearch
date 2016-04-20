@@ -824,7 +824,7 @@ def test_interface2 ():
 	prms = ASI.Parameters(pi=pi,sparse=True, verbose=verbose)	
 	kAS = ASI.linearizedAS(prms)
 	kAS.initialize(X)
-	sAS = ASI.naiveShariAS(prms)
+	sAS = ASI.naiveAS(prms)
 	sAS.initialize(A)
 	
 	import IPython
@@ -1026,7 +1026,7 @@ def test_warm_start ():
 	
 	kAS2 = ASI.linearizedAS(prms)
 	sAS = ASI.shariAS(prms)
-	sAS2 = ASI.naiveShariAS(prms)
+	sAS2 = ASI.naiveAS(prms)
 
 	# import IPython
 	# IPython.embed()
@@ -1145,7 +1145,7 @@ def test_CC ():
 	
 	sAS = ASI.shariAS(prms)
 	sAS.initialize(A)
-	#sAS2 = ASI.naiveShariAS(prms)
+	#sAS2 = ASI.naiveAS(prms)
 
 	kAS.firstMessage(init_pt)
 	sAS.firstMessage(init_pt)

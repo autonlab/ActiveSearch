@@ -22,7 +22,7 @@ cpu_count = multiprocessing.cpu_count()
 cpu_count /= 2 #we don't want hyperthreading cores, only physical cores. AMD also kind of cheats by having one FPU per two cores so this seems reasonable as a default
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-m', '--method', default='linearized', help='shari, naiveshari, linearized, default to linearized')
+parser.add_argument('-m', '--method', default='linearized', help='shari, naive, linearized, default to linearized')
 parser.add_argument('-w', '--wordlimit', default=6000, type=int, help='in linearized mode, max number of words to retain. Higher for better accuracy, fewer for better speed. 0=retain all')
 parser.add_argument('-d', '--database', default='jebbush', help='database name')
 parser.add_argument('-u', '--database_user', default='root', help='database user')
@@ -61,9 +61,9 @@ elif (args.method == "shari"):
     A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
-elif (args.method == "naiveshari"):
-    print "Using naieveShariAS"
-    activeSearch = asI.naiveShariAS()   
+elif (args.method == "naive"):
+    print "Using naiveAS"
+    activeSearch = asI.naiveAS()   
     A = dataConn.getAffinityMatrix(args.wordlimit,args.skip_stemmer,args.num_cpus, message_count, 0,0)
     # Feeding in the dense version to shari's code because the sparse version is not implemented 
     activeSearch.initialize(np.array(A.todense())) 
