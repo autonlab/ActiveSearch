@@ -1,3 +1,4 @@
+
 from __future__ import division, print_function
 import time
 import itertools
@@ -15,6 +16,7 @@ def matrix_squeeze(X):
 # Based on:
 # Self-supervised online metric learning with low 
 # rank constraint for scene categorization
+# -- http://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=6508918
 
 class SPSDParameters:
 	# Parameters for SPSD
@@ -192,4 +194,6 @@ class SPSD:
 
 ### ----------------------------------------------------------------------- ###
 ### ----------------------------------------------------------------------- ###
-
+# Based on:
+# Integrating Constraints and Metric Learning in Semi-Supervised Clustering
+# -- http://www.cs.utexas.edu/~ml/papers/semi-icml-04.pdf
