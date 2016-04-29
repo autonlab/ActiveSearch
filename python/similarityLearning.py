@@ -3,7 +3,9 @@ from __future__ import division, print_function
 import time
 import itertools
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
-import scipy.sparse as ss, scipy.linalg as slg, scipy.sparse.linalg as ssl
+import scipy.sparse as ss, scipy.sparse.linalg as ssl
+import scipy.spatial.distance as ssd, scipy.linalg as slg
+import cvxopt as cvx
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -197,3 +199,187 @@ class SPSD:
 # Based on:
 # Integrating Constraints and Metric Learning in Semi-Supervised Clustering
 # -- http://www.cs.utexas.edu/~ml/papers/semi-icml-04.pdf
+
+# We are really worried about only a single cluster so making appropriate changes
+# Since this is different from the paper, I will explain the changes.
+# Step 1: Initialize single cluster for positives
+# Step 2: Repeat until convergence:
+#   Step 2a: Assign clusters for unlabeled nodes
+# 	Step 2b: Estimate mean
+#	Step 2c: Update metric for single cluster
+
+class MPCKParameters:
+	# Parameters for SPSD
+	def __init__(self, max_iters=100, metric_thresh=1e-3, mu_thresh=1e-3, 
+					sqrt_eps=1e-6, verbose=True):
+
+		self.max_iters = max_iters
+		self.metric_thresh = metric_thresh
+		self.mu_thresh = mu_thresh
+		self.sqrt_eps = sqrt_eps
+
+		self.verbose = verbose
+
+	def copy(self):
+		return MPCKParameters(	self.max_iters, self.metric_thresh, 
+								self.mu_thresh, self.sqrt_eps, self.verbose)
+
+class MPCK(object):
+
+	def __init__(self, Xf, labels, pi=None, params=MPCKParameters()):
+		self.Xf = Xf
+		self.r, self.n = Xf.shape
+
+		self.labels = labels
+		self.Pinds = (labels==1).nonzero()[0]
+		self.Ninds = (labels==0).nonzero()[0]
+
+		self.pi = 0.5 if pi is None else pi
+
+		# number of positive entries to label
+		self.Lpos = int(self.n*self.pi - len(self.Pinds))
+		self.npos = self.Lpos + len(self.Pinds)
+
+		self.params = params
+
+	def computeMean (self, inds):
+		return np.mean(self.Xf[:, inds], axis=1)
+
+	def initializeClusters (self):
+		# Step 1: Initialize the mean from the constraints
+		self.muP = self.computeMean(self.Pinds)
+		self.sqrtA = None
+		self.A = np.eye(self.r)
+
+	def assignClusters (self):
+		# Step 2a: Initialize the mean from the constraints
+		# Step 2b: compute mean
+		unlabeledInds = (labels==-1).nonzero()[0]
+
+		Xm = self.Xf-self.muP
+		DA = np.diag(Xm.T.dot(self.A).dot(Xm))
+
+		sortedInds = np.argsort(-DA[unlabeledInds])
+		self.UPinds = unlabeledInds[sortedInds[:self.Lpos]]
+		self.UNinds = unlabeledInds[sortedInds[self.Lpos:]]
+
+		muP = self.computeMean(self.UPinds)
+		close = np.allclose(muP, self.muP, atol=self.params.mu_thresh)
+		self.muP = muP
+
+		return close
+
+	def updateMetrics (self):
+		# Step 2c: update metric
+		Xm = self.Xf[self.Pinds + self.UPinds] - self.muP
+		A = self.npos*nlg.inv(Xm.dot(Xm.T))
+		close = np.allclose(A, self.A, atol=self.params.metric_thresh)
+		self.A = A
+
+		return close
+
+	def runMPCK (self):
+
+		# initialize clusters
+		if self.params.verbose:
+			print('Initializing clusters.')
+		self.initializeClusters()
+
+		if self.params.verbose:
+			print('Running MPCK.')
+
+		max_itr_reached = True
+		for itr in xrange(self.params.max_iters):
+
+			mu_close = self.assignClusters ()
+			metric_close = self.updateMetrics()
+
+			if mu_close and metric_close:
+				max_itr_reached = False
+				if self.params.verbose:
+					print('Metric and Mu converged.')
+				break
+
+		if max_itr_reached and self.params.verbose:
+			print('Maximum iterations reached.')
+
+	def getA (self):
+		return self.A
+
+	def getSqrtA (self):
+		# Get Q such that A = Q*Q
+		if self.sqrtA is None:
+			S,U = nlg.eigh(self.A)
+			if not np.allclose(self.A, self.A.T) or np.any(S < - self.params.sqrt_eps):
+				raise Exception ("Matrix Squareroot did not get PSD matrix.")
+			S = np.where (np.abs(S) < self.params.sqrt_eps, 0, S)
+			self.sqrtA = U.dot(np.diag(np.sqrt(S))).dot(U.T)
+		return self.sqrtA
+
+################################################
+
+class NPKParameters (object):
+
+	def __init__ (self, c=1, delta=0.1):
+		self.c = c
+		self.delta = delta
+
+class NPK (object):
+
+	def __init__ (self, S, labels, params=NPKParameters()):
+		
+		self.params = params
+
+		self.n = S.shape[0]
+		self.S = S
+		self.S[xrange(self.n), xrange(self.n)] = 0
+		self.D = np.squeeze(self.S.sum(1))
+
+		self.labels = labels
+		self.Pinds = (labels==1).nonzero()[0]
+		self.Ninds = (labels==0).nonzero()[0]
+		self.npos = len(self.Pinds)
+		self.nneg = len(self.Ninds)
+
+		L1 = np.atleast_2d(labels==1)
+		L2 = np.atleast_2d(labels==0)
+
+		self.T = L1.T.dot(L1) - L1.T.dot(L2) - L2.T.dot(L1)
+		self.T[xrange(self.n), xrange(self.n)] = 0
+
+		self.Z = None
+
+	def laplacian (self):
+		Dinv = np.diag(np.sqrt(1./self.D))
+
+		self.L = (1+self.params*delta)*np.eye(n) - Dinv.dot(self.S).dot(Dinv)
+
+	def solvePrimal (self):
+		# Variable = Zv, Z, eps
+
+		self.laplacian()
+
+		ncnts = self.npos*(self.npos-1+self.nneg)
+		c1 = self.L.reshape(self.n**2,1), order='F').tolist()
+		c2 = self.params.c*ones(ncnts,1).tolist()
+		c = cvx.matrix(c1+c2)
+
+		Tv = np.squeeze(self.T.reshape((self.n**2,1), 1, order='F'))
+		assert len(Tv) == ncnts
+		Tv_nz = Tv.nonzero()[0]
+		Gl1 = np.diag(Tv)[Tv_nz,:]
+		Ic = np.eye(ncnts)
+		Gl = cvx.matrix(-np.r_[np.c_[Gl1, Ic], np.c_[np.zeros(Gl1.shape), Ic]])
+		hl = cvx.matrix(-np.r_[np.ones((ncnts,1)), np.zeros((ncnts,1))])
+
+		Gs = [cvx.matrix(-np.c_[np.eye(self.n**2), np.zeros((self.n**2,ncnts))])]
+		hs = [cvx.matrix(np.zeros((self.n**2,1)))]
+
+		sol = solvers.sdp(c=c, Gl=Gl, Gs=Gs, hl=hl, hs=hs)
+
+		self.Z = np.array(sol['sk'][0])
+
+	def getZ (self):
+		if self.Z is None:
+			raise Exception('Solver has not been called yet.')
+		return self.Z
