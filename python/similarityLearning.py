@@ -410,8 +410,15 @@ class NPK (object):
 ###############################################################################
 # Manifold-based Similarity Adaptation:
 # http://papers.nips.cc/paper/5001-manifold-based-similarity-adaptation-for-label-propagation.pdf
+# Python implementation of the code found at:
+# http://www.bic.kyoto-u.ac.jp/pathway/krsym/software/MSALP/MSALP.zip
 ###############################################################################
 
-class NPKParameters (object):
+class MSALPParameters (object):
 
-	def __init__ (self, c=1, delta=0.1):
+	def __init__ (self, max_iter=100, k=10, sigma=0.5):
+		self.max_iter = max_iter
+		self.k = k
+		self.sigma = sigma
+
+	def A

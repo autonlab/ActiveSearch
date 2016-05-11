@@ -466,6 +466,39 @@ def return_average_positive_neighbors (X, Y, k):
 
 	return MsimY.sum(axis=None)/(npos*k)
 
+def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var = 0.05, shuffle=False):
+	# npts 		-- number of points overall
+	# prev 		-- prevalence of positive class
+	# c 		-- r = c*theta
+	# nloops	-- number of loops of swiss roll
+	# var 		-- variance of 0-mean gaussian noise along the datapoints
+	# shuffle	-- shuffle points or keep them grouped as 1/0
+
+	std = np.sqrt(var)
+	n1 = int(prev*npts);
+	n2 = npts-n1
+
+	angle_range1 = np.linspace(np.pi/2, 2*nloops*np.pi, n1)
+	angle_range2 = np.linspace(np.pi/2, 2*nloops*np.pi, n2)
+
+	X = np.empty([npts,2])
+	Y = np.array(n1*[1] + n2*[0])
+
+	for i in xrange(n1):
+		a = angle_range1[i]
+		X[i,:] = polarToCartesian(a*c, a) + nr.randn(1,2)*std
+	for i in xrange(n2):
+		a = angle_range2[i]
+		X[i+n1,:] = polarToCartesian(a*c, a+np.pi) + nr.randn(1,2)*std
+
+	if shuffle:
+		shuffle_inds = nr.permutation(npts)
+		X = X[shuffle_inds,:]
+		Y = Y[shuffle_inds]
+
+	return X,Y
+
+
 if __name__ == '__main__':
 	# pass
 	t1 = time.time()
