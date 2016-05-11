@@ -245,7 +245,7 @@ def testRWNAS ():
 	rwnAS = AAS.reweightedNaiveAS (prms)
 	rwnAS.initialize(A, init_labels)
 
-	plotData(X, None, (rwnAS.f+1)/2, rwnAS.labels)
+	plotData(X, None, rwnAS.f, rwnAS.labels)
 
 	hits = [n_init]
 	K = 200
@@ -256,7 +256,122 @@ def testRWNAS ():
 		rwnAS.setLabelCurrent(Y[idx])
 		hits.append(hits[-1]+Y[idx])
 
-		plotData(X, None, (rwnAS.f+1)/2, rwnAS.labels)
+		plotData(X, None, rwnAS.f, rwnAS.labels)
+
+		print('')
+
+	IPython.embed()
+
+
+def testMPCKAS ():
+
+	## Create swiss roll data
+	npts = 1000
+	prev = 0.5
+	c = 1
+	nloops = 1.5
+	var = 0.2
+	shuffle = False
+	eps = 2
+	gamma = 10
+	
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var, shuffle=shuffle)
+	A = createEpsilonGraph (X, eps=eps, gamma=gamma)
+
+	## Initialize naiveAS
+	pi = prev
+	sparse = False
+	verbose = True
+	prms = ASI.Parameters(sparse=sparse, verbose=verbose, pi=pi)
+
+	np_init = 1
+	nn_init = 1
+	n_init = np_init + nn_init
+	initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
+	initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
+	init_labels = {p:1 for p in initp_pt}
+	for p in initn_pt: init_labels[p] = 0
+
+	T = 20
+	mpckAS = AAS.MPCKLinearizedAS (A0=None, T = T, ASparams=prms)
+	mpckAS.initialize(X.T, init_labels)
+	lAS = ASI.linearizedAS (prms)
+	lAS.initialize(X.T, init_labels)
+
+	plotData(X, None, mpckAS.kAS.f, mpckAS.kAS.labels)
+
+	hits1 = [n_init]
+	hits2 = [n_init]
+	K = 200
+	for i in xrange(K):
+
+		print('Iter %i out of %i'%(i+1,K))
+		idx1 = mpckAS.getNextMessage()
+		idx2 = lAS.getNextMessage()
+		mpckAS.setLabelCurrent(Y[idx1])
+		lAS.setLabelCurrent(Y[idx2])
+		hits1.append(hits1[-1]+Y[idx1])
+		hits2.append(hits2[-1]+Y[idx2])
+
+		plotData(X, None, mpckAS.kAS.f, mpckAS.kAS.labels)
+
+		print('')
+
+	IPython.embed()
+
+
+def testNPKAS ():
+
+	## Create swiss roll data
+	npts = 200
+	prev = 0.5
+	c = 1
+	nloops = 1.5
+	var = 0.2
+	shuffle = False
+	eps = 2
+	gamma = 10
+	
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var, shuffle=shuffle)
+	A = createEpsilonGraph (X, eps=eps, gamma=gamma)
+
+	## Initialize naiveAS
+	pi = prev
+	sparse = False
+	verbose = True
+
+	prms = ASI.Parameters(sparse=sparse, verbose=verbose, pi=pi)
+
+	np_init = 1
+	nn_init = 1
+	n_init = np_init + nn_init
+	initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
+	initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
+	init_labels = {p:1 for p in initp_pt}
+	for p in initn_pt: init_labels[p] = 0
+
+	T = 1
+	npkAS = AAS.NPKNaiveAS (T=T, ASparams=prms)
+	npkAS.initialize(A, init_labels)
+	lAS = ASI.naiveAS (prms)
+	lAS.initialize(A, init_labels)
+
+	plotData(X, None, npkAS.kAS.f, npkAS.kAS.labels)
+
+	hits1 = [n_init]
+	hits2 = [n_init]
+	K = 200
+	for i in xrange(K):
+
+		print('Iter %i out of %i'%(i+1,K))
+		idx1 = npkAS.getNextMessage()
+		idx2 = lAS.getNextMessage()
+		npkAS.setLabelCurrent(Y[idx1])
+		lAS.setLabelCurrent(Y[idx2])
+		hits1.append(hits1[-1]+Y[idx1])
+		hits2.append(hits2[-1]+Y[idx2])
+
+		plotData(X, None, npkAS.kAS.f, npkAS.kAS.labels)
 
 		print('')
 
@@ -267,4 +382,6 @@ if __name__ == '__main__':
 	# testSwissRolls()
 	# testNaiveAS()
 	# testWNAS()
-	testRWNAS()
+	# testRWNAS()
+	# testMPCKAS()
+	testNPKAS()

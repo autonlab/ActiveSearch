@@ -226,7 +226,11 @@ class MPCKParameters:
 
 class MPCK(object):
 
-	def __init__(self, Xf, labels, pi=None, params=MPCKParameters()):
+	def __init__(self, params=MPCKParameters()):
+
+		self.params = params
+
+	def initialize(self, Xf, labels, A0 = None, pi=None):
 		self.Xf = Xf
 		self.r, self.n = Xf.shape
 
@@ -240,7 +244,11 @@ class MPCK(object):
 		self.Lpos = int(self.n*self.pi - len(self.Pinds))
 		self.npos = self.Lpos + len(self.Pinds)
 
-		self.params = params
+		self.sqrtA = None
+		self.A = np.eye(self.r) if A0 is None else A0
+
+		self.has_learned = False
+
 
 	def computeMean (self, inds):
 		return np.mean(self.Xf[:, inds], axis=1)
@@ -248,16 +256,14 @@ class MPCK(object):
 	def initializeClusters (self):
 		# Step 1: Initialize the mean from the constraints
 		self.muP = self.computeMean(self.Pinds)
-		self.sqrtA = None
-		self.A = np.eye(self.r)
 
 	def assignClusters (self):
 		# Step 2a: Initialize the mean from the constraints
 		# Step 2b: compute mean
-		unlabeledInds = (labels==-1).nonzero()[0]
+		unlabeledInds = (self.labels==-1).nonzero()[0]
 
-		Xm = self.Xf-self.muP
-		DA = np.diag(Xm.T.dot(self.A).dot(Xm))
+		Xm = self.Xf.T-self.muP
+		DA = np.diag(Xm.dot(self.A).dot(Xm.T))
 
 		sortedInds = np.argsort(-DA[unlabeledInds])
 		self.UPinds = unlabeledInds[sortedInds[:self.Lpos]]
@@ -271,8 +277,8 @@ class MPCK(object):
 
 	def updateMetrics (self):
 		# Step 2c: update metric
-		Xm = self.Xf[self.Pinds + self.UPinds] - self.muP
-		A = self.npos*nlg.inv(Xm.dot(Xm.T))
+		Xm = self.Xf[:,self.Pinds.tolist() + self.UPinds.tolist()].T - self.muP
+		A = self.npos*nlg.inv(Xm.T.dot(Xm))
 		close = np.allclose(A, self.A, atol=self.params.metric_thresh)
 		self.A = A
 
@@ -303,6 +309,11 @@ class MPCK(object):
 		if max_itr_reached and self.params.verbose:
 			print('Maximum iterations reached.')
 
+		self.has_learned = True
+
+	def check_has_learned (self):
+		return self.has_learned
+
 	def getA (self):
 		return self.A
 
@@ -317,6 +328,7 @@ class MPCK(object):
 		return self.sqrtA
 
 ################################################
+## Based off of: papers.stevenhoi.com/ICML07NPK.pdf
 
 class NPKParameters (object):
 
@@ -326,10 +338,11 @@ class NPKParameters (object):
 
 class NPK (object):
 
-	def __init__ (self, S, labels, params=NPKParameters()):
+	def __init__ (self, params=NPKParameters()):
 		
 		self.params = params
 
+	def initialize(self, S, labels):
 		self.n = S.shape[0]
 		self.S = S
 		self.S[xrange(self.n), xrange(self.n)] = 0
@@ -341,45 +354,64 @@ class NPK (object):
 		self.npos = len(self.Pinds)
 		self.nneg = len(self.Ninds)
 
-		L1 = np.atleast_2d(labels==1)
-		L2 = np.atleast_2d(labels==0)
+		L1 = np.atleast_2d(labels==1).astype(int)
+		L2 = np.atleast_2d(labels==0).astype(int)
 
 		self.T = L1.T.dot(L1) - L1.T.dot(L2) - L2.T.dot(L1)
-		self.T[xrange(self.n), xrange(self.n)] = 0
+		lti = np.tril_indices(self.n)
+		self.T[lti[0], lti[1]] = 0
 
 		self.Z = None
 
-	def laplacian (self):
+		self.has_learned = False
+
+	def computeLaplacian (self):
 		Dinv = np.diag(np.sqrt(1./self.D))
 
-		self.L = (1+self.params*delta)*np.eye(n) - Dinv.dot(self.S).dot(Dinv)
+		self.L = (1+self.params.delta)*np.eye(self.n) - Dinv.dot(self.S).dot(Dinv)
 
 	def solvePrimal (self):
 		# Variable = Zv, Z, eps
 
-		self.laplacian()
+		self.computeLaplacian()
 
-		ncnts = self.npos*(self.npos-1+self.nneg)
-		c1 = self.L.reshape(self.n**2,1), order='F').tolist()
-		c2 = self.params.c*ones(ncnts,1).tolist()
+		ncnts = int(self.npos*(self.npos-1)/2) + int(self.npos*self.nneg)
+		c1 = self.L.reshape((self.n**2,1), order='F').tolist()
+		c2 = self.params.c*np.ones((ncnts,1)).tolist()
 		c = cvx.matrix(c1+c2)
-
-		Tv = np.squeeze(self.T.reshape((self.n**2,1), 1, order='F'))
-		assert len(Tv) == ncnts
+		
+		Tv = np.squeeze(self.T.reshape((self.n**2,1), order='F'))
 		Tv_nz = Tv.nonzero()[0]
+
+		assert len(Tv_nz) == ncnts
 		Gl1 = np.diag(Tv)[Tv_nz,:]
 		Ic = np.eye(ncnts)
 		Gl = cvx.matrix(-np.r_[np.c_[Gl1, Ic], np.c_[np.zeros(Gl1.shape), Ic]])
 		hl = cvx.matrix(-np.r_[np.ones((ncnts,1)), np.zeros((ncnts,1))])
 
 		Gs = [cvx.matrix(-np.c_[np.eye(self.n**2), np.zeros((self.n**2,ncnts))])]
+
 		hs = [cvx.matrix(np.zeros((self.n**2,1)))]
 
 		sol = solvers.sdp(c=c, Gl=Gl, Gs=Gs, hl=hl, hs=hs)
 
 		self.Z = np.array(sol['sk'][0])
 
+		self.has_learned = True
+
 	def getZ (self):
 		if self.Z is None:
 			raise Exception('Solver has not been called yet.')
 		return self.Z
+	
+	def check_has_learned (self):
+		return self.has_learned
+
+###############################################################################
+# Manifold-based Similarity Adaptation:
+# http://papers.nips.cc/paper/5001-manifold-based-similarity-adaptation-for-label-propagation.pdf
+###############################################################################
+
+class NPKParameters (object):
+
+	def __init__ (self, c=1, delta=0.1):

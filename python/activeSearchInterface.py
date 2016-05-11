@@ -1308,7 +1308,7 @@ class naiveAS (genericAS):
 			raise Exception ("This message has not been requested/seen yet.")
 		self.setLabel(self.next_message, value)
 
-	def setLabel (self, idx, lbl):
+	def setLabel (self, idx, lbl, display_iter = None):
 		# Set label for given message id
 
 		if self.params.verbose:
@@ -1346,7 +1346,8 @@ class naiveAS (genericAS):
 
 		if self.params.verbose:
 			elapsed = time.time() - t1
-			print('Iter: %i, Selected: %i, Hits: %i, Time: %f'%(self.iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
+			display_iter = display_iter if display_iter else self.iter
+			print( 'Iter: %i, Selected: %i, Hits: %i, Time: %f'%(display_iter, self.labeled_idxs[-1], self.hits[-1], elapsed))
 			
 	def getStartPoint (self):
 		if self.start_point is None:
