@@ -1,0 +1,9 @@
+These files are matlab implementation of the adaptive edge weighting 
+method for label propagation proposed in "Manifold-based similarity
+adaptation for label propagation", by M. Karasuyama and H. Mamitsuka
+(NIPS 2013).
+
+Important files
+[test_run1.m]: A test script to run the method with synthetic data used in the above paper.
+[AEW.m]: Optimizing edge weights for subsequent label propagation.
+[HGF.m]: Label propagation by the harmonic Gaussian field model

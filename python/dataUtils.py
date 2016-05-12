@@ -1,16 +1,15 @@
 from __future__ import division, print_function
-import numpy as np, numpy.random as nr, numpy.linalg as nlg
-import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
-# import matplotlib.pyplot as plt
 import time
 import os, os.path as osp
 import csv
 import cPickle as pick
 # import sqlparse as sql
 
-import adaptiveActiveSearch as AAS
-import activeSearchInterface as ASI
-import similarityLearning as SL
+import numpy as np, numpy.random as nr, numpy.linalg as nlg
+import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
+import scipy.spatial.distance as ssd
+
+import matplotlib.pyplot as plt
 
 import IPython
 
@@ -497,6 +496,106 @@ def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var = 0.05,
 		Y = Y[shuffle_inds]
 
 	return X,Y
+
+def generate_syndata(noise_level=1, n=400, nc=4, display=True):
+	# output: [X Y] 
+	nsub = int(n*1.0/nc)*np.ones((nc,1))
+	nsub[nc-1] = nsub[nc-1] + (n-nsub.sum())
+
+	X = np.zeros((2,0))
+	Y = np.zeros((0,nc))
+
+	for k in xrange(nc):
+		phi = np.sort(1.5*np.linspace(0,1,nsub[k])*np.pi)
+		radi = np.sqrt(np.pi+phi) - np.sqrt(np.pi)
+		rot = k*(2*np.pi)/nc;
+		R = np.array([[np.cos(rot), -np.sin(rot)],[np.sin(rot), np.cos(rot)]])
+
+		Xsub = np.zeros((2,nsub[k]))
+		Ysub = np.zeros((nsub[k],nc))
+		for i in xrange(nsub[k]):
+			Xsub[1,i] = radi[i]*np.cos(phi[i]) + 0.1
+			Xsub[0,i] = radi[i]*np.sin(phi[i]) + 0.05
+			Xsub[:,i] = R.dot(Xsub[:,i])
+			# Ysub[i,:] = np.zeros((1,nc))
+			Ysub[i,k] = 1
+
+		X = np.c_[X, Xsub]
+		Y = np.r_[Y, Ysub]
+
+	ridx = nr.permutation(n)
+	n1 = int(n/4.0)
+	
+	if noise_level == 1:
+		X[:,ridx[:n1]] = X[:,ridx[:n1]] + 0.01*nr.randn(2,n1)
+	else:
+		X[:,ridx[:n1]] = X[:,ridx[:n1]] + 0.05*nr.randn(2,n1)
+	X[:,ridx[n1:]] = X[:,ridx[n1:]] + 0.01*nr.randn(2,n-n1)
+
+	if display:
+		# Assuming nc = 4
+		markers = ['o','+','^','x']
+		col = [[1, 0, 0], [0.6, 0, 0], [0.3, 0, 0], [0, 1, 1]]
+		
+		for i in xrange(nc):
+			nc_inds = np.nonzero(Y[:,i])[0]
+			plt.scatter(X[0,nc_inds],X[1,nc_inds],marker=markers[i],c=col[i],linewidth=2)
+		plt.title('Dataset (with true labels)')
+		plt.show()
+
+	return X.T,Y
+
+
+def generate_nngraph(X, k, sigma):
+	# X --> number of points x number of features
+	# output: [W sigma]
+
+	n,r = X.shape
+
+	D = ssd.squareform(ssd.pdist(X)**2)
+	sort_idx = np.argsort(D, axis=0)
+
+	# Diagonal entries of D must be ranked the first.
+	diag_arranged = (sort_idx[0,:] == np.arange(n)).squeeze()
+	if not diag_arranged.all():
+		# THIS WILL NOT WORK FOR NOW -- DON'T WANT TO FIGURE IT OUT UNLESS SOMETHING ACTUALLY HAPPENS
+		temp_idx = (diag_arranged == False).nonzero()[0]
+		I,J = (sort_idx[:,temp_idx] == (np.ones((n,1))*temp_idx)).nonzero()
+		if len(I) != len(temp_idx):
+			raise Exception('')
+
+		for i in range(len(I)):
+			sort_idx[I[i],temp_idx[i]], sort_idx[0,temp_idx[i]] = sort_idx[0,temp_idx[i]], sort_idx[I[i],temp_idx[i]]
+
+
+	knn_idx = sort_idx(2:k+1,:);
+	kD = sort_D(2:k+1,:);
+
+	W = zeros(n);
+	if strcmp(sigma,'median') 
+	  sigma = mean(sqrt(kD(:)));
+	  if sigma == 0
+	    sigma = 1;
+	  end
+	  for i = 1:n
+	    W(i,knn_idx(:,i)) = exp(-kD(:,i)./(2*sigma^2));
+	  end
+	elseif strcmp(sigma, 'local-scaling') 
+	  if k < 7
+	    sigma = sqrt(kD(end,:));
+	  else
+	    sigma = sqrt(kD(7,:));
+	  end
+	  sigma(sigma == 0) = 1;
+	  for i = 1:n
+	    W(i,knn_idx(:,i)) = exp(-kD(:,i)./(sigma(i)*sigma(knn_idx(:,i))'));
+	  end
+	else
+	  error('Unknown option for sigma');
+	end
+
+	W = max(W, W');
+
 
 
 if __name__ == '__main__':
