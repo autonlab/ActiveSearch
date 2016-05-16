@@ -13,6 +13,7 @@ param.max_iter = 100;
 % --------------------------------------------------
 
 [X Y] = generate_syndata(noise_level);
+save('tempdata','X','Y');
 [lb_idx] = select_labeled_nodes(Y,10);
 trY = zeros(size(Y));
 trY(lb_idx,:) = Y(lb_idx,:);

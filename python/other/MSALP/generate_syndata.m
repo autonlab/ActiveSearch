@@ -8,6 +8,7 @@ function [X Y] = generate_syndata(noise_level)
 
   X = [];
   Y = [];
+  fprintf('starting\n');
   for k = 1:nc
     phi = sort(1.5*linspace(0,1,nsub(k))*pi);
     radi = sqrt(pi+phi) - sqrt(pi);
@@ -27,6 +28,7 @@ function [X Y] = generate_syndata(noise_level)
     Y = [Y; Ysub];
   end
 
+  fprintf('loops done\n')
   ridx = randperm(n);
   n1 = round(n/4);
   if noise_level == 1
@@ -36,12 +38,13 @@ function [X Y] = generate_syndata(noise_level)
   end
   X(:,ridx(n1+1:end)) = X(:,ridx(n1+1:end)) + 0.01*randn(2,n-n1);
 
-  figure;
-  hold on;
-  marker = {'o','+','^','x'};
-  col = {[1 0 0], [0.6 0 0], [0.3 0 0], [0 1 1]};
-  for i = 1:nc
-    plot(X(1,find(Y(:,i))),X(2,find(Y(:,i))),marker{i},'Color',col{i},'markersize',8);
-  end
-  title('Dataset (with true labels)');
-  hold off;
+  fprintf('done\n')
+  % figure;
+  % hold on;
+  % marker = {'o','+','^','x'};
+  % col = {[1 0 0], [0.6 0 0], [0.3 0 0], [0 1 1]};
+  % for i = 1:nc
+  %   plot(X(1,find(Y(:,i))),X(2,find(Y(:,i))),marker{i},'Color',col{i},'markersize',8);
+  % end
+  % title('Dataset (with true labels)');
+  % hold off;
