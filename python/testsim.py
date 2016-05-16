@@ -11,7 +11,7 @@ import IPython # debugging
 import activeSearchInterface as ASI
 import adaptiveActiveSearch as AAS
 import similarityLearning as SL
-import dataUtils as DU
+import dataUtils as du
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -53,8 +53,10 @@ def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var = 0.05,
 
 	return X,Y
 
-def plotData(X, Y, f=None, labels=None, thresh=None, block=False):
+def plotData(X, Y, f=None, labels=None, thresh=None, block=False, fid=None):
 
+	if fid is not None:
+		fig = plt.figure(fid)
 	plt.clf()
 
 	if f is None:
@@ -78,7 +80,8 @@ def plotData(X, Y, f=None, labels=None, thresh=None, block=False):
 		colors = cm.RdBu(f)
 		plt.scatter(X[rest_inds,0], X[rest_inds,1], color=colors, label='unlabeled', linewidth=1)
 
-	
+	if fid is not None:
+		plt.title('ID: %i'%fid)
 	# plt.legend()
 	plt.show(block=block)
 	plt.pause(0.001)
@@ -432,7 +435,7 @@ def testAEW():
 def testAEWAS ():
 
 	## Create swiss roll data
-	npts = 200
+	npts = 600
 	prev = 0.5
 	c = 1
 	nloops = 1.5
@@ -444,14 +447,14 @@ def testAEWAS ():
 	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var, shuffle=shuffle)
 
 	k = 10
-	sigma = 'median'
+	sigma = 'local-scaling'
 	# A = createEpsilonGraph (X, eps=eps, gamma=gamma)
 	A1,sigma1 = du.generate_nngraph (X, k=k, sigma=sigma)
 
 	# Perform AEW 
 	max_iter = 100
 	param = SL.MSALPParameters(k=k, sigma=sigma, max_iter=max_iter)
-	A2,sigma2 = du.AEW(X,param)
+	A2,sigma2 = SL.AEW(X,param)
 
 	## Initialize naiveAS
 	pi = prev
@@ -473,7 +476,8 @@ def testAEWAS ():
 	lAS2 = ASI.naiveAS (prms)
 	lAS2.initialize(A2, init_labels)
 
-	plotData(X, None, lAS2.f, lAS2.labels)
+	plotData(X, None, lAS1.f, lAS1.labels, fid=0)
+	plotData(X, None, lAS2.f, lAS2.labels, fid=1)
 
 	hits1 = [n_init]
 	hits2 = [n_init]
@@ -488,8 +492,8 @@ def testAEWAS ():
 		hits1.append(hits1[-1]+Y[idx1])
 		hits2.append(hits2[-1]+Y[idx2])
 
-		plotData(X, None, lAS2.f, lAS2.labels)
-
+		plotData(X, None, lAS1.f, lAS1.labels, fid=0)
+		plotData(X, None, lAS2.f, lAS2.labels, fid=1)
 
 		print('')
 
@@ -503,4 +507,5 @@ if __name__ == '__main__':
 	# testRWNAS()
 	# testMPCKAS()
 	# testNPKAS()
-	testAEW()
+	# testAEW()
+	testAEWAS ()

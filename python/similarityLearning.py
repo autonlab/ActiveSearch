@@ -436,7 +436,7 @@ class MSALPParameters (object):
 		self.max_beta_p = max_beta_p
 		self.rho = rho
 
-def AEW (X, params):
+def AEW (X, param):
 	#
 	# Adaptive Edge Weighting for Label Propagation
 	# 
