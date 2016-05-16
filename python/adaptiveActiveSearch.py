@@ -674,3 +674,138 @@ class NPKNaiveAS (ASI.genericAS):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
 		return self.kAS.getLabel(idx)
+
+################################################################
+## MULTIPLE KERNELS
+################################################################
+
+################################################################
+## Bandit approach for multiple kernels
+################################################################
+class EXP3Parameters (object):
+
+	def __init__ (self, gamma):
+		self.gamma = gamma
+
+class EXP3NaiveAS (ASI.genericAS):
+
+	def __init__ (self, ASparams=ASI.Parameters(), EXP3params = EXP3Parameters()):
+
+		self.params = ASparams
+		self.SLparams = EXP3params
+
+		self.ASbandits = []
+		self.weights = []
+
+		self.T = 0
+
+
+	def initialize(self, As, init_labels = {}):
+		
+		self.As = As
+		self.nbandits = len(As)
+		for A in As:
+			self.ASbandits.append(ASI.naiveAS(self.params))
+			self.ASbandits[-1].initialize(A, init_labels)
+			self.weights.append(1)
+
+		self.weights = np.array(self.weights)
+
+
+	def relearnSimilarity (self):
+
+		if not self.learn_sim:
+			return
+		print("Running NPKL for relearning similarity.")
+		
+		# if self.from_all_data:
+		# 	Y = self.kAS.labels[self.kAS.labeled_idxs]
+		# else:
+		# 	Y = self.kAS.labels[self.recent_labeled_idxs]
+		
+		self.NPKSL.initialize(self.A, self.kAS.labels)
+		self.NPKSL.solvePrimal() ## potentially vert slow
+		
+		print("Finished learning new similarity.")
+		
+		if self.NPKSL.check_has_learned():
+			self.A = self.NPKSL.getZ()
+
+		print("Reinitializing Active Search.")
+
+		self.initialize(self.A, {i:self.kAS.labels[i] for i in self.kAS.labeled_idxs})
+
+	def firstMessage(self,idx):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		self.kAS.firstMessage(idx)
+		if self.start_point is None:
+			self.start_point = idx
+
+	def interestingMessage(self):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		self.kAS.interestingMessage(idx)
+
+	def boringMessage(self):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		self.kAS.boringMessage(idx)
+
+	def setLabelCurrent(self, value):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		self.setLabel(self.kAS.next_message, value)
+
+	def setLabel (self, idx, lbl):
+		# THIS IS WHERE WE RELEARN WHEN WE NEED TO
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		self.itr += 1
+		display_iter = self.epoch_itr * self.T + self.itr
+		self.kAS.setLabel(idx, lbl, display_iter)
+		# if not self.from_all_data:		
+		# 	self.recent_labeled_idxs.append(idx)
+		# PERFORM RELEARNING
+		if self.learn_sim and self.itr >= self.T:
+			self.relearnSimilarity()
+			# if not self.from_all_data and self.spsdSL.check_has_learned():
+			# 	self.recent_labeled_idxs = []
+			self.itr = 0
+			self.epoch_itr += 1
+
+	def getStartPoint(self):
+		if self.start_point is None:
+			raise Exception("The algortithm has not been initialized. Please call \"firstMessage\".")
+		return self.start_point
+
+	def resetLabel (self, idx, lbl):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		ret = self.kAS.labels[idx]
+		if self.kAS.labels[idx] == -1:
+			self.setLabel(idx, lbl)
+			return ret 
+		elif self.kAS.labels[idx] == lbl:
+			print("Already the same value!")
+			return ret
+		return self.kAS.resetLabel(idx, lbl)
+
+	def getNextMessage (self):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		return self.kAS.getNextMessage()
+
+	def setLabelBulk (self, idxs, lbls):
+		for idx,lbl in zip(idxs,lbls):
+			self.setLabel(idx,lbl)
+
+	def pickRandomLabelMessage (self):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		return self.kAS.pickRandomLabelMessage()
+
+	def getLabel (self,idx):
+		if self.kAS is None:
+			raise Exception ("Has not been initialized.")
+		return self.kAS.getLabel(idx)
