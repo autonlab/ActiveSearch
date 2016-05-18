@@ -500,6 +500,76 @@ def testAEWAS ():
 	IPython.embed()
 
 
+def testMultipleKernelAS ():
+
+	## Create swiss roll data
+	npts = 600
+	prev = 0.5
+	c = 1
+	nloops = 1.5
+	var = 0.2
+	shuffle = False
+	eps = 2
+	gamma = 10
+	
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var, shuffle=shuffle)
+
+	k = 10
+	sigma = 'local-scaling'
+	A1,sigma1 = du.generate_nngraph (X, k=k, sigma=sigma)
+	A2 = createEpsilonGraph (X, eps=eps, gamma=gamma)
+
+	## Initialize naiveAS
+	pi = prev
+	sparse = False
+	verbose = True
+
+	prms = ASI.Parameters(sparse=sparse, verbose=verbose, pi=pi)
+
+	np_init = 1
+	nn_init = 1
+	n_init = np_init + nn_init
+	initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
+	initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
+	init_labels = {p:1 for p in initp_pt}
+	for p in initn_pt: init_labels[p] = 0
+
+	K = 200
+	nB = 2 # number of bandits/experts
+	gamma = 0.1
+	beta = 0.0 # leave this as 0
+	exp3params = AAS.EXP3Parameters (gamma = gamma, T=K, nB=nB, beta=beta)
+	rwmparams = AAS.RWMParameters (gamma = gamma, T=K, nB=nB)
+
+	mAS1 = AAS.EXP3NaiveAS (prms, exp3params)
+	mAS1.initialize([A1,A2], init_labels)
+	mAS2 = AAS.RWMNaiveAS (prms, rwmparams)
+	mAS2.initialize([A1,A2], init_labels)
+
+	# plotData(X, None, mAS1.f, mAS1.labels, fid=0)
+	plotData(X, None, mAS2.f, mAS2.ASexperts[0].labels, fid=1)
+
+	hits1 = [n_init]
+	hits2 = [n_init]
+	for i in xrange(K):
+
+		print('Iter %i out of %i'%(i+1,K))
+		idx1 = mAS1.getNextMessage()
+		idx2 = mAS2.getNextMessage()
+		print idx1, idx2
+		mAS1.setLabelCurrent(Y[idx1])
+		mAS2.setLabelCurrent(Y[idx2])
+		hits1.append(hits1[-1]+Y[idx1])
+		hits2.append(hits2[-1]+Y[idx2])
+
+		# plotData(X, None, mAS1.f, mAS1.labels, fid=0)
+		plotData(X, None, mAS2.f, mAS2.ASexperts[0].labels, fid=1)
+
+		print('')
+
+	IPython.embed()
+
+
 if __name__ == '__main__':
 	# testSwissRolls()
 	# testNaiveAS()
@@ -508,4 +578,5 @@ if __name__ == '__main__':
 	# testMPCKAS()
 	# testNPKAS()
 	# testAEW()
-	testAEWAS ()
+	# testAEWAS ()
+	testMultipleKernelAS ()

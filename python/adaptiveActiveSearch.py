@@ -682,11 +682,12 @@ class NPKNaiveAS (ASI.genericAS):
 def drawFromPMF (pmf):
 	if sum(pmf) != 1:
 		pmf = np.array(pmf)/sum(pmf)
-	return np.random.choice(elements, p=list(pmf))
+	return np.random.choice(xrange(len(pmf)), p=list(pmf))
 
 ################################################################
 ## Bandit approach for multiple kernels
 ## Using EXP3
+## http://arxiv.org/pdf/1204.5721v2.pdf
 ################################################################
 
 class EXP3Parameters (object):
@@ -713,6 +714,7 @@ class EXP3NaiveAS (ASI.genericAS):
 		self.ASbandits = []
 		self.weights = []
 
+		self.labeled_idxs = []
 		self.unlabeled_idxs = []
 
 		self.itr = -1
@@ -724,6 +726,8 @@ class EXP3NaiveAS (ASI.genericAS):
 	def initialize(self, As, init_labels = {}):
 		
 		self.As = As
+		self.n = As[0].shape[0]
+		
 		self.nbandits = len(As)
 		for A in As:
 			self.ASbandits.append(ASI.naiveAS(self.params))
@@ -734,12 +738,16 @@ class EXP3NaiveAS (ASI.genericAS):
 		self.pmf = self.weights/self.nbandits
 		self.wsum = self.nbandits
 
-		if len(self.init_labels) > 0:
+		if len(init_labels) > 0:
 			self.labeled_idxs = init_labels.keys()
+			self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
+
 			self.drawBandit()
 			self.next_message = self.ASbandits[self.b_selected].next_message
 			self.seen_next = False
 			self.itr = 0
+		else:
+			self.unlabeled_idxs = range(n)
 
 		self.initialized = True
 
@@ -782,14 +790,15 @@ class EXP3NaiveAS (ASI.genericAS):
 		else:
 			r = self.rewardFunction(value)/self.pmf[bidx]
 			wfactor = np.exp(self.SLparams.eta*r)
-			self.weight[bidx] *= wfactor
+			self.weights[bidx] *= wfactor
+		self.weights = self.weights/self.weights.sum()
 
 	def drawBandit (self):
 		# self.computeWeights must be called before this function.
 		# in every iteration, in order to account for new reward.
 		bprob = self.weights/self.weights.sum()
 		unif = np.ones(self.nbandits)/self.nbandits
-		self.pmf = self.SLparam.gamma*unif + (1-self.SLparam.gamma)*bprob
+		self.pmf = self.SLparams.gamma*unif + (1-self.SLparams.gamma)*bprob
 		self.b_selected = drawFromPMF(self.pmf)
 
 	def setLabelCurrent(self, value):
@@ -800,14 +809,18 @@ class EXP3NaiveAS (ASI.genericAS):
 	def setLabel (self, idx, lbl):
 		if not self.initialized:
 			raise Exception ("Has not been initialized.")
-		if pidx in self.labeled_idxs:
+		if idx in self.labeled_idxs:
 			raise Exception('This node has already been labeled and computed before.')
 
 		self.itr += 1
 		lbl = 0 if lbl <= 0 else 1
+		# import IPython
+		# IPython.embed()
+		self.unlabeled_idxs.remove(idx)
+
 		# set labels and then select next message for labeling
 		for nAS in self.ASbandits:
-			self.setLabel(self.next_message, lbl)
+			nAS.setLabel(self.next_message, lbl)
 		if self.next_message == idx:
 			# recompute weights only if we are using bandit's query
 			self.computeWeights(self.b_selected, self.next_message, lbl)
@@ -883,6 +896,7 @@ class RWMNaiveAS (ASI.genericAS):
 		self.ASexperts = []
 		self.weights = []
 
+		self.labeled_idxs = []
 		self.unlabeled_idxs = []
 
 		self.itr = 0
@@ -894,6 +908,8 @@ class RWMNaiveAS (ASI.genericAS):
 	def initialize(self, As, init_labels = {}):
 		
 		self.As = As
+		self.n = As[0].shape[0]
+
 		self.nexperts = len(As)
 		for A in As:
 			self.ASexperts.append(ASI.naiveAS(self.params))
@@ -903,9 +919,11 @@ class RWMNaiveAS (ASI.genericAS):
 		self.weights = np.array(self.weights)
 		self.pmf = self.weights/self.nexperts
 
-		if len(self.init_labels) > 0:
+		if len(init_labels) > 0:
 			self.labeled_idxs = init_labels.keys()
+			self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
 			self.computeNextMessage()
+			self.itr = 0
 
 		self.initialized = True
 
@@ -942,24 +960,27 @@ class RWMNaiveAS (ASI.genericAS):
 	def computeNextMessage(self):
 		# Assuming weights and such are updated.
 		F = np.array([nAS.f for nAS in self.ASexperts]).T
-		if self.SL.param.gamma > 0:
+		if self.SLparams.gamma > 0:
 			unif = np.ones(self.nexperts)/self.nexperts
 			ews = self.weights/self.weights.sum()
-			self.pmf = self.SLparam.gamma*unif + (1-self.SLparam.gamma)*ews
+			self.pmf = self.SLparams.gamma*unif + (1-self.SLparams.gamma)*ews
 		else:
 			self.pmf = self.weights/self.weights.sum()
 
-		f = F.dot(self.pmf)
+		self.f = F.dot(self.pmf)
+		# import IPython
+		# IPython.embed()
 		uidx = np.argmax(self.f[self.unlabeled_idxs])
 		self.next_message = self.unlabeled_idxs[uidx]
 		self.seen_next = False
 
-	def computeWeights(self, pidx, value):
-		if pidx in self.labeled_idxs:
+	def computeWeights(self, idx, value):
+		if idx in self.labeled_idxs:
 			print('This node has already been labeled and computed before')
 			return
 		wfactor = self.rlFunction(value)*self.pmf
 		self.weights = self.weights*np.exp(wfactor)
+		self.weights = self.weights/self.weights.sum()
 
 	def setLabelCurrent(self, value):
 		if not self.initialized:
@@ -969,14 +990,16 @@ class RWMNaiveAS (ASI.genericAS):
 	def setLabel (self, idx, lbl):
 		if not self.initialized:
 			raise Exception ("Has not been initialized.")
-		if pidx in self.labeled_idxs:
+		if idx in self.labeled_idxs:
 			raise Exception('This node has already been labeled and computed before.')
 
 		self.itr += 1
 		lbl = 0 if lbl <= 0 else 1
+		self.unlabeled_idxs.remove(idx)
+
 		# set labels and then select next message for labeling
-		for nAS in self.ASbandits:
-			self.setLabel(self.next_message, lbl)
+		for nAS in self.ASexperts:
+			nAS.setLabel(self.next_message, lbl)
 		if self.next_message == idx:
 			# recompute weights only if we are able to get our reward
 			self.computeWeights(self.next_message, lbl)
