@@ -948,14 +948,23 @@ class RWMNaiveAS (ASI.genericAS):
 			raise Exception ("Has not been initialized.")		
 		self.setLabelCurrent(0)
 
-	def rewardFunction (self, value):
-		return value
 
-	def lossFunction (self, value):
-		return 1-value
+	# def rewardFunction (self, value):
+	# 	return value
 
-	def rlFunction (self, value):
-		return 1 if value == 1 else -1
+	# def lossFunction (self, value):
+	# 	return 1-value
+
+	def rlFunction (self, idx, value):
+		# If the f-score is closer to 1, then the reward/loss magnitude is higher
+		# If f_idx is small when the point is positive, incur larger penalty
+		# If f_idx is big when the point is negative, incur smaller reward
+		v = 1 if value == 1 else -1
+		f_idx = np.array([nAS.f[idx] for nAS in self.ASexperts])
+		# if v = 1, we want f_idx to be close to 1
+		# if v = -1, we want f_idx to be far away
+		rl = v*(f_idx-1) 
+		return rl
 
 	def computeNextMessage(self):
 		# Assuming weights and such are updated.
@@ -968,8 +977,6 @@ class RWMNaiveAS (ASI.genericAS):
 			self.pmf = self.weights/self.weights.sum()
 
 		self.f = F.dot(self.pmf)
-		# import IPython
-		# IPython.embed()
 		uidx = np.argmax(self.f[self.unlabeled_idxs])
 		self.next_message = self.unlabeled_idxs[uidx]
 		self.seen_next = False
@@ -978,7 +985,7 @@ class RWMNaiveAS (ASI.genericAS):
 		if idx in self.labeled_idxs:
 			print('This node has already been labeled and computed before')
 			return
-		wfactor = self.rlFunction(value)*self.pmf
+		wfactor = self.SLparams.eta*self.rlFunction(idx, value)
 		self.weights = self.weights*np.exp(wfactor)
 		self.weights = self.weights/self.weights.sum()
 
