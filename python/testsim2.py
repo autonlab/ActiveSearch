@@ -15,6 +15,7 @@ import similarityLearning as SL
 import dataUtils as du
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
+results_dir = osp.join(os.getenv('HOME'), 'Research/ActiveSearch/Results')
 
 def polarToCartesian (r, theta):
 	return r*np.array([np.cos(theta), np.sin(theta)])
@@ -31,7 +32,7 @@ def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var1 = 0.05
 	# shuffle	-- shuffle points or keep them grouped as 1/0
 
 	std1 = np.sqrt(var1)
-    std2 = np.sqrt(var2)
+	std2 = np.sqrt(var2)
 	n1 = int(prev*npts);
 	n2 = npts-n1
 
@@ -90,10 +91,10 @@ def plotData(X, Y, f=None, labels=None, thresh=None, block=False, fid=None):
 	# time.sleep(0.5)
 
 def createLinearGraph (X):
-        return np.dot(X,X.T)
+		return np.dot(X,X.T)
 
 def createPolyGraph (X,d,c):
-        return np.power(np.dot(X,X.T)+c,d)
+		return np.power(np.dot(X,X.T)+c,d)
 
 def createEpsilonGraph (X, eps=1, kernel='rbf', gamma=1):
 	## Creates an epsilon graph as follows:
@@ -164,118 +165,118 @@ def testAS_run (A1,A2,X,Y,prev,verbose,initp_pt,initn_pt,K):
 		if verbose: print('')
 
 	#IPython.embed()
-        return (hits1,hits2)
+		return (hits1,hits2)
 
 
 def KTA(y,A):
-        n = A.shape[0]
-        return np.dot(2*y-1,np.dot(A,2*y-1))/(n*nlg.norm(A,'fro'))
+	n = A.shape[0]
+	return np.dot(2*y-1,np.dot(A,2*y-1))/(n*nlg.norm(A,'fro'))
 
 def KTA2(y,A):
-        n = A.shape[0]
-        D = np.squeeze(A.sum(1))
-        M = np.dot(np.diag(1./D),A)
-        return np.dot(y,np.dot(M,y))/n
+	n = A.shape[0]
+	D = np.squeeze(A.sum(1))
+	M = np.dot(np.diag(1./D),A)
+	return np.dot(y,np.dot(M,y))/n
 
 def KTA_AS(y,A):
-        n = A.shape[0]
-        w0 = 1/n
-        B = (1+w0)
-        D = np.squeeze(A.sum(1))
-        M = np.diag(np.squeeze(B*D))-A
-        Mhat = np.dot(nlg.inv(M),np.diag(w0*D))
-        return KTA(y,Mhat)
+	n = A.shape[0]
+	w0 = 1/n
+	B = (1+w0)
+	D = np.squeeze(A.sum(1))
+	M = np.diag(np.squeeze(B*D))-A
+	Mhat = np.dot(nlg.inv(M),np.diag(w0*D))
+	return KTA(y,Mhat)
 
 def LinInterpKernel(x,Y,A,B):
-        Anorm, Bnorm = nlg.norm(A,'fro'), nlg.norm(B,'fro')
-        a,b,c = KTA(Y,A), KTA(Y,B), np.trace(np.dot(A.T,B))/Anorm/Bnorm
-        A_prime = A if a>b else B
-        theta1 = -(a*b-c*x*x)/(a*a-x*x)+np.sqrt((a*b-c*x*x)**2-(a*a-x*x)*(b*b-x*x))/(a*a-x*x)
-        theta2 = -(a*b-c*x*x)/(a*a-x*x)-np.sqrt((a*b-c*x*x)**2-(a*a-x*x)*(b*b-x*x))/(a*a-x*x)
-        if theta1>=0:
-          theta=theta1
-        elif theta2>=0:
-          theta=theta2
-        else:
-          return A_prime
-        alpha = 1/(Anorm/theta/Bnorm+1)
-        beta=1-alpha
-        A_prime = alpha*A+beta*B
-        return A_prime
+	Anorm, Bnorm = nlg.norm(A,'fro'), nlg.norm(B,'fro')
+	a,b,c = KTA(Y,A), KTA(Y,B), np.trace(np.dot(A.T,B))/Anorm/Bnorm
+	A_prime = A if a>b else B
+	theta1 = -(a*b-c*x*x)/(a*a-x*x)+np.sqrt((a*b-c*x*x)**2-(a*a-x*x)*(b*b-x*x))/(a*a-x*x)
+	theta2 = -(a*b-c*x*x)/(a*a-x*x)-np.sqrt((a*b-c*x*x)**2-(a*a-x*x)*(b*b-x*x))/(a*a-x*x)
+	if theta1>=0:
+	  theta=theta1
+	elif theta2>=0:
+	  theta=theta2
+	else:
+	  return A_prime
+	alpha = 1/(Anorm/theta/Bnorm+1)
+	beta=1-alpha
+	A_prime = alpha*A+beta*B
+	return A_prime
 
 def OptLinInterpKernel(Y,A,B):
-        Anorm, Bnorm = nlg.norm(A,'fro'), nlg.norm(B,'fro')
-        a,b,c = KTA(Y,A), KTA(Y,B), np.trace(np.dot(A.T,B))/Anorm/Bnorm
-        theta = (b*c-a)/(a*c-b)
-        if theta>=0:
-          alpha = 1/(Anorm/theta/Bnorm+1)
-        else:
-          alpha = 1 if a>b else 0
-        beta=1-alpha
-        A_prime = alpha*A+beta*B
-        return A_prime
+	Anorm, Bnorm = nlg.norm(A,'fro'), nlg.norm(B,'fro')
+	a,b,c = KTA(Y,A), KTA(Y,B), np.trace(np.dot(A.T,B))/Anorm/Bnorm
+	theta = (b*c-a)/(a*c-b)
+	if theta>=0:
+	  alpha = 1/(Anorm/theta/Bnorm+1)
+	else:
+	  alpha = 1 if a>b else 0
+	beta=1-alpha
+	A_prime = alpha*A+beta*B
+	return A_prime
 
 def runTests (prev,K,verbose=False):
-        ## Create swiss roll data
-        npts = 600
-        #prev = 0.05
-        c = 1
-        nloops = 1.5
-        var1 = 0.1
-        var2 = 2.0
-        shuffle = False
-        eps = np.inf
-        gamma = 10
-        
-        X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var1=var1,var2=var2, shuffle=shuffle)
+	## Create swiss roll data
+	npts = 1000
+	#prev = 0.05
+	c = 1
+	nloops = 1.5
+	var1 = 0.1
+	var2 = 2.0
+	shuffle = False
+	eps = np.inf
+	gamma = 10
+	
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var1=var1,var2=var2, shuffle=shuffle)
 
-        k = 10
-        sigma = 'local-scaling'
-        A_nn,sigma1 = du.generate_nngraph (X, k=k, sigma=sigma)
-        A_lin = createLinearGraph(X)
-        A_poly = createPolyGraph(X,4,1)
-        A_eps = createEpsilonGraph (X, eps=eps, gamma=gamma)
-        # Perform AEW 
-        max_iter = 100
-        param = SL.MSALPParameters(k=k, sigma=sigma, max_iter=max_iter)
-        A_aew,sigma2 = SL.AEW(X,param,verbose)
-        A_ideal = 0.5*(np.outer(2*Y-1,2*Y-1)+1)
-        A_rand = np.random.random((npts,npts))
+	k = 10
+	sigma = 'local-scaling'
+	A_nn,sigma1 = du.generate_nngraph (X, k=k, sigma=sigma)
+	A_lin = createLinearGraph(X)
+	A_poly = createPolyGraph(X,4,1)
+	A_eps = createEpsilonGraph (X, eps=eps, gamma=gamma)
+	# Perform AEW 
+	max_iter = 100
+	param = SL.MSALPParameters(k=k, sigma=sigma, max_iter=max_iter)
+	A_aew,sigma2 = SL.AEW(X,param,verbose)
+	A_ideal = 0.5*(np.outer(2*Y-1,2*Y-1)+1)
+	A_rand = np.random.random((npts,npts))
 
-        #plotData(X, Y)
+	#plotData(X, Y)
 
-        KTA_list = {}
-        KTA_list['ideal']=[KTA(Y,A_ideal), KTA2(Y,A_ideal), KTA_AS(Y,A_ideal)]
-        KTA_list['rand']=[KTA(Y,A_rand), KTA2(Y,A_rand), KTA_AS(Y,A_rand)]
-        KTA_list['lin']=[KTA(Y,A_lin), KTA2(Y,A_lin), KTA_AS(Y,A_lin)]
-        KTA_list['poly']=[KTA(Y,A_poly), KTA2(Y,A_poly), KTA_AS(Y,A_poly)]
-        KTA_list['nn']=[KTA(Y,A_nn), KTA2(Y,A_nn), KTA_AS(Y,A_nn)]
-        KTA_list['eps']=[KTA(Y,A_eps), KTA2(Y,A_eps), KTA_AS(Y,A_eps)]
-        KTA_list['aew']=[KTA(Y,A_aew), KTA2(Y,A_aew), KTA_AS(Y,A_aew)]
-        A_prime = OptLinInterpKernel(Y,A_nn,A_aew) #LinInterpKernel(KTA(Y,A_eps)*1.05,Y,A_ideal,A_eps)
-        KTA_list['convex']=[KTA(Y,A_prime), KTA2(Y,A_prime), KTA_AS(Y,A_prime)]
+	KTA_list = {}
+	KTA_list['ideal']=[KTA(Y,A_ideal), KTA2(Y,A_ideal), KTA_AS(Y,A_ideal)]
+	KTA_list['rand']=[KTA(Y,A_rand), KTA2(Y,A_rand), KTA_AS(Y,A_rand)]
+	KTA_list['lin']=[KTA(Y,A_lin), KTA2(Y,A_lin), KTA_AS(Y,A_lin)]
+	KTA_list['poly']=[KTA(Y,A_poly), KTA2(Y,A_poly), KTA_AS(Y,A_poly)]
+	KTA_list['nn']=[KTA(Y,A_nn), KTA2(Y,A_nn), KTA_AS(Y,A_nn)]
+	KTA_list['eps']=[KTA(Y,A_eps), KTA2(Y,A_eps), KTA_AS(Y,A_eps)]
+	KTA_list['aew']=[KTA(Y,A_aew), KTA2(Y,A_aew), KTA_AS(Y,A_aew)]
+	A_prime = OptLinInterpKernel(Y,A_nn,A_aew) #LinInterpKernel(KTA(Y,A_eps)*1.05,Y,A_ideal,A_eps)
+	KTA_list['convex']=[KTA(Y,A_prime), KTA2(Y,A_prime), KTA_AS(Y,A_prime)]
 
-        np_init, nn_init = 1,1
-        initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
-        initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
+	np_init, nn_init = 1,1
+	initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
+	initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
 
-        h_rand,h_ideal = testAS_run (A_rand,A_ideal,X,Y,prev,verbose,initp_pt,initn_pt,K)
-        h_lin,h_poly = testAS_run (A_lin,A_poly,X,Y,prev,verbose,initp_pt,initn_pt,K)
-        h_nn,h_eps = testAS_run (A_nn,A_eps,X,Y,prev,verbose,initp_pt,initn_pt,K)
-        h_prime,h_aew = testAS_run (A_prime,A_aew,X,Y,prev,verbose,initp_pt,initn_pt,K)        
-        h_bandit, h_stochweight = testMultipleKernelAS_run([A_rand,A_lin,A_poly,A_nn,A_eps,A_prime],X,Y,prev,verbose,initp_pt,initn_pt,K)
-        hits = {}
-        hits['ideal']=h_ideal
-        hits['rand']=h_rand
-        hits['lin']=h_lin
-        hits['poly']=h_poly
-        hits['nn']=h_nn
-        hits['eps']=h_eps
-        hits['aew']=h_aew
-        hits['convex']=h_prime
-        hits['bandit']=h_bandit
-        hits['stochweight']=h_stochweight
-        return {'hits':hits, 'KTA':KTA_list}
+	h_rand,h_ideal = testAS_run (A_rand,A_ideal,X,Y,prev,verbose,initp_pt,initn_pt,K)
+	h_lin,h_poly = testAS_run (A_lin,A_poly,X,Y,prev,verbose,initp_pt,initn_pt,K)
+	h_nn,h_eps = testAS_run (A_nn,A_eps,X,Y,prev,verbose,initp_pt,initn_pt,K)
+	h_prime,h_aew = testAS_run (A_prime,A_aew,X,Y,prev,verbose,initp_pt,initn_pt,K)        
+	h_bandit, h_stochweight = testMultipleKernelAS_run([A_rand,A_lin,A_poly,A_nn,A_eps,A_prime],X,Y,prev,verbose,initp_pt,initn_pt,K)
+	hits = {}
+	hits['ideal']=h_ideal
+	hits['rand']=h_rand
+	hits['lin']=h_lin
+	hits['poly']=h_poly
+	hits['nn']=h_nn
+	hits['eps']=h_eps
+	hits['aew']=h_aew
+	hits['convex']=h_prime
+	hits['bandit']=h_bandit
+	hits['stochweight']=h_stochweight
+	return {'hits':hits, 'KTA':KTA_list}
 
 def testMultipleKernelAS_run (As,X,Y,prev,verbose,initp_pt,initn_pt,K):
 
@@ -327,54 +328,54 @@ def testMultipleKernelAS_run (As,X,Y,prev,verbose,initp_pt,initn_pt,K):
 		if verbose: print('')
 
 	#IPython.embed()
-        return (hits1,hits2)
+		return (hits1,hits2)
 
 def RunAllTests():
-        N = 2
-        sums = {'hits':{}, 'KTA':{}}
-        sumsqr = {'hits':{}, 'KTA':{}}
-        K = 10
-        alpha = 0.05
-        for i in xrange(N): 
-          out = runTests(alpha,K)
-          for h in out['hits'].keys():
-            if h not in sums['hits']: sums['hits'][h] = [0]*K
-            if h not in sumsqr['hits']: sumsqr['hits'][h] = [0]*K
-            for i in xrange(K):
-              sums['hits'][h][i] += out['hits'][h][i]
-              sumsqr['hits'][h][i] += out['hits'][h][i]**2
-          for h in out['KTA'].keys():
-            if h not in sums['KTA']: sums['KTA'][h] = [0]*3
-            if h not in sumsqr['KTA']: sumsqr['KTA'][h] = [0]*3
-            for i in xrange(len(out['KTA'][h])):
-              sums['KTA'][h][i] += out['KTA'][h][i]
-              sumsqr['KTA'][h][i] += out['KTA'][h][i]**2
-        f = open('results_hits.csv','w')
-        f.write('iteration')
-        for h in sums['hits'].keys():
-          f.write(','+h+'_mn,'+h+'_sd')
-        f.write('\n')
-        for i in xrange(K):
-          f.write(str(i+1))
-          for h in sums['hits'].keys():
-            mn = float(sums['hits'][h][i])/float(N)
-            sd = np.sqrt((float(sumsqr['hits'][h][i])-2*float(sums['hits'][h][i])*mn+float(N)*mn**2)/float(N-1))
-            f.write(','+str(mn)+','+str(sd))
-          f.write('\n')
-        f.close()
-        f = open('results_ktas.csv','w')
-        f.write('iteration')
-        for h in sums['KTA'].keys():
-          f.write(','+h+'_mn,'+h+'_sd')
-        f.write('\n')
-        for i in xrange(3):
-          f.write(str(i+1))
-          for h in sums['KTA'].keys():
-            mn = float(sums['KTA'][h][i])/float(N)
-            sd = np.sqrt((float(sumsqr['KTA'][h][i])-2*float(sums['KTA'][h][i])*mn+float(N)*mn**2)/float(N-1))
-            f.write(','+str(mn)+','+str(sd))
-          f.write('\n')
-        f.close()
+	N = 2
+	sums = {'hits':{}, 'KTA':{}}
+	sumsqr = {'hits':{}, 'KTA':{}}
+	K = 10
+	alpha = 0.05
+	for i in xrange(N): 
+	  out = runTests(alpha,K)
+	  for h in out['hits'].keys():
+		if h not in sums['hits']: sums['hits'][h] = [0]*K
+		if h not in sumsqr['hits']: sumsqr['hits'][h] = [0]*K
+		for i in xrange(K):
+		  sums['hits'][h][i] += out['hits'][h][i]
+		  sumsqr['hits'][h][i] += out['hits'][h][i]**2
+	  for h in out['KTA'].keys():
+		if h not in sums['KTA']: sums['KTA'][h] = [0]*3
+		if h not in sumsqr['KTA']: sumsqr['KTA'][h] = [0]*3
+		for i in xrange(len(out['KTA'][h])):
+		  sums['KTA'][h][i] += out['KTA'][h][i]
+		  sumsqr['KTA'][h][i] += out['KTA'][h][i]**2
+	f = open('results_hits%.2f.csv'%alpha,'w')
+	f.write('iteration')
+	for h in sums['hits'].keys():
+	  f.write(','+h+'_mn,'+h+'_sd')
+	f.write('\n')
+	for i in xrange(K):
+	  f.write(str(i+1))
+	  for h in sums['hits'].keys():
+		mn = float(sums['hits'][h][i])/float(N)
+		sd = np.sqrt((float(sumsqr['hits'][h][i])-2*float(sums['hits'][h][i])*mn+float(N)*mn**2)/float(N-1))
+		f.write(','+str(mn)+','+str(sd))
+	  f.write('\n')
+	f.close()
+	f = open('results_ktas%.2f.csv'%prev,'w')
+	f.write('iteration')
+	for h in sums['KTA'].keys():
+	  f.write(','+h+'_mn,'+h+'_sd')
+	f.write('\n')
+	for i in xrange(3):
+	  f.write(str(i+1))
+	  for h in sums['KTA'].keys():
+		mn = float(sums['KTA'][h][i])/float(N)
+		sd = np.sqrt((float(sumsqr['KTA'][h][i])-2*float(sums['KTA'][h][i])*mn+float(N)*mn**2)/float(N-1))
+		f.write(','+str(mn)+','+str(sd))
+	  f.write('\n')
+	f.close()
 
 if __name__ == '__main__':
-        RunAllTests()
+	RunAllTests()
