@@ -229,7 +229,7 @@ def runTests (prev,K,verbose=False):
 	eps = np.inf
 	gamma = 10
 	
-	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var1,var2=var2, shuffle=shuffle)
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var1=var1,var2=var2, shuffle=shuffle)
 
 	k = 10
 	sigma = 'local-scaling'
@@ -332,7 +332,7 @@ def testMultipleKernelAS_run (As,X,Y,prev,verbose,initp_pt,initn_pt,K):
 	return (hits1,hits2)
 
 def RunAllTests():
-	N = 20
+	N = 2
 	sums = {'hits':{}, 'KTA':{}}
 	sumsqr = {'hits':{}, 'KTA':{}}
 	K = 200
