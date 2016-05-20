@@ -1,6 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 from __future__ import division
+import os, os.path as osp
 import time
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy.linalg as slg, scipy.spatial.distance as ssd, scipy.sparse as ss
@@ -15,7 +16,8 @@ import similarityLearning as SL
 import dataUtils as du
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
-results_dir = osp.join(os.getenv('HOME'), 'Research/ActiveSearch/Results')
+#results_dir = osp.join(os.getenv('HOME'), 'Research/ActiveSearch/Results')
+results_dir = os.getenv('AS_NIPS_RDIR')
 
 def polarToCartesian (r, theta):
 	return r*np.array([np.cos(theta), np.sin(theta)])
@@ -239,7 +241,7 @@ def runTests (prev,K,verbose=False):
 	# Perform AEW 
 	max_iter = 100
 	param = SL.MSALPParameters(k=k, sigma=sigma, max_iter=max_iter)
-	A_aew,sigma2 = SL.AEW(X,param,verbose)
+	A_aew,sigma2 = SL.AEW(X,param)#,verbose)
 	A_ideal = 0.5*(np.outer(2*Y-1,2*Y-1)+1)
 	A_rand = np.random.random((npts,npts))
 
@@ -350,7 +352,7 @@ def RunAllTests():
 		for i in xrange(len(out['KTA'][h])):
 		  sums['KTA'][h][i] += out['KTA'][h][i]
 		  sumsqr['KTA'][h][i] += out['KTA'][h][i]**2
-	f = open('results_hits%.2f.csv'%alpha,'w')
+	f = open(osp.join(results_dir,'results_hits%.2f.csv'%alpha),'w')
 	f.write('iteration')
 	for h in sums['hits'].keys():
 	  f.write(','+h+'_mn,'+h+'_sd')
@@ -363,7 +365,7 @@ def RunAllTests():
 		f.write(','+str(mn)+','+str(sd))
 	  f.write('\n')
 	f.close()
-	f = open('results_ktas%.2f.csv'%prev,'w')
+	f = open(osp.join(results_dir,'results_ktas%.2f.csv'%prev),'w')
 	f.write('iteration')
 	for h in sums['KTA'].keys():
 	  f.write(','+h+'_mn,'+h+'_sd')
