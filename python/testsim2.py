@@ -165,9 +165,8 @@ def testAS_run (A1,A2,X,Y,prev,verbose,initp_pt,initn_pt,K):
 		#plotData(X, None, lAS2.f, lAS2.labels, fid=1)
 
 		if verbose: print('')
-
 	#IPython.embed()
-		return (hits1,hits2)
+	return (hits1,hits2)
 
 
 def KTA(y,A):
@@ -330,7 +329,7 @@ def testMultipleKernelAS_run (As,X,Y,prev,verbose,initp_pt,initn_pt,K):
 		if verbose: print('')
 
 	#IPython.embed()
-		return (hits1,hits2)
+	return (hits1,hits2)
 
 def RunAllTests():
 	N = 2
@@ -338,7 +337,8 @@ def RunAllTests():
 	sumsqr = {'hits':{}, 'KTA':{}}
 	K = 10
 	alpha = 0.05
-	for i in xrange(N): 
+	for expt in xrange(N): 
+	  print('Running experiment %i'%(expt+1))
 	  out = runTests(alpha,K)
 	  for h in out['hits'].keys():
 		if h not in sums['hits']: sums['hits'][h] = [0]*K
@@ -365,7 +365,7 @@ def RunAllTests():
 		f.write(','+str(mn)+','+str(sd))
 	  f.write('\n')
 	f.close()
-	f = open(osp.join(results_dir,'results_ktas%.2f.csv'%prev),'w')
+	f = open(osp.join(results_dir,'results_ktas%.2f.csv'%alpha),'w')
 	f.write('iteration')
 	for h in sums['KTA'].keys():
 	  f.write(','+h+'_mn,'+h+'_sd')
