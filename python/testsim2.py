@@ -229,7 +229,7 @@ def runTests (prev,K,verbose=False):
 	eps = np.inf
 	gamma = 10
 	
-	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var1=var1,var2=var2, shuffle=shuffle)
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var1,var2=var2, shuffle=shuffle)
 
 	k = 10
 	sigma = 'local-scaling'
@@ -240,7 +240,7 @@ def runTests (prev,K,verbose=False):
 	# Perform AEW 
 	max_iter = 100
 	param = SL.MSALPParameters(k=k, sigma=sigma, max_iter=max_iter)
-	A_aew,sigma2 = SL.AEW(X,param)#,verbose)
+	A_aew,A_nn0 = SL.AEW(X,param)#,verbose)
 	A_ideal = 0.5*(np.outer(2*Y-1,2*Y-1)+1)
 	A_rand = np.random.random((npts,npts))
 

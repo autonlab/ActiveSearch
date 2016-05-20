@@ -11,17 +11,13 @@ import cPickle as pick
 import IPython
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
-results_dir = osp.join(os.getenv('HOME'), 'Research/ActiveSearch/Results')
+results_dir = osp.join(os.getenv('HOME'), 'Research/ActiveSearch/results/nips')
+# results_dir = '/usr0/home/sibiv/Research/ActiveSearch/results/nips'
 
 colors = [	(1,0,0), (0,1,0), (0,0,1),
 		 	(1,1,0), (1,0,1), (0,1,1), 
 		 	(1,0.5,0.5), (0.5,1,0.5), (0.5,0.5,1),
 		 	(0.2,0.5,0.8) ]
-{'': 'b', 
-			'NNAS': 'r',
-			'AGAS': 'g',
-			'LSVMAS': 'm'
-			}
 
 def load_data (hitsfile):
 
@@ -48,7 +44,15 @@ def load_data (hitsfile):
 
 	return keys, means, sds
 
-def plot_expts (means, sds, keys=None, prev=0, stdc=0.25, max_possible=None, title='', save=False, ptype='lin'):
+def plot_expts (means, sds, keys=None, prev=0, stdc=0.5, max_possible=None, title='', save=False, ptype='lin'):
+
+	import matplotlib as mpl
+	fsize = 30
+
+	colors = [	(1,0,0), (0,1,0), (0,0,1),
+		 	(1,1,0), (1,0,1), (0,1,1), 
+		 	(1,0.5,0.5), (0.5,1,0.5), (0.5,0.5,1),
+		 	(0.2,0.5,0.8) ]
 
 	if keys is None:
 		keys = means.keys()
@@ -68,6 +72,13 @@ def plot_expts (means, sds, keys=None, prev=0, stdc=0.25, max_possible=None, tit
 	if 'ideal' in keys:
 		ideal = means['ideal']
 		ax.plot(itr, ideal, color=color_map['ideal'], label='ideal', linewidth=4)
+	else:
+		if max_possible is None:
+			ideal = (np.array(itr)+1).tolist()
+		else:
+			ideal = range(1, max_possible+1) + [max_possible+1]*(max_iter-max_possible)
+		ax.plot(itr, ideal, 'k', label='Ideal', linewidth=4)
+		# ax.plot(itr, ideal, color=color_map['ideal'], label='ideal', linewidth=4)
 
 	for k in keys:
 		if k == 'ideal':
@@ -89,20 +100,29 @@ def plot_expts (means, sds, keys=None, prev=0, stdc=0.25, max_possible=None, tit
 	if prev > 0:
 		ax.plot(itr, chance, 'kx', label='chance', alpha=0.5, linewidth=4, markevery=2)
 
-	plt.xlabel('Iterations',fontsize=40)
-	plt.ylabel('Number of Hits',fontsize=40)
-	plt.legend(loc=2)#, fontsize=40)
+	# mpl.rcParams['xtick.labelsize'] = fsize
+	# mpl.rcParams['ytick.labelsize'] = fsize
+	# import IPython
+	# IPython.embed()
+	# ax.set_xticklabels(ax.get_xticklabels(), fontsize=fsize)
+	# ax.set_yticklabels(ax.get_yticklabels(), fontsize=fsize)
+	[tick.label.set_fontsize(int(fsize*0.7)) for tick in ax.xaxis.get_major_ticks()]
+	[tick.label.set_fontsize(int(fsize*0.7)) for tick in ax.yaxis.get_major_ticks()]
+	plt.xlabel('Iterations',fontsize=fsize)
+	plt.ylabel('Number of Hits',fontsize=fsize)
+	plt.legend(loc=2, fontsize=fsize)
 
 	if ptype=='log':
 		ax.set_yscale('log')
 
 	if save:
-		fname = osp.join(results_dir, 'nips/imgs', save+'.png')
+		fname = osp.join(results_dir, 'imgs', save+'.png')
 		# plt.title(title, y=1.02, fontsize=40)
 		fig = plt.figure(1)
 		fig.set_size_inches(20,16)
 		plt.savefig(fname, format='png', transparent=True, facecolor='w')
 	else:
+
 		plt.title(title, y=1.02)#, fontsize=40)
 		# if show:
 		plt.show()
@@ -110,14 +130,15 @@ def plot_expts (means, sds, keys=None, prev=0, stdc=0.25, max_possible=None, tit
 
 if __name__ == '__main__':
 
-	prev = 0.25
-	if prev == 0.05:
-		fl = 'results_hits.csv'
-	else:
-		fl = 'results_hits%.2f.csv'%prev
+	prev = 0.05
+	# if prev == 0.05:
+	# 	fl = 'results_hits.csv'
+	# else:
+	fl = 'results_hits%.2f.csv'%prev
 	title = 'Hits for %.2f'%prev
 
 	k,m,s = load_data(fl)
 	print k
-	ks = ['ideal', 'stochweight', 'nn', 'eps', 'convex']
+	# ks = ['ideal', 'bandit', 'nn', 'eps', 'convex']
+	ks = ['ideal', 'nn', 'aew']
 	plot_expts (m, s, keys=ks, prev=prev, title=title, save=False)
