@@ -504,7 +504,7 @@ def testMultipleKernelAS ():
 
 	## Create swiss roll data
 	npts = 600
-	prev = 0.5
+	prev = 0.05
 	c = 1
 	nloops = 1.5
 	var = 0.2
