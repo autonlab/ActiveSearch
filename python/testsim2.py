@@ -219,7 +219,7 @@ def OptLinInterpKernel(Y,A,B):
 
 def runTests (prev,K,verbose=False):
 	## Create swiss roll data
-	npts = 1000
+	npts = 600
 	#prev = 0.05
 	c = 1
 	nloops = 1.5
@@ -332,12 +332,13 @@ def testMultipleKernelAS_run (As,X,Y,prev,verbose,initp_pt,initn_pt,K):
 	return (hits1,hits2)
 
 def RunAllTests():
-	N = 2
+	N = 20
 	sums = {'hits':{}, 'KTA':{}}
 	sumsqr = {'hits':{}, 'KTA':{}}
-	K = 10
-	alpha = 0.05
-	for expt in xrange(N): 
+	K = 200
+	alpha = 0.25
+	for expt in xrange(N):
+	  t1 = time.time() 
 	  print('Running experiment %i'%(expt+1))
 	  out = runTests(alpha,K)
 	  for h in out['hits'].keys():
@@ -352,6 +353,7 @@ def RunAllTests():
 		for i in xrange(len(out['KTA'][h])):
 		  sums['KTA'][h][i] += out['KTA'][h][i]
 		  sumsqr['KTA'][h][i] += out['KTA'][h][i]**2
+	  print('Time taken: %.2fs\n'%(time.time()-t1))
 	f = open(osp.join(results_dir,'results_hits%.2f.csv'%alpha),'w')
 	f.write('iteration')
 	for h in sums['hits'].keys():
