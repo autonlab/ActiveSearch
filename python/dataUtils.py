@@ -9,7 +9,7 @@ import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
 import scipy.spatial.distance as ssd
 
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 import IPython
 
@@ -497,16 +497,20 @@ def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var = 0.05,
 
 	return X,Y
 
-def generate_syndata(noise_level=1, n=400, nc=4, display=True):
+def generate_syndata(noise_level=1, n=400, nc=4, display=True, prev=None, var1=0.1, var2=2.0):
 	# output: [X Y] 
-	nsub = int(n*1.0/nc)*np.ones(nc).astype(int)
+	if prev is None:
+		nsub = int(n*1.0/nc)*np.ones(nc).astype(int)
+	else:
+		n1 = int(n*prev)
+		nsub = np.array([n1] + [int((n-n1)*1.0/(nc-1)) for _ in xrange(nc-1)]).astype(int)
 	nsub[nc-1] = nsub[nc-1] + (n-nsub.sum())
 
 	X = np.zeros((2,0))
 	Y = np.zeros((0,nc))
 
 	for k in xrange(nc):
-		phi = np.sort(1.5*np.linspace(0,1,nsub[k])*np.pi)
+		phi = 5*np.linspace(0,1,nsub[k])*np.pi
 		radi = np.sqrt(np.pi+phi) - np.sqrt(np.pi)
 		rot = k*(2*np.pi)/nc;
 		R = np.array([[np.cos(rot), -np.sin(rot)],[np.sin(rot), np.cos(rot)]])
@@ -525,22 +529,28 @@ def generate_syndata(noise_level=1, n=400, nc=4, display=True):
 		Y = np.r_[Y, Ysub]
 
 	ridx = nr.permutation(n)
-	n1 = int(n/4.0)
+	if prev is None:
+		n1 = int(n/4.0)
 	
-	if noise_level == 1:
-		X[:,ridx[:n1]] = X[:,ridx[:n1]] + 0.01*nr.randn(2,n1)
+	if noise_level == 3:
+		X[:,:n1] = X[:,:n1] + np.sqrt(var1)*nr.randn(2,n1)
+		X[:,ridx[n1:]] = X[:,ridx[n1:]] + np.sqrt(var2)*nr.randn(2,n-n1)
 	else:
-		X[:,ridx[:n1]] = X[:,ridx[:n1]] + 0.05*nr.randn(2,n1)
-	X[:,ridx[n1:]] = X[:,ridx[n1:]] + 0.01*nr.randn(2,n-n1)
+		if noise_level == 1:
+			X[:,ridx[:n1]] = X[:,ridx[:n1]] + 0.01*nr.randn(2,n1)
+		else:
+			X[:,ridx[:n1]] = X[:,ridx[:n1]] + 0.05*nr.randn(2,n1)
+		X[:,ridx[n1:]] = X[:,ridx[n1:]] + 0.01*nr.randn(2,n-n1)
 
 	if display:
 		# Assuming nc = 4
-		markers = ['o','+','^','x']
-		col = [[1, 0, 0], [0.6, 0, 0], [0.3, 0, 0], [0, 1, 1]]
+		# markers = ['o','+','^','x']
+		col = [[0, 0, 1], [1, 0, 0], [1, 0, 0], [1, 0, 0]]
 		
 		for i in xrange(nc):
 			nc_inds = np.nonzero(Y[:,i])[0]
-			plt.scatter(X[0,nc_inds],X[1,nc_inds],marker=markers[i],c=col[i],linewidth=2)
+			plt.scatter(X[0,nc_inds],X[1,nc_inds],c=col[i])#,linewidth=2)
+			# plt.scatter(X[0,nc_inds],X[1,nc_inds],marker=markers[i],c=col[i],linewidth=2)
 		plt.title('Dataset (with true labels)')
 		plt.show()
 

@@ -420,21 +420,23 @@ class MSALPParameters (object):
 
 	def __init__ (	self, 
 					max_iter=100, k=10, sigma='median',
-					ex=0, tol=1e-4, 
-					beta=0.1, beta_p=0, max_beta_p=8, rho=1e-3):
+					tol=1e-6, max_beta_p=8, rho=1e-3,
+					verbose=False):
 		
 		self.max_iter = max_iter
 		self.k = k
 		self.sigma = sigma
 
-		self.ex = ex
+		# self.ex = ex
 		self.tol = tol
 
 		# Parameters for line-search
-		self.beta = beta
-		self.beta_p = beta_p
+		# self.beta = beta
+		# self.beta_p = beta_p
 		self.max_beta_p = max_beta_p
 		self.rho = rho
+
+		self.verbose = verbose
 
 def AEW (X, param):
 	#
@@ -454,7 +456,7 @@ def AEW (X, param):
 	#  adaptation for label propagation", NIPS 2013.
 	#
 	n,d = X.shape
-
+  
 	W0,sigma0 = du.generate_nngraph(X, param.k, param.sigma)
 	sigma0 = np.array(sigma0)
 	L = np.eye(d)
@@ -513,9 +515,14 @@ def AEW (X, param):
 					np.reshape(err.dot(Xori.T),(n**2,1),order='F')))
 		grad = np.squeeze(grad) / nlg.norm(grad) # Normalize
 
-		print('Iter = %i, MSE = %.3f\n'%(itr, sqerr/(d*n)))
+		if param.verbose:
+			print('Iter = %i, MSE = %.3f\n'%(itr, sqerr/(d*n)))
+		ex = 0
+		# Parameters for line-search
+		beta = 0.1
+		beta_p = 0
 
-		step = (param.beta**param.beta_p)
+		step = (beta**beta_p)
 		sqerr_prev = sqerr
 		L_prev = L
 
@@ -531,20 +538,22 @@ def AEW (X, param):
 			Xest = np.diag(1/D).dot(W).dot(Xori)
 			err = (Xori - Xest)
 			sqerr_temp = (err**2).sum()
-			# print(sqerr_temp - sqerr_prev, -param.rho*step*(grad.T.dot(grad)))
 			if sqerr_temp - sqerr_prev <= -param.rho*step*(grad.T.dot(grad)):
 				break 
 
-			param.beta_p = param.beta_p + 1
-			if param.beta_p > param.max_beta_p:
-				param.ex = 1
+			beta_p = beta_p + 1
+			if beta_p > param.max_beta_p:
+				ex = 1
 				break
 
-			step = step * param.beta
+			step = step * beta
 
-		if ((sqerr_prev - sqerr_temp) / sqerr_prev) < param.tol or param.ex:
+		if np.abs((sqerr_prev - sqerr_temp) / sqerr_prev) < param.tol:# or ex:
+			if param.verbose:
+				print('Abs rel error %f\n'%((sqerr_prev - sqerr_temp) / sqerr_prev))
 			break
 
+	print('Done with AEW')
 	return W, W0
 
 def HGF (L,Y):
