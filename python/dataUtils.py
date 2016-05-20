@@ -9,7 +9,7 @@ import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
 import scipy.spatial.distance as ssd
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 import IPython
 
@@ -474,7 +474,7 @@ def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var = 0.05,
 	# shuffle	-- shuffle points or keep them grouped as 1/0
 
 	std = np.sqrt(var)
-	n1 = int(prev*npts);
+	n1 = int(prev*npts)
 	n2 = npts-n1
 
 	angle_range1 = np.linspace(np.pi/2, 2*nloops*np.pi, n1)
@@ -499,7 +499,7 @@ def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var = 0.05,
 
 def generate_syndata(noise_level=1, n=400, nc=4, display=True):
 	# output: [X Y] 
-	nsub = int(n*1.0/nc)*np.ones((nc,1))
+	nsub = int(n*1.0/nc)*np.ones(nc).astype(int)
 	nsub[nc-1] = nsub[nc-1] + (n-nsub.sum())
 
 	X = np.zeros((2,0))
@@ -513,6 +513,7 @@ def generate_syndata(noise_level=1, n=400, nc=4, display=True):
 
 		Xsub = np.zeros((2,nsub[k]))
 		Ysub = np.zeros((nsub[k],nc))
+
 		for i in xrange(nsub[k]):
 			Xsub[1,i] = radi[i]*np.cos(phi[i]) + 0.1
 			Xsub[0,i] = radi[i]*np.sin(phi[i]) + 0.05
@@ -546,14 +547,18 @@ def generate_syndata(noise_level=1, n=400, nc=4, display=True):
 	return X.T,Y
 
 
-def generate_nngraph(X, k, sigma):
+def generate_nngraph(X, k=5, sigma='median'):
 	# X --> number of points x number of features
 	# output: [W sigma]
 
 	n,r = X.shape
 
 	D = ssd.squareform(ssd.pdist(X)**2)
+	
+	index = list(np.ix_(*[np.arange(i) for i in D.shape]))
 	sort_idx = np.argsort(D, axis=0)
+	index[0] = sort_idx
+	sort_D = D[index]
 
 	# Diagonal entries of D must be ranked the first.
 	diag_arranged = (sort_idx[0,:] == np.arange(n)).squeeze()
@@ -564,45 +569,46 @@ def generate_nngraph(X, k, sigma):
 		if len(I) != len(temp_idx):
 			raise Exception('')
 
-		for i in range(len(I)):
+		for i in xrange(len(I)):
 			sort_idx[I[i],temp_idx[i]], sort_idx[0,temp_idx[i]] = sort_idx[0,temp_idx[i]], sort_idx[I[i],temp_idx[i]]
 
+	knn_idx = sort_idx[1:k+1,:]
+	kD = sort_D[1:k+1,:]
 
-	knn_idx = sort_idx(2:k+1,:);
-	kD = sort_D(2:k+1,:);
+	W = np.zeros((n,n))
+	if sigma == 'median':
+		sigma = np.mean(np.sqrt(kD))
+		sigma = 1 if sigma == 0 else sigma
+		
+		for i in xrange(n):
+			W[i,knn_idx[:,i]] = np.exp(-kD[:,i]/(2*(sigma**2)))
 
-	W = zeros(n);
-	if strcmp(sigma,'median') 
-	  sigma = mean(sqrt(kD(:)));
-	  if sigma == 0
-	    sigma = 1;
-	  end
-	  for i = 1:n
-	    W(i,knn_idx(:,i)) = exp(-kD(:,i)./(2*sigma^2));
-	  end
-	elseif strcmp(sigma, 'local-scaling') 
-	  if k < 7
-	    sigma = sqrt(kD(end,:));
-	  else
-	    sigma = sqrt(kD(7,:));
-	  end
-	  sigma(sigma == 0) = 1;
-	  for i = 1:n
-	    W(i,knn_idx(:,i)) = exp(-kD(:,i)./(sigma(i)*sigma(knn_idx(:,i))'));
-	  end
-	else
-	  error('Unknown option for sigma');
-	end
+	elif sigma == 'local-scaling':
+		if k < 7:
+			sigma = np.sqrt(kD[-1,:])
+		else:
+			sigma = np.sqrt(kD[6,:])
 
-	W = max(W, W');
+		sigma[sigma == 0] = 1
+		
+		for i in xrange(n):
+			W[i,knn_idx[:,i]] = np.exp(-kD[:,i]/(sigma[i]*sigma[knn_idx[:,i]].T))
+	else:
+		raise Exception('Unknown option for sigma')
 
+	W = np.maximum(W, W.T)
+
+	return W, sigma
 
 
 if __name__ == '__main__':
-	# pass
-	t1 = time.time()
-	X,Y,classes = load_covertype(sparse=True, normalize=True)
-	print('Time taken to load data: %.2f'%(time.time()-t1))
-	# IPython.embed()
-	save_file = osp.join(data_dir, 'covtype_projected.csv')
-	project_data (X, Y, save=True, save_file=save_file)
+	# # pass
+	# t1 = time.time()
+	# X,Y,classes = load_covertype(sparse=True, normalize=True)
+	# print('Time taken to load data: %.2f'%(time.time()-t1))
+	# # IPython.embed()
+	# save_file = osp.join(data_dir, 'covtype_projected.csv')
+	# project_data (X, Y, save=True, save_file=save_file)
+	X,Y = generate_syndata(display=False)
+	W,sigma = generate_nngraph(X)
+

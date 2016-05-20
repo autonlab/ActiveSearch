@@ -674,3 +674,376 @@ class NPKNaiveAS (ASI.genericAS):
 		if self.kAS is None:
 			raise Exception ("Has not been initialized.")
 		return self.kAS.getLabel(idx)
+
+################################################################
+## MULTIPLE KERNELS
+################################################################
+
+def drawFromPMF (pmf):
+	if sum(pmf) != 1:
+		pmf = np.array(pmf)/sum(pmf)
+	return np.random.choice(xrange(len(pmf)), p=list(pmf))
+
+################################################################
+## Bandit approach for multiple kernels
+## Using EXP3
+## http://arxiv.org/pdf/1204.5721v2.pdf
+################################################################
+
+class EXP3Parameters (object):
+
+	def __init__ (self, gamma=0.1, eta=None, beta=0.0, T=None, nB=None):
+		self.gamma = gamma
+		if eta is None:
+			if T is None:
+				self.eta = gamma if eta is None else eta
+			else:
+				assert nB is not None
+				self.eta = np.sqrt(2*np.log(nB)/(T*nB))
+		else:
+			self.eta = eta
+		self.beta = beta 
+
+class EXP3NaiveAS (ASI.genericAS):
+
+	def __init__ (self, ASparams=ASI.Parameters(), EXP3params = EXP3Parameters()):
+
+		self.params = ASparams
+		self.SLparams = EXP3params
+
+		self.ASbandits = []
+		self.weights = []
+
+		self.labeled_idxs = []
+		self.unlabeled_idxs = []
+
+		self.itr = -1
+		self.initialized = False
+
+		self.next_message = None
+		self.seen_next = False
+
+	def initialize(self, As, init_labels = {}):
+		
+		self.As = As
+		self.n = As[0].shape[0]
+		
+		self.nbandits = len(As)
+		for A in As:
+			self.ASbandits.append(ASI.naiveAS(self.params))
+			self.ASbandits[-1].initialize(A, init_labels)
+			self.weights.append(1)
+
+		self.weights = np.array(self.weights)
+		self.pmf = self.weights/self.nbandits
+		self.wsum = self.nbandits
+
+		if len(init_labels) > 0:
+			self.labeled_idxs = init_labels.keys()
+			self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
+
+			self.drawBandit()
+			self.next_message = self.ASbandits[self.b_selected].next_message
+			self.seen_next = False
+			self.itr = 0
+		else:
+			self.unlabeled_idxs = range(n)
+
+		self.initialized = True
+
+	def firstMessage(self,idx):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		if self.itr > 0:
+			print ('Not first message.')
+
+		self.setLabel(idx, 1)
+
+		if self.start_point is None:
+			self.start_point = idx
+
+	def interestingMessage(self):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		self.setLabelCurrent(1)
+
+	def boringMessage(self):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")		
+		self.setLabelCurrent(0)
+
+	def rewardFunction (self, value):
+		return value
+
+	def lossFunction (self, value):
+		return 1-value
+
+	def computeWeights(self, bidx, pidx, value):
+		if pidx in self.labeled_idxs:
+			print('This node has already been labeled and computed before')
+			return
+
+		if self.SLparams.beta > 0:
+			wfactor = (1/self.pmf)*self.SLparams.beta
+			wfactor[bidx] += self.rewardFunction(value)/self.pmf[bidx]
+			self.weights = self.weights*np.exp(wfactor)
+		else:
+			r = self.rewardFunction(value)/self.pmf[bidx]
+			wfactor = np.exp(self.SLparams.eta*r)
+			self.weights[bidx] *= wfactor
+		self.weights = self.weights/self.weights.sum()
+
+	def drawBandit (self):
+		# self.computeWeights must be called before this function.
+		# in every iteration, in order to account for new reward.
+		bprob = self.weights/self.weights.sum()
+		unif = np.ones(self.nbandits)/self.nbandits
+		self.pmf = self.SLparams.gamma*unif + (1-self.SLparams.gamma)*bprob
+		self.b_selected = drawFromPMF(self.pmf)
+
+	def setLabelCurrent(self, value):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		self.setLabel(self.next_message, value)
+
+	def setLabel (self, idx, lbl):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		if idx in self.labeled_idxs:
+			raise Exception('This node has already been labeled and computed before.')
+
+		self.itr += 1
+		lbl = 0 if lbl <= 0 else 1
+		# import IPython
+		# IPython.embed()
+		self.unlabeled_idxs.remove(idx)
+
+		# set labels and then select next message for labeling
+		for nAS in self.ASbandits:
+			nAS.setLabel(self.next_message, lbl)
+		if self.next_message == idx:
+			# recompute weights only if we are using bandit's query
+			self.computeWeights(self.b_selected, self.next_message, lbl)
+		self.drawBandit() # don't really need to re-draw bandit
+		self.next_message = self.ASbandits[self.b_selected].next_message
+		self.seen_next = False
+
+		self.labeled_idxs.append(idx)
+
+	def getStartPoint(self):
+		if self.start_point is None:
+			raise Exception("The algortithm has not been initialized. Please call \"firstMessage\".")
+		return self.start_point
+
+	def resetLabel (self, idx, lbl):
+		# TODO: not considering this for now
+		pass
+		# if self.kAS is None:
+		# 	raise Exception ("Has not been initialized.")
+		# ret = self.kAS.labels[idx]
+		# if self.kAS.labels[idx] == -1:
+		# 	self.setLabel(idx, lbl)
+		# 	return ret 
+		# elif self.kAS.labels[idx] == lbl:
+		# 	print("Already the same value!")
+		# 	return ret
+		# return self.kAS.resetLabel(idx, lbl)
+
+	def getNextMessage (self):
+		if self.next_message is None:
+			raise Exception ("Has not been initialized.")
+		return self.next_message
+
+	def setLabelBulk (self, idxs, lbls):
+		for idx,lbl in zip(idxs,lbls):
+			self.setLabel(idx,lbl)
+
+	def pickRandomLabelMessage (self):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		return self.ASbandits[0].pickRandomLabelMessage()
+
+	def getLabel (self,idx):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		return self.ASbandits[0].getLabel(idx)
+
+
+################################################################
+## Randomized Weighted Majority for multiple kernels
+################################################################
+
+class RWMParameters (object):
+
+	def __init__ (self, gamma=0.1, eta=None, T=None, nB=None):
+		self.gamma = gamma
+		if eta is None:
+			if T is None:
+				self.eta = gamma if eta is None else eta
+			else:
+				assert nB is not None
+				self.eta = np.sqrt(2*np.log(nB)/(T*nB))
+		else:
+			self.eta = eta
+
+class RWMNaiveAS (ASI.genericAS):
+
+	def __init__ (self, ASparams=ASI.Parameters(), RWMparams = RWMParameters()):
+
+		self.params = ASparams
+		self.SLparams = RWMparams
+
+		self.ASexperts = []
+		self.weights = []
+
+		self.labeled_idxs = []
+		self.unlabeled_idxs = []
+
+		self.itr = 0
+		self.initialized = False
+
+		self.next_message = None
+		self.seen_next = False
+
+	def initialize(self, As, init_labels = {}):
+		
+		self.As = As
+		self.n = As[0].shape[0]
+
+		self.nexperts = len(As)
+		for A in As:
+			self.ASexperts.append(ASI.naiveAS(self.params))
+			self.ASexperts[-1].initialize(A, init_labels)
+			self.weights.append(1)
+
+		self.weights = np.array(self.weights)
+		self.pmf = self.weights/self.nexperts
+
+		if len(init_labels) > 0:
+			self.labeled_idxs = init_labels.keys()
+			self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
+			self.computeNextMessage()
+			self.itr = 0
+
+		self.initialized = True
+
+	def firstMessage(self,idx):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		if self.itr > 0:
+			print ('Not first message.')
+
+		self.setLabel(idx, 1)
+
+		if self.start_point is None:
+			self.start_point = idx
+
+	def interestingMessage(self):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		self.setLabelCurrent(1)
+
+	def boringMessage(self):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")		
+		self.setLabelCurrent(0)
+
+
+	# def rewardFunction (self, value):
+	# 	return value
+
+	# def lossFunction (self, value):
+	# 	return 1-value
+
+	def rlFunction (self, idx, value):
+		# If the f-score is closer to 1, then the reward/loss magnitude is higher
+		# If f_idx is small when the point is positive, incur larger penalty
+		# If f_idx is big when the point is negative, incur smaller reward
+		v = 1 if value == 1 else -1
+		f_idx = np.array([nAS.f[idx] for nAS in self.ASexperts])
+		# if v = 1, we want f_idx to be close to 1
+		# if v = -1, we want f_idx to be far away
+		rl = v*(f_idx-1) 
+		return rl
+
+	def computeNextMessage(self):
+		# Assuming weights and such are updated.
+		F = np.array([nAS.f for nAS in self.ASexperts]).T
+		if self.SLparams.gamma > 0:
+			unif = np.ones(self.nexperts)/self.nexperts
+			ews = self.weights/self.weights.sum()
+			self.pmf = self.SLparams.gamma*unif + (1-self.SLparams.gamma)*ews
+		else:
+			self.pmf = self.weights/self.weights.sum()
+
+		self.f = F.dot(self.pmf)
+		uidx = np.argmax(self.f[self.unlabeled_idxs])
+		self.next_message = self.unlabeled_idxs[uidx]
+		self.seen_next = False
+
+	def computeWeights(self, idx, value):
+		if idx in self.labeled_idxs:
+			print('This node has already been labeled and computed before')
+			return
+		wfactor = self.SLparams.eta*self.rlFunction(idx, value)
+		self.weights = self.weights*np.exp(wfactor)
+		self.weights = self.weights/self.weights.sum()
+
+	def setLabelCurrent(self, value):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		self.setLabel(self.next_message, value)
+
+	def setLabel (self, idx, lbl):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		if idx in self.labeled_idxs:
+			raise Exception('This node has already been labeled and computed before.')
+
+		self.itr += 1
+		lbl = 0 if lbl <= 0 else 1
+		self.unlabeled_idxs.remove(idx)
+
+		# set labels and then select next message for labeling
+		for nAS in self.ASexperts:
+			nAS.setLabel(self.next_message, lbl)
+		if self.next_message == idx:
+			# recompute weights only if we are able to get our reward
+			self.computeWeights(self.next_message, lbl)
+		self.computeNextMessage()
+
+		self.labeled_idxs.append(idx)
+
+	def getStartPoint(self):
+		if self.start_point is None:
+			raise Exception("The algortithm has not been initialized. Please call \"firstMessage\".")
+		return self.start_point
+
+	def resetLabel (self, idx, lbl):
+		# TODO: not considering this for now
+		pass
+
+	def getNextMessage (self):
+		if self.next_message is None:
+			raise Exception ("Has not been initialized.")
+		return self.next_message
+
+	def setLabelBulk (self, idxs, lbls):
+		for idx,lbl in zip(idxs,lbls):
+			self.setLabel(idx,lbl)
+
+	def pickRandomLabelMessage (self):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		return self.ASexperts[0].pickRandomLabelMessage()
+
+	def getLabel (self,idx):
+		if not self.initialized:
+			raise Exception ("Has not been initialized.")
+		return self.ASexperts[0].getLabel(idx)
+
+
+################################################################
+## KTA tuning for 2 kernels
+## THIS IS UNIMPLEMENTED CURRENTLY
+################################################################

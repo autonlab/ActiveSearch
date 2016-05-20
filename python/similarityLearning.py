@@ -5,7 +5,9 @@ import itertools
 import numpy as np, numpy.linalg as nlg, numpy.random as nr
 import scipy.sparse as ss, scipy.sparse.linalg as ssl
 import scipy.spatial.distance as ssd, scipy.linalg as slg
-import cvxopt as cvx
+# import cvxopt as cvx
+
+import dataUtils as du
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -416,9 +418,174 @@ class NPK (object):
 
 class MSALPParameters (object):
 
-	def __init__ (self, max_iter=100, k=10, sigma=0.5):
+	def __init__ (	self, 
+					max_iter=100, k=10, sigma='median',
+					ex=0, tol=1e-4, 
+					beta=0.1, beta_p=0, max_beta_p=8, rho=1e-3):
+		
 		self.max_iter = max_iter
 		self.k = k
 		self.sigma = sigma
 
-	def A
+		self.ex = ex
+		self.tol = tol
+
+		# Parameters for line-search
+		self.beta = beta
+		self.beta_p = beta_p
+		self.max_beta_p = max_beta_p
+		self.rho = rho
+
+def AEW (X, param):
+	#
+	# Adaptive Edge Weighting for Label Propagation
+	# 
+	# INPUT
+	#  X: d (features) times n (instances) input data matrix
+	#  param: The structure variable containing the following field:
+	#    max_iter: The maximum number of iteration for gradient descent
+	#    k: The number of nearest neighbors
+	#    sigma: Initial width parameter setting 'median'|'local-scaling'
+	# OUTPUT
+	#  W: The optimized weighted adjacency matrix
+	#  W0: The initial adjacency matrix
+	# REFERENCE
+	#  M. Karasuyama and H. Mamitsuka, "Manifold-based similarity 
+	#  adaptation for label propagation", NIPS 2013.
+	#
+	n,d = X.shape
+
+	W0,sigma0 = du.generate_nngraph(X, param.k, param.sigma)
+	sigma0 = np.array(sigma0)
+	L = np.eye(d)
+
+	Xori = X
+	if len(sigma0.shape) >= 1:
+		dist = ssd.squareform(ssd.pdist(X)**2)
+		s0 = np.atleast_2d(sigma0).reshape((n,1), order='F')
+		dist = dist / (s0.dot(s0.T))
+	else:
+		X = X / (np.sqrt(2)*sigma0)
+		dist = ssd.squareform(ssd.pdist(X)**2)
+
+	edge_idx = W0.nonzero()
+	W0inds = (W0 != 0)
+	# W = np.zeros((n,n))
+	W = W0inds*np.exp(-dist)
+	# W(edge_idx) = exp(-dist(edge_idx))
+
+	Gd = np.zeros((n,n,d))
+	W_idx = {}
+	for i in xrange(n):
+		W_idx[i] = W[i,:].nonzero()[0]
+		for j in W_idx[i]:
+			if W[i,j]:
+				Gd[i,j,:] = -(X[i,:].T- X[j,:].T)**2 #(X[:,i] - X[:,j])
+				if len(sigma0.shape) >= 1:
+					Gd[i,j,:] = Gd[i,j,:] / (sigma0[i]*sigma0[j])
+
+	# --------------------------------------------------
+	# Gradient Descent
+	# --------------------------------------------------
+	d_W = np.zeros((n,n,d))
+	d_WDi = np.zeros((n,n,d))
+	sum_d_W = np.zeros((n,d))
+	for itr in xrange(param.max_iter):
+		D = W.sum(axis=0)
+		for i in xrange(n):
+			d_W[i,W_idx[i],:] = 2 * np.diag(W[i,W_idx[i]]).dot( 
+				(np.reshape(Gd[i,W_idx[i],:],(len(W_idx[i]),d),order='F') * 
+				(np.ones((len(W_idx[i]),1)).dot(
+					np.atleast_2d(np.diag(L))))))
+
+		for i in xrange(n):
+			sum_d_W[i,:] = d_W[i,W_idx[i],:].sum(axis=0)
+			d_WDi[i,W_idx[i],:] = d_W[i,W_idx[i],:]/D[i] - \
+				np.reshape((np.atleast_2d(W[i,W_idx[i]]).T/(D[i]**2)).dot(
+					np.reshape(sum_d_W[i,:],(1,d),order='F')),
+					(1,len(W_idx[i]),d),order='F')
+
+		Xest = np.diag(1/D).dot(W).dot(Xori)
+		err = (Xori - Xest)
+		sqerr = (err**2).sum()
+
+		grad = -(np.reshape(d_WDi,[n**2,d],order='F').T.dot(
+					np.reshape(err.dot(Xori.T),(n**2,1),order='F')))
+		grad = np.squeeze(grad) / nlg.norm(grad) # Normalize
+
+		print('Iter = %i, MSE = %.3f\n'%(itr, sqerr/(d*n)))
+
+		step = (param.beta**param.beta_p)
+		sqerr_prev = sqerr
+		L_prev = L
+
+		while True: # Line-search
+			L = L_prev - step*np.diag(grad)
+			dist = ssd.squareform(ssd.pdist((L.dot(X.T).T)**2))
+			if len(sigma0.shape) >= 1:
+				dist = dist / (sigma0.dot(sigma0.T))
+			
+			W = W0inds*np.exp(-dist)
+			D = W.sum(axis=0)
+
+			Xest = np.diag(1/D).dot(W).dot(Xori)
+			err = (Xori - Xest)
+			sqerr_temp = (err**2).sum()
+			# print(sqerr_temp - sqerr_prev, -param.rho*step*(grad.T.dot(grad)))
+			if sqerr_temp - sqerr_prev <= -param.rho*step*(grad.T.dot(grad)):
+				break 
+
+			param.beta_p = param.beta_p + 1
+			if param.beta_p > param.max_beta_p:
+				param.ex = 1
+				break
+
+			step = step * param.beta
+
+		if ((sqerr_prev - sqerr_temp) / sqerr_prev) < param.tol or param.ex:
+			break
+
+	return W, W0
+
+def HGF (L,Y):
+	n = Y.shape[0]
+	Yl = Y.sum(axis=1)
+	lb_idx = Yl.nonzero()[0]
+	ul_idx = (Yl==0).nonzero()[0]
+
+	L_uu = L[np.ix_(ul_idx,ul_idx)]
+	L_ul = L[np.ix_(ul_idx,lb_idx)]
+	F_ul = - nlg.solve(L_uu,L_ul.dot(Y[lb_idx,:]))
+
+	F = np.zeros(Y.shape)
+	F[lb_idx,:] = Y[lb_idx,:]
+	F[ul_idx,:] = F_ul
+
+	return F
+
+def select_labeled_nodes(Y,num_lb):
+	lb_idx = []
+	for c in xrange(Y.shape[1]):
+		idx = (Y[:,c] > 0).nonzero()[0]
+		rand_idx = nr.permutation(len(idx))
+		lb_idx += idx[rand_idx[:num_lb]].tolist()
+
+	return lb_idx
+
+def hamming_loss(Y,F):
+	
+	label = np.argmax(Y,axis=1)
+	est = np.argmax(F,axis=1)
+	loss = np.sum(label!=est)
+
+	return loss
+
+
+###############################################################################
+# Bandits for similarity learning
+###############################################################################
+
+
+
+if __name__=='__main__':
+	pass

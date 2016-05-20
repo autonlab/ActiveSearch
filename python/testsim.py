@@ -10,6 +10,8 @@ import IPython # debugging
 
 import activeSearchInterface as ASI
 import adaptiveActiveSearch as AAS
+import similarityLearning as SL
+import dataUtils as du
 
 np.set_printoptions(suppress=True, precision=5, linewidth=100)
 
@@ -51,8 +53,10 @@ def createSwissRolls (npts = 500, prev = 0.5, c = 1.0, nloops = 1.5, var = 0.05,
 
 	return X,Y
 
-def plotData(X, Y, f=None, labels=None, thresh=None, block=False):
+def plotData(X, Y, f=None, labels=None, thresh=None, block=False, fid=None):
 
+	if fid is not None:
+		fig = plt.figure(fid)
 	plt.clf()
 
 	if f is None:
@@ -76,7 +80,8 @@ def plotData(X, Y, f=None, labels=None, thresh=None, block=False):
 		colors = cm.RdBu(f)
 		plt.scatter(X[rest_inds,0], X[rest_inds,1], color=colors, label='unlabeled', linewidth=1)
 
-	
+	if fid is not None:
+		plt.title('ID: %i'%fid)
 	# plt.legend()
 	plt.show(block=block)
 	plt.pause(0.001)
@@ -377,6 +382,193 @@ def testNPKAS ():
 
 	IPython.embed()
 
+def testAEW():
+
+	import scipy.io as sio
+	# Test script for AEW
+	# (Results depend on random seeds)
+	noise_level = 1 # 1 or 2
+
+	# Parameters for AEW
+	k = 10 # The number of neighbors in kNN graph
+	sigma = 'median' # Kernel parameter heuristics 'median' or 'local-scaling'
+	max_iter = 100
+	param = SL.MSALPParameters(k=k, sigma=sigma, max_iter=max_iter)
+	# --------------------------------------------------
+
+
+	# X,Y = du.generate_syndata(noise_level)
+	# lb_idx = select_labeled_nodes(Y,10)
+	# trY = np.zeros(Y.shape)
+	# trY[lb_idx,:] = Y[lb_idx,:]
+	data = sio.loadmat('tempdata.mat')
+	X = data['X'].T
+	Y = data['Y']
+	lb_idx = data['lb_idx']
+	trY = data['trY']
+	
+	print('Optimizing edge weights by AEW\n')
+	W,W0 = SL.AEW(X,param)
+
+	print('Estimating labels by harmonic Gaussian model ... ')
+	L = np.diag(W.sum(axis=0)) - W
+	F = SL.HGF(L,trY)
+	L0 = np.diag(W0.sum(axis=0)) - W0
+	F0 = SL.HGF(L0,trY)
+	print('done\n')
+
+	err_rate = SL.hamming_loss(Y,F) / (Y.shape[0] - len(lb_idx))
+	err_rate0 = SL.hamming_loss(Y,F0) / (Y.shape[0] - len(lb_idx))
+
+	print('[REPORT]\n')
+	print('The number of classes = %d\n'%Y.shape[1])
+	print('The number of nodes = %d\n'%Y.shape[0])
+	print('The number of labeled nodes = %d\n'%len(lb_idx))
+	print('The number of neighbors in kNN graph = %d\n'%param.k)
+	print('The initial kernel parameter heuristics = %s\n'%param.sigma)
+	print('Predction error rate with the inital graph  = %.3f\n'%err_rate0)
+	print('Predction error rate with the optimized graph = %.3f\n'%err_rate)
+
+	IPython.embed()
+
+
+def testAEWAS ():
+
+	## Create swiss roll data
+	npts = 600
+	prev = 0.5
+	c = 1
+	nloops = 1.5
+	var = 0.2
+	shuffle = False
+	eps = 2
+	gamma = 10
+	
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var, shuffle=shuffle)
+
+	k = 10
+	sigma = 'local-scaling'
+	# A = createEpsilonGraph (X, eps=eps, gamma=gamma)
+	A1,sigma1 = du.generate_nngraph (X, k=k, sigma=sigma)
+
+	# Perform AEW 
+	max_iter = 100
+	param = SL.MSALPParameters(k=k, sigma=sigma, max_iter=max_iter)
+	A2,sigma2 = SL.AEW(X,param)
+
+	## Initialize naiveAS
+	pi = prev
+	sparse = False
+	verbose = True
+
+	prms = ASI.Parameters(sparse=sparse, verbose=verbose, pi=pi)
+
+	np_init = 1
+	nn_init = 1
+	n_init = np_init + nn_init
+	initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
+	initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
+	init_labels = {p:1 for p in initp_pt}
+	for p in initn_pt: init_labels[p] = 0
+
+	lAS1 = ASI.naiveAS (prms)
+	lAS1.initialize(A1, init_labels)
+	lAS2 = ASI.naiveAS (prms)
+	lAS2.initialize(A2, init_labels)
+
+	plotData(X, None, lAS1.f, lAS1.labels, fid=0)
+	plotData(X, None, lAS2.f, lAS2.labels, fid=1)
+
+	hits1 = [n_init]
+	hits2 = [n_init]
+	K = 200
+	for i in xrange(K):
+
+		print('Iter %i out of %i'%(i+1,K))
+		idx1 = lAS1.getNextMessage()
+		idx2 = lAS2.getNextMessage()
+		lAS1.setLabelCurrent(Y[idx1])
+		lAS2.setLabelCurrent(Y[idx2])
+		hits1.append(hits1[-1]+Y[idx1])
+		hits2.append(hits2[-1]+Y[idx2])
+
+		plotData(X, None, lAS1.f, lAS1.labels, fid=0)
+		plotData(X, None, lAS2.f, lAS2.labels, fid=1)
+
+		print('')
+
+	IPython.embed()
+
+
+def testMultipleKernelAS ():
+
+	## Create swiss roll data
+	npts = 600
+	prev = 0.05
+	c = 1
+	nloops = 1.5
+	var = 0.2
+	shuffle = False
+	eps = 2
+	gamma = 10
+	
+	X,Y = createSwissRolls(npts=npts, prev=prev, c=c, nloops=nloops, var=var, shuffle=shuffle)
+
+	k = 10
+	sigma = 'local-scaling'
+	A1,sigma1 = du.generate_nngraph (X, k=k, sigma=sigma)
+	A2 = createEpsilonGraph (X, eps=eps, gamma=gamma)
+
+	## Initialize naiveAS
+	pi = prev
+	sparse = False
+	verbose = True
+
+	prms = ASI.Parameters(sparse=sparse, verbose=verbose, pi=pi)
+
+	np_init = 1
+	nn_init = 1
+	n_init = np_init + nn_init
+	initp_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), np_init, replace=False)]
+	initn_pt = (Y==0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), nn_init, replace=False)]
+	init_labels = {p:1 for p in initp_pt}
+	for p in initn_pt: init_labels[p] = 0
+
+	K = 200
+	nB = 2 # number of bandits/experts
+	gamma = 0.1
+	beta = 0.0 # leave this as 0
+	exp3params = AAS.EXP3Parameters (gamma = gamma, T=K, nB=nB, beta=beta)
+	rwmparams = AAS.RWMParameters (gamma = gamma, T=K, nB=nB)
+
+	mAS1 = AAS.EXP3NaiveAS (prms, exp3params)
+	mAS1.initialize([A1,A2], init_labels)
+	mAS2 = AAS.RWMNaiveAS (prms, rwmparams)
+	mAS2.initialize([A1,A2], init_labels)
+
+	# plotData(X, None, mAS1.f, mAS1.labels, fid=0)
+	plotData(X, None, mAS2.f, mAS2.ASexperts[0].labels, fid=1)
+
+	hits1 = [n_init]
+	hits2 = [n_init]
+	for i in xrange(K):
+
+		print('Iter %i out of %i'%(i+1,K))
+		idx1 = mAS1.getNextMessage()
+		idx2 = mAS2.getNextMessage()
+		print idx1, idx2
+		mAS1.setLabelCurrent(Y[idx1])
+		mAS2.setLabelCurrent(Y[idx2])
+		hits1.append(hits1[-1]+Y[idx1])
+		hits2.append(hits2[-1]+Y[idx2])
+
+		# plotData(X, None, mAS1.f, mAS1.labels, fid=0)
+		plotData(X, None, mAS2.f, mAS2.ASexperts[0].labels, fid=1)
+
+		print('')
+
+	IPython.embed()
+
 
 if __name__ == '__main__':
 	# testSwissRolls()
@@ -384,4 +576,7 @@ if __name__ == '__main__':
 	# testWNAS()
 	# testRWNAS()
 	# testMPCKAS()
-	testNPKAS()
+	# testNPKAS()
+	# testAEW()
+	# testAEWAS ()
+	testMultipleKernelAS ()
