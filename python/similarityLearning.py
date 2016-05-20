@@ -505,7 +505,7 @@ def AEW (X, param):
 			d_WDi[i,W_idx[i],:] = d_W[i,W_idx[i],:]/D[i] - \
 				np.reshape((np.atleast_2d(W[i,W_idx[i]]).T/(D[i]**2)).dot(
 					np.reshape(sum_d_W[i,:],(1,d),order='F')),
-					(1,len(W_idx[i]),d),order='F')
+					(1,len(W_idx[i]),d),order='F').squeeze()
 
 		Xest = np.diag(1/D).dot(W).dot(Xori)
 		err = (Xori - Xest)

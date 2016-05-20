@@ -9,7 +9,7 @@ import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
 import scipy.spatial.distance as ssd
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 import IPython
 

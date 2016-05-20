@@ -265,7 +265,7 @@ def runTests (prev,K,verbose=False):
 	h_lin,h_poly = testAS_run (A_lin,A_poly,X,Y,prev,verbose,initp_pt,initn_pt,K)
 	h_nn,h_eps = testAS_run (A_nn,A_eps,X,Y,prev,verbose,initp_pt,initn_pt,K)
 	h_prime,h_aew = testAS_run (A_prime,A_aew,X,Y,prev,verbose,initp_pt,initn_pt,K)        
-	h_bandit, h_stochweight = testMultipleKernelAS_run([A_rand,A_lin,A_poly,A_nn,A_eps,A_prime],X,Y,prev,verbose,initp_pt,initn_pt,K)
+	h_bandit, h_stochweight = testMultipleKernelAS_run([A_rand,A_lin,A_poly,A_nn,A_eps,A_aew],X,Y,prev,verbose,initp_pt,initn_pt,K)
 	hits = {}
 	hits['ideal']=h_ideal
 	hits['rand']=h_rand
@@ -276,7 +276,7 @@ def runTests (prev,K,verbose=False):
 	hits['aew']=h_aew
 	hits['convex']=h_prime
 	hits['bandit']=h_bandit
-	hits['stochweight']=h_stochweight
+	hits['rwm']=h_stochweight
 	return {'hits':hits, 'KTA':KTA_list}
 
 def testMultipleKernelAS_run (As,X,Y,prev,verbose,initp_pt,initn_pt,K):
@@ -336,7 +336,7 @@ def RunAllTests():
 	sums = {'hits':{}, 'KTA':{}}
 	sumsqr = {'hits':{}, 'KTA':{}}
 	K = 200
-	alpha = 0.25
+	alpha = 0.10
 	for expt in xrange(N):
 	  t1 = time.time() 
 	  print('Running experiment %i'%(expt+1))

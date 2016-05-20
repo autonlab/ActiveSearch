@@ -4,7 +4,7 @@ import time
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
 import scipy.linalg as slg, scipy.spatial.distance as ssd, scipy.sparse as ss
 import scipy.io as sio
-import matplotlib.pyplot as plt, matplotlib.cm as cm
+# import matplotlib.pyplot as plt, matplotlib.cm as cm
 
 import IPython # debugging
 
@@ -436,7 +436,7 @@ def testAEW():
 	# --------------------------------------------------
 
 
-	X,Y = du.generate_syndata(noise_level, nc=3, prev=prev, var1=var1, var2=var2, display=True)
+	X,Y = du.generate_syndata(noise_level, nc=3, prev=prev, var1=var1, var2=var2, display=False)
 	lb_idx = SL.select_labeled_nodes(Y,10)
 	trY = np.zeros(Y.shape)
 	trY[lb_idx,:] = Y[lb_idx,:]
@@ -673,7 +673,7 @@ if __name__ == '__main__':
 	# testRWNAS()
 	# testMPCKAS()
 	# testNPKAS()
-	# testAEW()
-	testAEWAS ()
+	testAEW()
+	# testAEWAS ()
 	# testMultipleKernelAS ()
 	# pass
