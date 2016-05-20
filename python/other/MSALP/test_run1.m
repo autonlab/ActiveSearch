@@ -12,10 +12,12 @@ param.max_iter = 100;
 
 % --------------------------------------------------
 
-[X Y] = generate_syndata(noise_level);
-[lb_idx] = select_labeled_nodes(Y,10);
-trY = zeros(size(Y));
-trY(lb_idx,:) = Y(lb_idx,:);
+% [X Y] = generate_syndata(noise_level);
+% [lb_idx] = select_labeled_nodes(Y,10);
+% trY = zeros(size(Y));
+% trY(lb_idx,:) = Y(lb_idx,:);
+% save('tempdata', 'X','Y','lb_idx','trY');
+load tempdata
 
 fprintf('Optimizing edge weights by AEW\n');
 [W W0] = AEW(X,param);
