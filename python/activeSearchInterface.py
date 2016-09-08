@@ -243,8 +243,12 @@ class linearizedAS (genericAS):
         Minv_u = self.z + self.BDinv*(self.Xf.T.dot(self.Cinv.dot(self.Xf.dot(self.z))))
       
       DF = (dpf - self.dP*Df_tilde)*Minv_u
+      
       # 3. IM
       self.IM = self.f*(DF-Df_tilde)
+      
+      # Normalize IM
+      self.IM = self.IM * self.f.mean() / self.IM.mean()
 
     # Setting iter/start_point
     # If batch initialization is done, then start_point is everything given
@@ -328,6 +332,9 @@ class linearizedAS (genericAS):
       DF = (dpf - self.dP*Df_tilde)*Minv_u
       # Computing IM
       self.IM = self.f*(DF-Df_tilde)
+      
+      # Normalize IM
+      self.IM = self.IM * self.f.mean() / self.IM.mean()
 
     # Some more book-keeping
     # Not sure how we're going to change "history" in some sense:
@@ -340,7 +347,7 @@ class linearizedAS (genericAS):
 
     # Finding the next message to show -- get the current max element
     if self.params.alpha > 0:
-      uidx = np.argmax((self.f+self.params.alpha*self.IM)[self.unlabeled_idxs])
+      uidx = np.argmax((self.f + self.params.alpha*self.IM)[self.unlabeled_idxs])
     else:
       uidx = np.argmax(self.f[self.unlabeled_idxs])
     self.next_message = self.unlabeled_idxs[uidx]
@@ -536,7 +543,7 @@ class weightedNeighborAS (genericAS):
 
     # Updating various parameters to calculate f
     Xi = self.Xf[:,[idx]] # ith feature vector
-    Sif = self.Xf[:, self.unlabeled_idxs].T.dot(Xi)
+    Sif = self.Xf[:, self.unlabeled_idxs].T.dot(Xi).squeeze()
     if self.params.sparse:
       Sif = matrix_squeeze(Sif.todense())
 
