@@ -158,7 +158,8 @@ class linearizedAS (genericAS):
     self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
 
     self.labels = np.array([-1]*self.n)
-    self.labels[self.labeled_idxs] = init_labels.values()
+    for lidx in self.labeled_idxs:
+      self.labels[lidx] = init_labels[lidx]
 
     # Initialize some parameters and constants which are needed and not yet initialized
     if self.params.sparse:
@@ -480,8 +481,9 @@ class weightedNeighborAS (genericAS):
     self.labeled_idxs = init_labels.keys()
     self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
 
-    self.labels = np.array([-1]*self.n)
-    self.labels[self.labeled_idxs] = init_labels.values()
+    self.labels = np.array([0]*self.n)
+    for lidx in self.labeled_idxs:
+      self.labels[lidx] = 1 if init_labels[lidx] == 1 else -1
 
     self.NN_avg_similarity  = None
     if self.params.normalize is True:
@@ -490,10 +492,7 @@ class weightedNeighborAS (genericAS):
     # Setting iter/start_point
     # If batch initialization is done, then start_point is everything given
     if len(self.labeled_idxs) > 0:
-      if len(self.labeled_idxs) == 0:
-        self.start_point = self.labeled_idxs[0]
-      else:
-        self.start_point = [eid for eid in self.labeled_idxs]
+      self.start_point = [eid for eid in self.labeled_idxs]
 
       ## Computing KNN similarity
       NN_similarity = self.Xf[:, self.unlabeled_idxs].T.dot(self.Xf[:, self.labeled_idxs])
@@ -501,6 +500,7 @@ class weightedNeighborAS (genericAS):
         self.NN_avg_similarity = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
         self.NN_abs_similarity = np.array(np.abs(NN_similarity).sum(1)).squeeze()
         self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
+        self.f = np.nan_to_num(self.f)
       else:
         self.f = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
 
@@ -528,7 +528,7 @@ class weightedNeighborAS (genericAS):
       t1 = time.time()
 
     # just in case, force lbl to be 0 or 1
-    lbl = 0 if lbl <= 0 else 1
+    lbl = -1 if lbl <= 0 else 1
   
     # First, some book-keeping
     # If setLabel is called without "firstMessage," then set start_point
@@ -551,6 +551,7 @@ class weightedNeighborAS (genericAS):
       self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
       self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
       self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
+      self.f = np.nan_to_num(self.f)
     else:
       self.f = np.delete(self.f, self.uidx) + lbl*Sif
 
@@ -589,7 +590,7 @@ class weightedNeighborAS (genericAS):
       t1 = time.time()
 
     # just in case, force lbl to be 0 or 1
-    lbl = 0 if lbl <= 0 else 1
+    lbl = -1 if lbl <= 0 else 1
   
     # Updating various parameters to calculate and f
     Xi = self.Xf[:,[idx]] # ith feature vector
@@ -598,6 +599,7 @@ class weightedNeighborAS (genericAS):
     if self.params.normalize:
       self.NN_avg_similarity += 2*lbl*Sif
       self.f = self.NN_avg_similarity*(1/self.abs_NN_similarity)
+      self.f = np.nan_to_num(self.f)
     else:
       self.f += 2*lbl*Sif
 
@@ -643,7 +645,8 @@ class weightedNeighborGraphAS (genericAS):
     self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
 
     self.labels = np.array([-1]*self.n)
-    self.labels[self.labeled_idxs] = init_labels.values()
+    for lidx in self.labeled_idxs:
+      self.labels[lidx] = 1 if init_labels[lidx] == 1 else -1
 
     self.NN_avg_similarity  = None
     if self.params.normalize is True:
@@ -652,10 +655,7 @@ class weightedNeighborGraphAS (genericAS):
     # Setting iter/start_point
     # If batch initialization is done, then start_point is everything given
     if len(self.labeled_idxs) > 0:
-      if len(self.labeled_idxs) == 0:
-        self.start_point = self.labeled_idxs[0]
-      else:
-        self.start_point = [eid for eid in self.labeled_idxs]
+      self.start_point = [eid for eid in self.labeled_idxs]
 
       ## Computing KNN similarity
       # NN_similarity = self.A[np.atleast_2d(self.unlabeled_idxs).T, self.labeled_idxs]
@@ -664,6 +664,7 @@ class weightedNeighborGraphAS (genericAS):
         self.NN_avg_similarity = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
         self.NN_abs_similarity = np.array(np.abs(NN_similarity).sum(1)).squeeze()
         self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
+        self.f = np.nan_to_num(self.f)
       else:
         self.f = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
 
@@ -690,7 +691,7 @@ class weightedNeighborGraphAS (genericAS):
       t1 = time.time()
 
     # just in case, force lbl to be 0 or 1
-    lbl = 0 if lbl <= 0 else 1
+    lbl = -1 if lbl <= 0 else 1
   
     # First, some book-keeping
     # If setLabel is called without "firstMessage," then set start_point
@@ -712,6 +713,7 @@ class weightedNeighborGraphAS (genericAS):
       self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
       self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
       self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
+      self.f = np.nan_to_num(self.f)
     else:
       self.f = np.delete(self.f, self.uidx) + lbl*Sif
 
@@ -750,7 +752,7 @@ class weightedNeighborGraphAS (genericAS):
       t1 = time.time()
 
     # just in case, force lbl to be 0 or 1
-    lbl = 0 if lbl <= 0 else 1
+    lbl = -1 if lbl <= 0 else 1
   
     # Updating various parameters to calculate and f
     Sif = self.A[self.unlabeled_idxs, idx]
@@ -760,6 +762,7 @@ class weightedNeighborGraphAS (genericAS):
     if self.params.normalize:
       self.NN_avg_similarity += 2*lbl*Sif
       self.f = self.NN_avg_similarity*(1/self.abs_NN_similarity)
+      self.f = np.nan_to_num(self.f)
     else:
       self.f += 2*lbl*Sif
 
