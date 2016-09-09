@@ -644,7 +644,7 @@ class weightedNeighborGraphAS (genericAS):
     self.labeled_idxs = init_labels.keys()
     self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
 
-    self.labels = np.array([-1]*self.n)
+    self.labels = np.array([0]*self.n)
     for lidx in self.labeled_idxs:
       self.labels[lidx] = 1 if init_labels[lidx] == 1 else -1
 
@@ -807,7 +807,7 @@ class shariAS (genericAS):
     self.labeled_idxs = init_labels.keys()
     self.unlabeled_idxs = list(set(range(self.n)) - set(self.labeled_idxs))
 
-    self.labels = np.array([0]*self.n)
+    self.labels = np.array([-1]*self.n)
     self.labels[self.labeled_idxs] = init_labels.values()
 
     # Initialize some parameters and constants which are needed and not yet initialized
