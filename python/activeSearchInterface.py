@@ -454,13 +454,16 @@ class linearizedAS (genericAS):
 
 class WNParameters (Parameters):
 
-  def __init__ (self, normalize=True, use_prior=False, pi=None, sparse=True, verbose=True):
+  def __init__ (self, normalize=True, use_prior=False, pi=0.5, prior_weight=0.1, sparse=True, verbose=True):
     """
     Parameters specifically for nearest neighbours.
     """
     Parameters.__init__ (self, sparse=sparse, verbose=verbose, pi=pi)
     self.normalize = normalize
     self.use_prior = use_prior
+    self.prior_weight = prior_weight
+    if self.pi is not None:
+      self.pi = (self.pi * 2) - 1
 
 
 class weightedNeighborAS (genericAS):
@@ -486,23 +489,35 @@ class weightedNeighborAS (genericAS):
       self.labels[lidx] = 1 if init_labels[lidx] == 1 else -1
 
     self.NN_avg_similarity  = None
-    if self.params.normalize is True:
+    if self.params.normalize or self.params.use_prior:
       self.NN_abs_similarity = None
+    if self.params.use_prior:
+      self_similarity = (self.Xf[:, self.unlabeled_idxs] *
+                         self.Xf[:, self.unlabeled_idxs]).sum(1).squeeze()
+      self.NN_prior_similarity = self.Xf[:, self.unlabeled_idxs].T.dot(
+          self.Xf.dot(np.ones(self.n))) - self_similarity
 
     # Setting iter/start_point
     # If batch initialization is done, then start_point is everything given
     if len(self.labeled_idxs) > 0:
       self.start_point = [eid for eid in self.labeled_idxs]
-
+      
       ## Computing KNN similarity
       NN_similarity = self.Xf[:, self.unlabeled_idxs].T.dot(self.Xf[:, self.labeled_idxs])
-      if self.params.normalize:
-        self.NN_avg_similarity = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
+      self.NN_avg_similarity = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
+      if self.params.use_prior:
         self.NN_abs_similarity = np.array(np.abs(NN_similarity).sum(1)).squeeze()
-        self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
-        self.f = np.nan_to_num(self.f)
+        self.NN_prior_similarity -= self.NN_abs_similarity
+        self.f = self.NN_avg_similarity + self.NN_prior_similarity * self.params.pi
+        if self.params.normalize:  
+          self.f /= (self.params.prior_weight * self.NN_prior_similarity + self.NN_abs_similarity)
+          self.f = np.nan_to_num(self.f)
       else:
-        self.f = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
+        self.f = self.NN_avg_similarity.copy()
+        if self.params.normalize:
+          self.NN_abs_similarity = np.array(np.abs(NN_similarity).sum(1)).squeeze()
+          self.f /= self.NN_abs_similarity
+          self.f = np.nan_to_num(self.f)
 
 
       # Finding the next message to show -- get the current max element
@@ -512,7 +527,7 @@ class weightedNeighborAS (genericAS):
       self.seen_next = False 
 
       self.iter = 0
-      self.hits = [sum(init_labels.values())]
+      self.hits = [sum([lbl == 1 for lbl in init_labels.values()])]
 
     if self.params.verbose:
       print("Done with the initialization.")
@@ -547,20 +562,27 @@ class weightedNeighborAS (genericAS):
     if self.params.sparse:
       Sif = matrix_squeeze(Sif.todense())
 
-    if self.params.normalize:
-      self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
+    self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
+    if self.params.use_prior:
       self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
-      self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
-      self.f = np.nan_to_num(self.f)
+      self.NN_prior_similarity = np.delete(self.NN_prior_similarity, self.uidx) - self.NN_abs_similarity
+      self.f = self.NN_avg_similarity + self.NN_prior_similarity * self.params.pi
+      if self.params.normalize:
+        self.f /= (self.params.prior_weight * self.NN_prior_similarity + self.NN_abs_similarity)
+        self.f = np.nan_to_num(self.f)
     else:
-      self.f = np.delete(self.f, self.uidx) + lbl*Sif
+      self.f = self.NN_avg_similarity.copy()
+      if self.params.normalize:
+        self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
+        self.f /= self.NN_abs_similarity
+        self.f = np.nan_to_num(self.f)
 
     # Some more book-keeping
     self.labeled_idxs.append(idx)
     if self.iter == 0:
-      self.hits.append(lbl)
+      self.hits.append(max(0, lbl))
     else:
-      self.hits.append(self.hits[-1] + lbl)
+      self.hits.append(self.hits[-1] + max(0, lbl))
 
     # Finding the next message to show -- get the current max element
     self.uidx = np.argmax(self.f)
@@ -575,8 +597,9 @@ class weightedNeighborAS (genericAS):
         (display_iter, self.labeled_idxs[-1], self.hits[-1], self.elapsed))
 
   def resetLabel (self, idx, lbl):
+    raise NotImplementedError('resetLabel not implemented')
+    # TODO: Change this for incorporating prior
     # Reset label for given message id
-
     # If reset label is called on something not yet set, it should do the same as setLabel
     ret = self.labels[idx]
     if self.labels[idx] == -1:
@@ -598,7 +621,7 @@ class weightedNeighborAS (genericAS):
 
     if self.params.normalize:
       self.NN_avg_similarity += 2*lbl*Sif
-      self.f = self.NN_avg_similarity*(1/self.abs_NN_similarity)
+      self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
       self.f = np.nan_to_num(self.f)
     else:
       self.f += 2*lbl*Sif
@@ -648,9 +671,13 @@ class weightedNeighborGraphAS (genericAS):
     for lidx in self.labeled_idxs:
       self.labels[lidx] = 1 if init_labels[lidx] == 1 else -1
 
+    
     self.NN_avg_similarity  = None
-    if self.params.normalize is True:
+    if self.params.normalize or self.params.use_prior:
       self.NN_abs_similarity = None
+    if self.params.use_prior:
+      self_similarity = np.diag(A)[self.unlabeled_idxs]
+      self.NN_prior_similarity = self.A[self.unlabeled_idxs,:].sum(1) - self_similarity
 
     # Setting iter/start_point
     # If batch initialization is done, then start_point is everything given
@@ -658,15 +685,21 @@ class weightedNeighborGraphAS (genericAS):
       self.start_point = [eid for eid in self.labeled_idxs]
 
       ## Computing KNN similarity
-      # NN_similarity = self.A[np.atleast_2d(self.unlabeled_idxs).T, self.labeled_idxs]
       NN_similarity = self.A[np.ix_(self.unlabeled_idxs, self.labeled_idxs)]
-      if self.params.normalize:
-        self.NN_avg_similarity = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
+      self.NN_avg_similarity = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
+      if self.params.use_prior:
         self.NN_abs_similarity = np.array(np.abs(NN_similarity).sum(1)).squeeze()
-        self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
-        self.f = np.nan_to_num(self.f)
+        self.NN_prior_similarity -= self.NN_abs_similarity
+        self.f = self.NN_avg_similarity + self.NN_prior_similarity * self.params.pi
+        if self.params.normalize:  
+          self.f /= (self.params.prior_weight * self.NN_prior_similarity + self.NN_abs_similarity)
+          self.f = np.nan_to_num(self.f)
       else:
-        self.f = NN_similarity.dot(self.labels[self.labeled_idxs]).squeeze()
+        self.f = self.NN_avg_similarity.copy()
+        if self.params.normalize:
+          self.NN_abs_similarity = np.array(np.abs(NN_similarity).sum(1)).squeeze()
+          self.f /= self.NN_abs_similarity
+          self.f = np.nan_to_num(self.f)
 
       # Finding the next message to show -- get the current max element
       self.uidx = np.argmax(self.f)
@@ -675,7 +708,7 @@ class weightedNeighborGraphAS (genericAS):
       self.seen_next = False 
 
       self.iter = 0
-      self.hits = [sum(init_labels.values())]
+      self.hits = [sum([lbl == 1 for lbl in init_labels.values()])]
 
     if self.params.verbose:
       print("Done with the initialization.")
@@ -709,20 +742,27 @@ class weightedNeighborGraphAS (genericAS):
     if self.params.sparse:
       Sif = matrix_squeeze(Sif.todense())
 
-    if self.params.normalize:
-      self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
+    self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
+    if self.params.use_prior:
       self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
-      self.f = self.NN_avg_similarity*(1/self.NN_abs_similarity)
-      self.f = np.nan_to_num(self.f)
+      self.NN_prior_similarity = np.delete(self.NN_prior_similarity, self.uidx) - self.NN_abs_similarity
+      self.f = self.NN_avg_similarity + self.NN_prior_similarity * self.params.pi
+      if self.params.normalize:
+        self.f /= (self.params.prior_weight * self.NN_prior_similarity + self.NN_abs_similarity)
+        self.f = np.nan_to_num(self.f)
     else:
-      self.f = np.delete(self.f, self.uidx) + lbl*Sif
+      self.f = self.NN_avg_similarity.copy()
+      if self.params.normalize:
+        self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
+        self.f /= self.NN_abs_similarity
+        self.f = np.nan_to_num(self.f)
 
     # Some more book-keeping
     self.labeled_idxs.append(idx)
     if self.iter == 0:
-      self.hits.append(lbl)
+      self.hits.append(max(0, lbl))
     else:
-      self.hits.append(self.hits[-1] + lbl)
+      self.hits.append(self.hits[-1] + max(0, lbl))
 
     # Finding the next message to show -- get the current max element
     self.uidx = np.argmax(self.f)
@@ -737,8 +777,9 @@ class weightedNeighborGraphAS (genericAS):
         (display_iter, self.labeled_idxs[-1], self.hits[-1], self.elapsed))
 
   def resetLabel (self, idx, lbl):
+    raise NotImplementedError('resetLabel not implemented')
+    # TODO: Change this for incorporating prior
     # Reset label for given message id
-
     # If reset label is called on something not yet set, it should do the same as setLabel
     ret = self.labels[idx]
     if self.labels[idx] == -1:
@@ -761,7 +802,7 @@ class weightedNeighborGraphAS (genericAS):
 
     if self.params.normalize:
       self.NN_avg_similarity += 2*lbl*Sif
-      self.f = self.NN_avg_similarity*(1/self.abs_NN_similarity)
+      self.f = self.NN_avg_similarity*(1/self.self.NN_abs_similarity)
       self.f = np.nan_to_num(self.f)
     else:
       self.f += 2*lbl*Sif
