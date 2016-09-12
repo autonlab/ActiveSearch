@@ -477,12 +477,6 @@ class anchorGraphAS (ASI.genericAS):
 		ASI.genericAS.__init__ (self, params)
 
 	def initialize(self, Z, rL, init_labels = {}):
-		"""
-		Xf 			--> r x n matrix of feature values for each point.
-						where r is # features, n is # points.
-		init_labels	--> dictionary from emailID to label of initial labels.
-		"""
-		# Save Xf and initialize some of the variables which depend on Xf
 		self.Z = Z
 		self.rL = rL
 		self.n, self.m = Z.shape

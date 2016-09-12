@@ -558,9 +558,11 @@ class weightedNeighborAS (genericAS):
 
     # Updating various parameters to calculate f
     Xi = self.Xf[:,[idx]] # ith feature vector
-    Sif = self.Xf[:, self.unlabeled_idxs].T.dot(Xi).squeeze()
+    Sif = self.Xf[:, self.unlabeled_idxs].T.dot(Xi)
     if self.params.sparse:
       Sif = matrix_squeeze(Sif.todense())
+    else:
+        Sif = Sif.squeeze()
 
     self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
     if self.params.use_prior:

@@ -110,14 +110,14 @@ def test_covtype_small (arg_dict):
 	t1 = time.time()
 	# Kernel AS
 	ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta)
-	kAS = ASI.kernelAS (ASprms)
+	kAS = ASI.linearizedAS (ASprms)
 	kAS.initialize(X, init_labels=init_labels)
 	print ('KAS initialized.')
 	
 	# NN AS
 	normalize = True
-	NNprms = CI.NNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
-	NNAS = CI.averageNNAS (NNprms)
+	NNprms = ASI.WNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
+	NNAS = ASI.weightedNeighborAS (NNprms)
 	NNAS.initialize(X, init_labels=init_labels)
 	print ('NNAS initialized.')
 	
@@ -222,13 +222,12 @@ def test_covtype_large (arg_dict):
 
 	verbose=True
 	sparse = True
-	pi = 0.5
 	eta = 0.5
-	K = 200
+	K = 1000
 	
 	t1 = time.time()
 	X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
-	X0 = du.bias_square_ft(X0,sparse=True)
+	X0 = du.bias_square_normalize_ft(X0,sparse=True)
 	if proj:
 		proj_file = osp.join(du.data_dir, 'covtype_proj_mat.npz')
 		proj_data = np.load(proj_file)
@@ -278,15 +277,17 @@ def test_covtype_large (arg_dict):
 
 	t1 = time.time()
 	# Kernel AS
+	pi = Y.sum() * 1.0 / Y.shape[0]
 	ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta)
-	kAS = ASI.kernelAS (ASprms)
+	kAS = ASI.linearizedAS (ASprms)
 	kAS.initialize(X, init_labels=init_labels)
 	print ('KAS initialized.')
 	
 	# NN AS
 	normalize = True
-	NNprms = CI.NNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
-	NNAS = CI.averageNNAS (NNprms)
+	NNprms = ASI.WNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
+	NNAS = ASI.weightedNeighborAS (NNprms)
+	NNAS.initialize(X, init_labels=init_labels)
 	NNAS.initialize(X, init_labels=init_labels)
 	print ('NNAS initialized.')
 
@@ -306,7 +307,6 @@ def test_covtype_large (arg_dict):
 
 
 	for i in xrange(K):
-
 		print('Iter %i out of %i'%(i+1,K))
 		idx1 = kAS.getNextMessage()
 		kAS.setLabelCurrent(Y[idx1])
@@ -496,7 +496,7 @@ if __name__ == '__main__':
 		except:
 			prev = 0.05
 		if prev < 0 or prev > 0.05:
-			prev = 0.05	
+			prev = 0.05
 
 	if len(sys.argv) > 4:
 		try:
