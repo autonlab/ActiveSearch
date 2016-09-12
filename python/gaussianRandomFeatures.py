@@ -1,29 +1,33 @@
-from __future__ import division
+from __future__ import division, print_function
+import cPickle
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
+
 
 class GaussianRandomFeatures:
 	"""
 	Class to store Gaussian Random Features.
 	"""
-	def __init__(self, dim, rn, gammak=1.0, sine=False):
+	def __init__(self, dim, rn, gammak=1.0, sine=False, fl=None):
 		"""
 		Initialize with dim of input space, dim of random feature space
 		and bandwidth of the RBF kernel.
 		"""
-		self.dim = dim
-		self.rn = rn
-		self.gammak = gammak
-		self.sine = sine
+		if fl is not None:
+            self.LoadFromFile(fl)
+		else:
+			self.dim = dim
+			self.rn = rn
+			self.gammak = gammak
+			self.sine = sine
 
-		self.generateCoefficients()
+			self.generateCoefficients()
 
 	def generateCoefficients (self):
 		"""
 		Generate coefficients for GFF.
 			"""
 		self.ws = []
-		if not self.sine:
-			self.bs = []
+		self.bs = []  # Unused if self.sine is True.
 		mean = np.zeros(self.dim)
 		cov = np.eye(self.dim)*(2*self.gammak)
 
@@ -34,24 +38,24 @@ class GaussianRandomFeatures:
 			for _ in range(self.rn):
 				self.ws.append(nr.multivariate_normal(mean, cov))
 				self.bs.append(nr.uniform(0.0, 2*np.pi))
+			self.bs = np.array(self.bs)
+		self.ws = np.array(self.ws)
 
 	def computeRandomFeatures (self, f):
 		"""
 		Projects onto fourier feature space.
+		
+		Assumes that f is n x r.
 		"""
 
-		f = np.array(f)
-		#f = np.atleast_2d(f)
-		ws = np.array(self.ws)
+		f = np.atleast_2d(f)
 		if self.sine:
-			rf_cos = (np.cos(ws.dot(f))*np.sqrt(1/self.rn)).tolist()
-			rf_sin = (np.sin(ws.dot(f))*np.sqrt(1/self.rn)).tolist()
-
-			return np.array(rf_cos + rf_sin)
+			rf_cos = np.cos(self.ws.dot(f.T))*np.sqrt(1/self.rn)
+			rf_sin = np.sin(self.ws.dot(f.T))*np.sqrt(1/self.rn)
+			return np.r_[rf_cos, rf_sin].T
 		else:
-			bs = np.array(self.bs)
-			rf = np.cos(ws.dot(f) + bs[:,None])*np.sqrt(2/self.rn)
-			return rf
+			rf = np.cos(self.ws.dot(f.T) + self.bs[:, None])*np.sqrt(2/self.rn)
+			return rf.T
 
 	def RBFKernel(self, f1, f2, gammak=None):
 		"""
@@ -73,6 +77,27 @@ class GaussianRandomFeatures:
 		rf2 = self.computeRandomFeatures(f2)
 
 		return np.squeeze(rf1).dot(np.squeeze(rf2))
+
+	def Save(self, fl):
+		data = {'dim': self.dim,
+				'rn': self.rn,
+				'gammak': self.gammak,
+				'sine': self.sine,
+				'ws': self.ws,
+				'bs': self.bs}
+		with open(fl, 'w') as fh:
+			cPickle.dump(data, fh)
+
+	def LoadFromFile(self, fl):
+		with open(fl, 'r') as fh:
+			data = cPickle.load(fh)
+		self.dim = data['dim']
+		self.rn = data['rn']
+		self.gammak = data['gammak']
+		self.sine = data['sine']
+
+		self.ws = data['ws']
+		self.bs = data['bs']
 
 
 class RandomFeaturesConverter:
@@ -102,11 +127,7 @@ class RandomFeaturesConverter:
 	def getData (self, fs):
 		"""
 		Gets the projected features.
+
+		Data must be n x r.
 		"""
-		assert len(fs[0]) == self.dim
-
-		rfs = []
-		for f in fs:
-			rfs.append(self.feature_generator.computeRandomFeatures(f))
-
-		return rfs
+		return self.feature_generator.computeRandomFeatures(fs)

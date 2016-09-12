@@ -13,6 +13,7 @@ import cPickle as pick
 
 import activeSearchInterface as ASI
 import competitorsInterface as CI
+import gaussianRandomFeatures as GRF
 
 import data_utils as du
 import graph_utils as gu
@@ -225,7 +226,6 @@ def test_covtype_large (arg_dict):
 	eta = 0.5
 	K = 1000
 	
-	t1 = time.time()
 	X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
 	X0 = du.bias_square_normalize_ft(X0,sparse=True)
 	if proj:
@@ -288,7 +288,6 @@ def test_covtype_large (arg_dict):
 	NNprms = ASI.WNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
 	NNAS = ASI.weightedNeighborAS (NNprms)
 	NNAS.initialize(X, init_labels=init_labels)
-	NNAS.initialize(X, init_labels=init_labels)
 	print ('NNAS initialized.')
 
 	# # anchorGraph AS
@@ -341,6 +340,131 @@ def test_covtype_large (arg_dict):
 	else:
 		IPython.embed()
 
+
+def test_covtype_large_rbf (arg_dict):
+
+	if 'seed' in arg_dict:
+		seed = arg_dict['seed']
+	else: seed = None
+	
+	if 'prev' in arg_dict:
+		prev = arg_dict['prev']
+	else: prev = 0.05
+
+	if 'save' in arg_dict:
+		save = arg_dict['save']
+	else: save = False
+
+	verbose = True
+	sparse = True
+	eta = 0.5
+	K = 1000
+	
+	t1 = time.time()
+	X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
+	X0 = du.bias_normalize_ft(X0,sparse=True)
+	print('Time taken to load covtype data: %.2f'%(time.time()-t1))
+
+	t1 = time.time()
+	rfc = GRF.RandomFeaturesConverter(X0.shape[0], 550, gammak=0.25)
+	RX0 = rfc.getData(du.matrix_squeeze(X0.todense()).T).T
+	print('Time taken to convert to fourier features: %.2f'%(time.time() - t1))
+    
+	nr.seed(seed)
+
+	# t1 = time.time()
+	# ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300.npz')
+	# Z,rL = AG.load_AG(ag_file)
+	# print ('Time taken to load covtype AG: %.2f'%(time.time()-t1))
+	
+	# Changing prevalence of +
+	if Y0.sum()/Y0.shape[0] < prev:
+		prev = Y0.sum() / Y0.shape[0]
+		RX, Y = RX0, Y0
+	else:
+		t1 = time.time()
+		RX, Y, inds = du.change_prev (RX0, Y0, prev=prev, return_inds=True)
+		# Z = Z[inds, :]
+		print ('Time taken to change prev: %.2f'%(time.time()-t1))
+
+	strat_frac = 1.0
+	if strat_frac < 1.0:
+		t1 = time.time()
+		RX, Y, strat_inds = du.stratified_sample(RX, Y, classes=[0,1], strat_frac=strat_frac,return_inds=True)
+		# Z = Z[strat_inds, :]
+		print ('Time taken to stratified sample: %.2f'%(time.time()-t1))
+	d,n = RX.shape
+
+	# init points
+	n_init = 1
+	init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),n_init,replace=False)]
+	init_labels = {p:1 for p in init_pt}
+
+	t1 = time.time()
+	# Kernel AS
+	pi = Y.sum() * 1.0 / Y.shape[0]
+	ASprms = ASI.Parameters(pi=pi,sparse=False, verbose=verbose, eta=eta)
+	kAS = ASI.linearizedAS (ASprms)
+	kAS.initialize(RX, init_labels=init_labels)
+	print ('KAS initialized.')
+	
+	# NN AS
+	normalize = True
+	NNprms = ASI.WNParameters(normalize=normalize ,sparse=False, verbose=verbose)
+	NNAS = ASI.weightedNeighborAS (NNprms)
+	NNAS.initialize(RX, init_labels=init_labels)
+	print ('NNAS initialized.')
+
+	# # anchorGraph AS
+	# gamma = 0.01
+	# AGprms = CI.anchorGraphParameters(gamma=gamma, sparse=sparse, verbose=verbose)
+	# AGAS = CI.anchorGraphAS (AGprms)
+	# AGAS.initialize(Z, rL, init_labels=init_labels)	
+	# print ('AGAS initialized.')
+
+	hits_K = [n_init]
+	hits_NN = [n_init]
+	# hits_AG = [n_init]
+
+	print ('Time taken to initialize all approaches: %.2f'%(time.time()-t1))
+	print ('Beginning experiment.')
+
+
+	for i in xrange(K):
+		print('Iter %i out of %i'%(i+1,K))
+		idx1 = kAS.getNextMessage()
+		kAS.setLabelCurrent(Y[idx1])
+		hits_K.append(hits_K[-1]+Y[idx1])
+
+		idx2 = NNAS.getNextMessage()
+		NNAS.setLabelCurrent(Y[idx2])
+		hits_NN.append(hits_NN[-1]+Y[idx2])
+
+		# idx4 = AGAS.getNextMessage()
+		# AGAS.setLabelCurrent(Y[idx4])
+		# hits_AG.append(hits_AG[-1]+Y[idx4])
+		print('')
+	
+	if save:
+		if seed is None: 
+			seed = -1
+		pred_results = {'kAS': [kAS
+		save_results = {'kAS': hits_K,
+						'NNAS': hits_NN,
+						'AGAS': hits_AG}
+
+
+		fname = 'expt_seed_%d.cpk'%seed
+		if proj:
+			dname = osp.join(results_dir, 'large/%.2f/proj/'%(prev*100))
+		else:
+			dname = osp.join(results_dir, 'large/%.2f/'%(prev*100))
+		if not osp.isdir(dname):
+			os.makedirs(dname)
+		fname = osp.join(dname,fname)
+		with open(fname, 'w') as fh: pick.dump(save_results, fh)
+	else:
+		IPython.embed()
 
 def test_covtype_simple (arg_dict):
 
