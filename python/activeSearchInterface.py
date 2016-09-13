@@ -40,6 +40,9 @@ class genericAS(object):
     """
     self.params = params
 
+    self.reset()
+
+  def reset():
     self.start_point = None
     self.unlabeled_idxs = []
     self.labeled_idxs = []
@@ -53,7 +56,6 @@ class genericAS(object):
     self.labels = []
 
     self.iter = -1
-
     self.initialized = False
 
   def saveState (self, filename):
@@ -150,6 +152,8 @@ class linearizedAS (genericAS):
             where r is # features, n is # points.
     init_labels --> dictionary from index to label of initial labels.
     """
+    self.reset()
+
     # Save Xf and initialize some of the variables which depend on Xf
     self.Xf = Xf
     self.r, self.n = Xf.shape

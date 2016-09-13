@@ -39,7 +39,6 @@ class SPSDParameters:
 
 		self.sampleR = sampleR
 
-		
 		self.npairs_per_epoch = npairs_per_epoch
 		self.nneg_per_pair = nneg_per_pair
 
