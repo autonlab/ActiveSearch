@@ -228,7 +228,8 @@ def test_covtype_large_rbf (arg_dict):
   t1 = time.time()
   # Kernel AS
   pi = Y.sum() * 1.0 / Y.shape[0]
-  ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta)
+  alpha = 1e-6
+  ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta, alpha=alpha)
   kAS = ASI.linearizedAS (ASprms)
   kAS.initialize(RX, init_labels=init_labels)
   print ('KAS initialized.')
@@ -282,11 +283,17 @@ def test_covtype_large_rbf (arg_dict):
             'AGAS': hits_AG}
 
     fname = 'expt_seed_%d.cpk'%seed
+    fname_res = 'res_expt_seed_%d.cpk'%seed
     dname = osp.join(results_dir, 'rbf/%.2f/'%(prev*100))
     if not osp.isdir(dname):
       os.makedirs(dname)
-    fname = osp.join(dname,fname)
-    with open(fname, 'w') as fh: pick.dump({'res': save_results, 'pred': pred_results}, fh)
+
+    # fname = osp.join(dname,fname)
+    # with open(fname, 'w') as fh: pick.dump({'res': save_results, 'pred': pred_results}, fh)
+    with open(osp.join(dname, fname), 'w') as fh:
+      pick.dump(pred_results, fh)
+    with open(osp.join(dname, fname_res), 'w') as fh:
+      pick.dump(save_results, fh)
   else:
     IPython.embed()
 
@@ -308,7 +315,7 @@ def test_covtype_large_imf (arg_dict):
   verbose = True
   sparse = False
   eta = 0.5
-  K = 100
+  K = 500
   
   t1 = time.time()
   X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
@@ -346,7 +353,7 @@ def test_covtype_large_imf (arg_dict):
   init_pt = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]),n_init,replace=False)]
   init_labels = {p:1 for p in init_pt}
 
-  alphas = [0.0, 0.001, 0.01, 0.1, 0.5, 1.0]
+  alphas = [0.0, 1e-7, 5e-7, 1e-6, 5e-6, 1e-5]
   t1 = time.time()
   # Kernel AS
   pi = Y.sum() * 1.0 / Y.shape[0]
