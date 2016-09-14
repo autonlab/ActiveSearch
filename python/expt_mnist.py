@@ -67,10 +67,10 @@ def test_mnist (arg_dict):
     
   nr.seed(seed)
 
-  # t1 = time.time()
-  # ag_file = osp.join(data_dir, 'covtype_AG_kmeans_500.npz')
-  # Z,rL = AG.load_AG(ag_file)
-  # print ('Time taken to load covtype AG: %.2f'%(time.time()-t1))
+  t1 = time.time()
+  ag_file = osp.join(data_dir, 'mnist_AG_kmeans_500.npz')
+  Z,rL = AG.load_AG(ag_file)
+  print ('Time taken to load mnist AG: %.2f'%(time.time()-t1))
   
   # Changing prevalence of +
   if Y0.sum()/Y0.shape[0] < prev:
@@ -79,14 +79,14 @@ def test_mnist (arg_dict):
   else:
     t1 = time.time()
     RX, Y, inds = du.change_prev (X0, Y0, prev=prev, return_inds=True)
-    # Z = Z[inds, :]
+    Z = Z[inds, :]
     print ('Time taken to change prev: %.2f'%(time.time()-t1))
 
   strat_frac = 1.0
   if strat_frac < 1.0:
     t1 = time.time()
     RX, Y, strat_inds = du.stratified_sample(RX, Y, classes=[0,1], strat_frac=strat_frac,return_inds=True)
-    # Z = Z[strat_inds, :]
+    Z = Z[strat_inds, :]
     print ('Time taken to stratified sample: %.2f'%(time.time()-t1))
   d,n = RX.shape
 
@@ -112,11 +112,11 @@ def test_mnist (arg_dict):
   print ('NNAS initialized.')
 
   # # # anchorGraph AS
-  # gamma = 0.01
-  # AGprms = CI.anchorGraphParameters(gamma=gamma, sparse=sparse, verbose=verbose)
-  # AGAS = CI.anchorGraphAS (AGprms)
-  # AGAS.initialize(Z, rL, init_labels=init_labels) 
-  # print ('AGAS initialized.')
+  gamma = 0.01
+  AGprms = CI.anchorGraphParameters(gamma=gamma, sparse=sparse, verbose=verbose)
+  AGAS = CI.anchorGraphAS (AGprms)
+  AGAS.initialize(Z, rL, init_labels=init_labels) 
+  print ('AGAS initialized.')
 
   # # # lapSVM AS
   relearnT = 10
@@ -137,7 +137,7 @@ def test_mnist (arg_dict):
   LapSVMoptions.CgStopParam = 0.015 # tolerance: 1.5%
   LapSVMoptions.CgStopIter = 3 # check stability every 3 iterations
   LapSVMprms = CI.lapSVMParameters(options=LapSVMoptions, relearnT=relearnT, sparse=False, verbose=verbose)
-  LapSVMAS = CI.lapsvmAS (LapSVMprms)
+  # LapSVMAS = CI.lapsvmAS (LapSVMprms)
   # LapSVMAS.initialize(du.matrix_squeeze(RX), init_labels=init_labels)
   print ('LapSVMAS initialized.')
 
@@ -166,9 +166,9 @@ def test_mnist (arg_dict):
     #LapSVMAS.setLabelCurrent(Y[idx3])
     #hits_LSVM.append(hits_LSVM[-1]+Y[idx3])
 
-    # idx4 = AGAS.getNextMessage()
-    # AGAS.setLabelCurrent(Y[idx4])
-    # hits_AG.append(hits_AG[-1]+Y[idx4])
+    idx4 = AGAS.getNextMessage()
+    AGAS.setLabelCurrent(Y[idx4])
+    hits_AG.append(hits_AG[-1]+Y[idx4])
 
     print('')
   
