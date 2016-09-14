@@ -317,6 +317,22 @@ def load_mnist():
   return X.T, Y
 
 
+def load_pcmac():
+  from sklearn.feature_extraction.text import TfidfVectorizer
+  from sklearn.decomposition import TruncatedSVD
+  from sklearn.datasets import fetch_20newsgroups
+  categories = ['comp.sys.ibm.pc.hardware', 'comp.sys.mac.hardware']
+  newsgroups_train = fetch_20newsgroups(subset='all', remove=('headers','footers','quotes'), categories=categories)
+  vectorizer = TfidfVectorizer()
+  vectors = vectorizer.fit_transform(newsgroups_train.data)
+  svd = TruncatedSVD(n_components=100)
+  svd.fit(vectors)
+  
+  X = svd.transform(vectors)
+  Y = newsgroups_train['target']
+  return X.T, Y, categories
+
+
 def load_projected_data (sparse=True, fname=None, normalize=True):
 
   if fname is None:

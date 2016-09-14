@@ -566,22 +566,31 @@ class weightedNeighborAS (genericAS):
     if self.params.sparse:
       Sif = matrix_squeeze(Sif.todense())
     else:
-        Sif = Sif.squeeze()
+      Sif = Sif.squeeze()
 
-    self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
-    if self.params.use_prior:
-      self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
-      self.NN_prior_similarity = np.delete(self.NN_prior_similarity, self.uidx) - self.NN_abs_similarity
-      self.f = self.NN_avg_similarity + self.NN_prior_similarity * self.params.pi
-      if self.params.normalize:
-        self.f /= (self.params.prior_weight * self.NN_prior_similarity + self.NN_abs_similarity)
-        self.f = np.nan_to_num(self.f)
-    else:
+    if self.NN_avg_similarity is None:
+      self.NN_avg_similarity = Sif * lbl
       self.f = self.NN_avg_similarity.copy()
+      # TODO: add code for use_prior
       if self.params.normalize:
-        self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
+        self.NN_abs_similarity = Sif
         self.f /= self.NN_abs_similarity
         self.f = np.nan_to_num(self.f)
+    else:
+      self.NN_avg_similarity = np.delete(self.NN_avg_similarity, self.uidx) + lbl*Sif
+      if self.params.use_prior:
+        self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
+        self.NN_prior_similarity = np.delete(self.NN_prior_similarity, self.uidx) - self.NN_abs_similarity
+        self.f = self.NN_avg_similarity + self.NN_prior_similarity * self.params.pi
+        if self.params.normalize:
+          self.f /= (self.params.prior_weight * self.NN_prior_similarity + self.NN_abs_similarity)
+          self.f = np.nan_to_num(self.f)
+      else:
+        self.f = self.NN_avg_similarity.copy()
+        if self.params.normalize:
+          self.NN_abs_similarity = np.delete(self.NN_abs_similarity, self.uidx) + np.abs(Sif)
+          self.f /= self.NN_abs_similarity
+          self.f = np.nan_to_num(self.f)
 
     # Some more book-keeping
     self.labeled_idxs.append(idx)
@@ -591,6 +600,8 @@ class weightedNeighborAS (genericAS):
       self.hits.append(self.hits[-1] + max(0, lbl))
 
     # Finding the next message to show -- get the current max element
+    # import IPython
+    # IPython.embed()
     self.uidx = np.argmax(self.f)
     self.next_message = self.unlabeled_idxs[self.uidx]
     # Now that a new message has been selected, mark it as unseen

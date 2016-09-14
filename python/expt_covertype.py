@@ -5,6 +5,7 @@ import scipy as sp, scipy.linalg as slg, scipy.io as sio, scipy.sparse as ss
 
 from multiprocessing import Pool
 
+import copy
 import time
 import os, os.path as osp
 import csv
@@ -397,11 +398,122 @@ def test_covtype_large_imf (arg_dict):
   else:
     IPython.embed()
 
+
+def test_one_point(arg_dict):
+  if 'seed' in arg_dict:
+    seed = arg_dict['seed']
+  else: seed = None
+  
+  if 'prev' in arg_dict:
+    prev = arg_dict['prev']
+  else: prev = 0.05
+
+  if 'save' in arg_dict:
+    save = arg_dict['save']
+  else: save = False
+
+  verbose = True
+  sparse = False
+  eta = 0.5
+  
+  t1 = time.time()
+  X0,Y0,classes = du.load_covertype(sparse=sparse, normalize=False)
+  X0 = du.bias_normalize_ft (X0, sparse=False)
+  # X0,W = du.whiten_data(X0, sparse=sparse, rtn_W=True, thresh=1e-6)
+  print('Time taken to load covtype data: %.2f'%(time.time()-t1))
+
+  t1 = time.time()
+  rfc = GRF.GaussianRandomFeatures(fl = osp.join(data_dir, 'grf_covtype.cpk'))
+  RX0 = rfc.computeRandomFeatures(X0.T).T
+  print('Time taken to convert to fourier features: %.2f'%(time.time() - t1))
+    
+  nr.seed(seed)
+  
+  # Changing prevalence of +
+  if Y0.sum()/Y0.shape[0] < prev:
+    prev = Y0.sum() / Y0.shape[0]
+    RX, Y = RX0, Y0
+  else:
+    t1 = time.time()
+    RX, Y, inds = du.change_prev (RX0, Y0, prev=prev, return_inds=True)
+    print ('Time taken to change prev: %.2f'%(time.time()-t1))
+
+  strat_frac = 1.0
+  if strat_frac < 1.0:
+    t1 = time.time()
+    RX, Y, strat_inds = du.stratified_sample(RX, Y, classes=[0,1], strat_frac=strat_frac,return_inds=True)
+    print ('Time taken to stratified sample: %.2f'%(time.time()-t1))
+  d,n = RX.shape
+
+  t1 = time.time()
+  # Kernel AS
+  pi = Y.sum() * 1.0 / Y.shape[0]
+  alpha = 1e-6
+  ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta, alpha=alpha)
+  kAS = ASI.linearizedAS (ASprms)
+  kAS.initialize(RX)
+  print ('KAS initialized.')
+  
+  # NN AS
+  normalize = True
+  NNprms = ASI.WNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
+  NNAS = ASI.weightedNeighborAS (NNprms)
+  NNAS.initialize(RX)
+  print ('NNAS initialized.')
+
+  num_trials = 100
+  kAS_pred = 0
+  NNAS_pred = 0
+  nz_ct = 0
+
+  del X0
+  del RX0
+  # init points
+  Ynz = Y.nonzero()[0]
+  Yz = (Y==0).nonzero()[0]
+  init_ppts = Ynz[nr.permutation(len(Ynz))]
+  init_npts = Yz[nr.choice(len(Ynz), len(Ynz), replace=True)]
+  # init_ppts = Y.nonzero()[0][nr.choice(len(Y.nonzero()[0]), num_trials, replace=False)]
+  # init_npts = (Y == 0).nonzero()[0][nr.choice(len(Y.nonzero()[0]), num_trials, replace=True)]
+
+  IPython.embed()
+
+  itr = 0
+  for ppt, npt in zip(init_ppts, init_npts):
+    itr += 1
+    print('Iter: %i'%itr)
+    kASc = copy.deepcopy(kAS)
+    kASc.setLabel(ppt, 1)
+    kASc.setLabel(npt, 0)
+    next_inds1 = [kASc.unlabeled_idxs[idx] for idx in (-kASc.f[kASc.unlabeled_idxs]).argsort()[:100]]
+    del kASc
+
+    nASc = copy.deepcopy(NNAS)
+    nASc.setLabel(ppt, 1)
+    nASc.setLabel(npt, 0)
+    next_inds2 = [nASc.unlabeled_idxs[idx] for idx in (-nASc.f).argsort()[:100]]
+    del nASc
+
+    v1 = Y[next_inds1].sum()
+    v2 = Y[next_inds2].sum()
+
+    print(v1, v2)
+    kAS_pred += v1
+    NNAS_pred += v2
+    if v1 + v2 > 0: nz_ct += 1
+    print(kAS_pred, NNAS_pred, nz_ct)
+
+    if nz_ct >= num_trials:
+      break
+    
+
+  IPython.embed()
+
                             
 if __name__ == '__main__':
   import sys
 
-  ## Argument 1: 1/2 -- rbf/imf expt
+  ## Argument 1: 1/2/3 -- rbf/imf/onept expt
   ## Argument 2: number of experiments to run in parallel
   ## Argument 3: prevalence of +ve class
 
@@ -414,7 +526,7 @@ if __name__ == '__main__':
       exp_type = int(sys.argv[1])
     except:
       exp_type = 1
-    if exp_type not in [1,2]:
+    if exp_type not in [1,2,3]:
       exp_type = 1
 
   if len(sys.argv) > 2:
@@ -435,7 +547,7 @@ if __name__ == '__main__':
     if prev < 0 or prev > 0.05:
       prev = 0.05
 
-  test_funcs = {1:test_covtype_large_rbf, 2:test_covtype_large_imf}
+  test_funcs = {1:test_covtype_large_rbf, 2:test_covtype_large_imf, 3:test_one_point}
 
 
   # nr.seed(int((time.clock()%(0.01))*10e6))
