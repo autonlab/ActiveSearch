@@ -3,6 +3,7 @@ import time
 import os, os.path as osp
 import csv
 import cPickle as pick
+import gzip
 # import sqlparse as sql
 
 import numpy as np, numpy.random as nr, numpy.linalg as nlg
@@ -276,6 +277,44 @@ def load_SUSY (sparse=True, fname=None, normalize=False):
       X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
       X = X/X_norms # Normalization
   return X, Y, classes
+
+
+def load_segmentation():
+  dname = '/usr0/home/sibiv/Research/Data/ActiveSearch/segmentation'
+  
+  X = []
+  Y = []
+  classes = {}
+  c = 0
+
+
+  all_rows = []
+  for fname in os.listdir(dname):
+    fl = osp.join(dname, fname)
+    with open(fl, 'r') as fh:
+      reader = csv.reader(fh)
+      
+      for row in reader:
+        if len(row) != 20: continue
+        if row[0] not in classes:
+          classes[row[0]] = c
+          c += 1
+        Y.append(classes[row[0]])
+        X.append([float(v) for v in row[1:]])
+
+  return np.array(X).T, np.array(Y), classes
+
+
+def load_mnist():
+
+  fname = '/usr0/home/sibiv/Research/Data/ActiveSearch/mnist/mnist.pkl.gz'
+  # Load the dataset
+  with gzip.open(fname, 'rb') as fh:
+    train_set, valid_set, test_set = pick.load(fh)
+
+  X = np.r_[train_set[0], valid_set[0], test_set[0]]
+  Y = np.r_[train_set[1], valid_set[1], test_set[1]]
+  return X.T, Y
 
 
 def load_projected_data (sparse=True, fname=None, normalize=True):
