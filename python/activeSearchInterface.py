@@ -42,7 +42,7 @@ class genericAS(object):
 
     self.reset()
 
-  def reset():
+  def reset(self):
     self.start_point = None
     self.unlabeled_idxs = []
     self.labeled_idxs = []
