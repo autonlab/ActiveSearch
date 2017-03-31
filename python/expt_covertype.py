@@ -69,12 +69,12 @@ def test_covtype_large (arg_dict):
 
   print ('Time taken to load covtype data: %.2f'%(time.time()-t1))
   t1 = time.time()
-  if proj:
-    ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300_proj.npz')
-    Z,rL = AG.load_AG(ag_file)
-  else:
-    ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300.npz')
-    Z,rL = AG.load_AG(ag_file)
+  # if proj:
+    # ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300_proj.npz')
+    # Z,rL = AG.load_AG(ag_file)
+  # else:
+    # ag_file = osp.join(du.data_dir, 'covtype_AG_kmeans300.npz')
+    # Z,rL = AG.load_AG(ag_file)
   print ('Time taken to load covtype AG: %.2f'%(time.time()-t1))
   
   # Changing prevalence of +
@@ -84,14 +84,14 @@ def test_covtype_large (arg_dict):
   else:
     t1 = time.time()
     X,Y,inds = du.change_prev (X0,Y0,prev=prev,return_inds=True)
-    Z = Z[inds, :]
+    # Z = Z[inds, :]
     print ('Time taken to change prev: %.2f'%(time.time()-t1))
 
   strat_frac = 1.0
   if strat_frac < 1.0:
     t1 = time.time()
     X, Y, strat_inds = du.stratified_sample(X, Y, classes=[0,1], strat_frac=strat_frac,return_inds=True)
-    Z = Z[strat_inds, :]
+    # Z = Z[strat_inds, :]
     print ('Time taken to stratified sample: %.2f'%(time.time()-t1))
   d,n = X.shape
 
@@ -119,7 +119,7 @@ def test_covtype_large (arg_dict):
   gamma = 0.01
   AGprms = CI.anchorGraphParameters(gamma=gamma, sparse=sparse, verbose=verbose)
   AGAS = CI.anchorGraphAS (AGprms)
-  AGAS.initialize(Z, rL, init_labels=init_labels) 
+  # AGAS.initialize(Z, rL, init_labels=init_labels) 
   print ('AGAS initialized.')
 
   hits_K = [n_init]
@@ -140,9 +140,9 @@ def test_covtype_large (arg_dict):
     NNAS.setLabelCurrent(Y[idx2])
     hits_NN.append(hits_NN[-1]+Y[idx2])
 
-    idx4 = AGAS.getNextMessage()
-    AGAS.setLabelCurrent(Y[idx4])
-    hits_AG.append(hits_AG[-1]+Y[idx4])
+    # idx4 = AGAS.getNextMessage()
+    # AGAS.setLabelCurrent(Y[idx4])
+    # hits_AG.append(hits_AG[-1]+Y[idx4])
     print('')
   
   if save:
@@ -199,8 +199,8 @@ def test_covtype_large_rbf (arg_dict):
   nr.seed(seed)
 
   t1 = time.time()
-  ag_file = osp.join(data_dir, 'covtype_AG_kmeans_500.npz')
-  Z,rL = AG.load_AG(ag_file)
+  # ag_file = osp.join(data_dir, 'covtype_AG_kmeans_500.npz')
+  # Z,rL = AG.load_AG(ag_file)
   print ('Time taken to load covtype AG: %.2f'%(time.time()-t1))
   
   # Changing prevalence of +
@@ -210,14 +210,14 @@ def test_covtype_large_rbf (arg_dict):
   else:
     t1 = time.time()
     RX, Y, inds = du.change_prev (RX0, Y0, prev=prev, return_inds=True)
-    Z = Z[inds, :]
+    # Z = Z[inds, :]
     print ('Time taken to change prev: %.2f'%(time.time()-t1))
 
   strat_frac = 1.0
   if strat_frac < 1.0:
     t1 = time.time()
     RX, Y, strat_inds = du.stratified_sample(RX, Y, classes=[0,1], strat_frac=strat_frac,return_inds=True)
-    Z = Z[strat_inds, :]
+    # Z = Z[strat_inds, :]
     print ('Time taken to stratified sample: %.2f'%(time.time()-t1))
   d,n = RX.shape
 
@@ -233,20 +233,20 @@ def test_covtype_large_rbf (arg_dict):
   ASprms = ASI.Parameters(pi=pi,sparse=sparse, verbose=verbose, eta=eta, alpha=alpha)
   kAS = ASI.linearizedAS (ASprms)
   kAS.initialize(RX, init_labels=init_labels)
-  print ('KAS initialized.')
+  print ('KAS initialized: %.2f'%(time.time() - t1))
   
   # NN AS
   normalize = True
   NNprms = ASI.WNParameters(normalize=normalize ,sparse=sparse, verbose=verbose)
   NNAS = ASI.weightedNeighborAS (NNprms)
-  NNAS.initialize(RX, init_labels=init_labels)
+  # NNAS.initialize(RX, init_labels=init_labels)
   print ('NNAS initialized.')
 
   # # anchorGraph AS
   gamma = 0.01
   AGprms = CI.anchorGraphParameters(gamma=gamma, sparse=sparse, verbose=verbose)
   AGAS = CI.anchorGraphAS (AGprms)
-  AGAS.initialize(Z, rL, init_labels=init_labels) 
+  # AGAS.initialize(Z, rL, init_labels=init_labels) 
   print ('AGAS initialized.')
 
   hits_K = [n_init]
@@ -263,13 +263,13 @@ def test_covtype_large_rbf (arg_dict):
     kAS.setLabelCurrent(Y[idx1])
     hits_K.append(hits_K[-1]+Y[idx1])
 
-    idx2 = NNAS.getNextMessage()
-    NNAS.setLabelCurrent(Y[idx2])
-    hits_NN.append(hits_NN[-1]+Y[idx2])
+    # idx2 = NNAS.getNextMessage()
+    # NNAS.setLabelCurrent(Y[idx2])
+    # hits_NN.append(hits_NN[-1]+Y[idx2])
 
-    idx4 = AGAS.getNextMessage()
-    AGAS.setLabelCurrent(Y[idx4])
-    hits_AG.append(hits_AG[-1]+Y[idx4])
+    # idx4 = AGAS.getNextMessage()
+    # AGAS.setLabelCurrent(Y[idx4])
+    # hits_AG.append(hits_AG[-1]+Y[idx4])
     print('')
   
   if save:

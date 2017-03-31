@@ -333,6 +333,21 @@ def load_pcmac():
   return X.T, Y, categories
 
 
+def load_a9a():
+  with open('/usr0/home/sibiv/Research/Data/ActiveSearch/LairLabData/a9a/a9a_scaled_dataset.npz') as fh:
+    a9a = np.load(fh)
+    x_tra = a9a['x_tra']
+    x_test = a9a['x_test']
+    y_tra = a9a['y_tra']
+    y_test = a9a['y_test']
+
+  X0 = np.r_[x_tra, x_test]
+  Y0 = np.r_[y_tra, y_test].squeeze()
+  Y0 = np.where(Y0==1, 1, 0)
+
+  return X0.T, Y0
+
+
 def load_projected_data (sparse=True, fname=None, normalize=True):
 
   if fname is None:

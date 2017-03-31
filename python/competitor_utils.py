@@ -151,7 +151,7 @@ def save_mnist_kmeans():
   save_kmeans (X, save_file, k=500, max_iter=300, n_jobs=10, verbose=100, precompute_distances=True)
 
 
-def create_AG_kmeans(flag=1, s=3, cn=5, normalized=True, k=100, proj=False):
+def create_AG_mnist(flag=1, s=3, cn=5, normalized=True, k=100, proj=False):
   t1 = time.time()
   X, _ = du.load_mnist()
   X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
@@ -176,44 +176,47 @@ def create_AG_kmeans(flag=1, s=3, cn=5, normalized=True, k=100, proj=False):
   t1 = time.time()
   AG.save_AG(ag_file, Z, rL)
   print('Time taken to save AG: %.2f\n'%(time.time()-t1))
-  
 
-def save_seg_kmeans():
+
+def save_a9a_kmeans():
 
   t1 = time.time()
-  X,Y,_ = du.load_segmentation(sparse=False, normalize=False)
-  X = du.bias_normalize_ft (X, sparse=False)
-  # Xw = du.whiten_data(X, sparse=False, rtn_W=False, thresh=1e-6)
-  fg = GRF.GaussianRandomFeatures(fl=osp.join(new_folder, 'grf_covtype.cpk'))
-  RX = fg.computeRandomFeatures(X.T)
+  X, _ = du.load_a9a()
+  X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
+  X = (X/X_norms) # Normalization
+  print X.shape
   print('Time taken to load data and process it: %.2f'%(time.time() - t1))
 
-  save_file = osp.join(new_folder, 'kmeans_new/covtype_kmeans_500')
-  save_kmeans (RX, save_file, k=500, max_iter=300, n_jobs=10, verbose=100, precompute_distances=True)
+  save_file = osp.join(new_folder, 'kmeans_new/a9a_kmeans_500')
+  save_kmeans (X.T, save_file, k=500, max_iter=300, n_jobs=10, verbose=100, precompute_distances=True)
 
-    
-def create_AG_seg(flag=1, s=3, cn=5, normalized=True, k=100, proj=False):
+
+def create_AG_a9a(flag=1, s=3, cn=5, normalized=True, k=100, proj=False):
   t1 = time.time()
-  X,Y,_ = du.load_covertype(sparse=False, normalize=False)
-  X = du.bias_normalize_ft (X, sparse=False)
+  X, _ = du.load_a9a()
+  X_norms = np.sqrt((X*X).sum(axis=0)).squeeze()
+  X = (X/X_norms) # Normalization
+  # X,Y,_ = du.load_covertype(sparse=False, normalize=False)
+  # X = du.bias_normalize_ft (X, sparse=False)
   # Xw = du.whiten_data(X, sparse=False, rtn_W=False, thresh=1e-6)
-  fg = GRF.GaussianRandomFeatures(fl=osp.join(new_folder, 'grf_covtype.cpk'))
-  RX = fg.computeRandomFeatures(X.T)
+  # fg = GRF.GaussianRandomFeatures(fl=osp.join(new_folder, 'grf_covtype.cpk'))
+  # RX = fg.computeRandomFeatures(X.T)
   print('Time taken to load data and process it: %.2f'%(time.time() - t1))
 
-  kmeans_fl = osp.join(new_folder, 'kmeans_new/covtype_kmeans_500.npz')
+  kmeans_fl = osp.join(new_folder, 'kmeans_new/a9a_kmeans_500.npz')
   Anchors = np.load(kmeans_fl)['arr_0']
-  
+
   t1 = time.time()
   # Measuring "distance" only based on dot-product
-  Z, rL = AG.AnchorGraph(RX.T, Anchors.T, s=5, flag=flag, cn=10, sparse=False, normalized=False)
+  Z, rL = AG.AnchorGraph(X, Anchors.T, s=5, flag=flag, cn=10, sparse=False, normalized=False)
   print('Time taken to generate AG: %.2f\n'%(time.time()-t1))
 
-  ag_file = osp.join(new_folder, 'covtype_AG_kmeans_500')
+  ag_file = osp.join(new_folder, 'a9a_AG_kmeans_500')
 
   t1 = time.time()
   AG.save_AG(ag_file, Z, rL)
   print('Time taken to save AG: %.2f\n'%(time.time()-t1))
+
 
 if __name__ == '__main__':
   # create_AG('covtype', s=3, cn=10, normalized=True, k=300, ft=du.bias_square_normalize_ft, proj=False)
@@ -232,5 +235,8 @@ if __name__ == '__main__':
   # save_covtype_kmeans()
   # create_AG_covtype()
 
-  save_mnist_kmeans()
-  create_AG_mnist()
+  # save_mnist_kmeans()
+  # create_AG_mnist()
+
+  # save_a9a_kmeans()
+  create_AG_a9a()
